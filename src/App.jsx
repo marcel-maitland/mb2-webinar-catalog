@@ -32,16 +32,29 @@ function normalizeTime(timeStr) {
   let t = safeStr(timeStr);
   if (!t) return "";
 
-  t = t.replace(/\b(CENTRAL TIME|CST|CDT)\b/gi, "");
+  // remove timezone words you don't want to display
+  t = t.replace(/\b(CENTRAL TIME|MOUNTAIN TIME|PACIFIC TIME|EASTERN TIME)\b/gi, "");
+  t = t.replace(/\b(CST|CDT|MST|MDT|PST|PDT|EST|EDT)\b/gi, "");
+
+  // normalize spacing around dashes
   t = t.replace(/\s*-\s*/g, " - ");
+
+  // ensure a space before AM/PM if missing
   t = t.replace(/(\d)(AM|PM)\b/gi, "$1 $2");
+
+  // lowercase am/pm
   t = t.replace(/\bAM\b/g, "am").replace(/\bPM\b/g, "pm");
+
+  // collapse spaces
   t = t.replace(/\s+/g, " ").trim();
+
+  // your preference: "8:00 pm" -> "8:00pm"
   t = t.replace(/\s(am|pm)\b/g, "$1");
 
   return t;
 }
 
+/* final display: 1/14/26   7:00 - 8:00pm */
 function formatDateLine(dateStr, timeStr) {
   const d = formatShortDate(dateStr);
   const t = normalizeTime(timeStr);
@@ -49,7 +62,11 @@ function formatDateLine(dateStr, timeStr) {
   return d || t || "";
 }
 
-/* Parse event start to hide past events */
+/**
+ * Parse event start datetime so we can hide past events.
+ * If time can't be parsed, we default to noon local time
+ * so we don't accidentally hide a same-day event too early.
+ */
 function parseEventStart(dateStr, timeStr) {
   const rawDate = safeStr(dateStr);
   const base = new Date(rawDate);
@@ -58,7 +75,7 @@ function parseEventStart(dateStr, timeStr) {
   let hours = 12;
   let minutes = 0;
 
-  const t = normalizeTime(timeStr);
+  const t = normalizeTime(timeStr); // "7:00 - 8:00pm"
   if (t) {
     const startMatch = t.match(/^(\d{1,2})(?::(\d{2}))?/);
     const ampmMatch = t.match(/\b(am|pm)\b/i);
@@ -80,7 +97,9 @@ function parseEventStart(dateStr, timeStr) {
     base.getMonth(),
     base.getDate(),
     hours,
-    minutes
+    minutes,
+    0,
+    0
   );
 }
 
@@ -91,7 +110,7 @@ function toggleSetValue(set, value, setter) {
   setter(next);
 }
 
-/* SMALL INLINE ICON (CANNOT SCALE WRONG) */
+/* Small calendar icon that cannot scale wrong */
 function CalendarIcon() {
   return (
     <svg
@@ -119,10 +138,15 @@ export default function App() {
   const [selectedCategories, setSelectedCategories] = useState(new Set());
 
   useEffect(() => {
+    let cancelled = false;
+
     async function load() {
       try {
         setLoading(true);
+        setErr("");
+
         const res = await fetch(DATA_URL, { cache: "no-store" });
+        if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
         const data = await res.json();
 
         const parsed = (data.items || []).map((row, idx) => {
@@ -145,70 +169,212 @@ export default function App() {
           };
         });
 
-        setItems(parsed);
+        if (!cancelled) setItems(parsed);
       } catch (e) {
-        setErr(e?.message || "Failed to load data");
+        if (!cancelled) setErr(e?.message || "Failed to load data");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const upcomingItems = useMemo(
-    () => items.filter((i) => !i.startAt || i.startAt >= new Date()),
-    [items]
-  );
+  // Hide past events
+  const upcomingItems = useMemo(() => {
+    const now = new Date();
+    return items.filter((i) => !i.startAt || i.startAt >= now);
+  }, [items]);
 
+  // Filter options based on visible (upcoming) items
+  const ceOptions = useMemo(() => {
+    const set = new Set(upcomingItems.map((i) => i.ce).filter(Boolean));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [upcomingItems]);
+
+  const presenterOptions = useMemo(() => {
+    const set = new Set(upcomingItems.map((i) => i.presenter).filter(Boolean));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [upcomingItems]);
+
+  const categoryOptions = useMemo(() => {
+    const set = new Set();
+    upcomingItems.forEach((i) => i.categories.forEach((c) => set.add(c)));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [upcomingItems]);
+
+  // Apply filters + search + sort by soonest
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
+
+    const matchesQuery = (i) =>
+      !q ||
+      i.title.toLowerCase().includes(q) ||
+      i.presenter.toLowerCase().includes(q) ||
+      i.description.toLowerCase().includes(q) ||
+      i.categories.join(", ").toLowerCase().includes(q);
+
+    const matchesCE = (i) => selectedCE.size === 0 || selectedCE.has(i.ce);
+    const matchesPresenter =
+      (i) => selectedPresenters.size === 0 || selectedPresenters.has(i.presenter);
+    const matchesCategory =
+      (i) =>
+        selectedCategories.size === 0 ||
+        i.categories.some((c) => selectedCategories.has(c));
+
     return upcomingItems
-      .filter((i) => !q || i.title.toLowerCase().includes(q))
-      .sort((a, b) => (a.startAt?.getTime() || 0) - (b.startAt?.getTime() || 0));
-  }, [upcomingItems, query]);
+      .filter((i) => matchesQuery(i) && matchesCE(i) && matchesPresenter(i) && matchesCategory(i))
+      .sort((a, b) => {
+        const at = a.startAt ? a.startAt.getTime() : Number.POSITIVE_INFINITY;
+        const bt = b.startAt ? b.startAt.getTime() : Number.POSITIVE_INFINITY;
+        return at - bt;
+      });
+  }, [upcomingItems, query, selectedCE, selectedPresenters, selectedCategories]);
+
+  const clearAll = () => {
+    setQuery("");
+    setSelectedCE(new Set());
+    setSelectedPresenters(new Set());
+    setSelectedCategories(new Set());
+  };
 
   return (
     <div className="page">
       <header className="topbar">
         <h1>MB2 Webinar Catalog</h1>
-        <input
-          className="search"
-          placeholder="Search webinars"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <input
+            className="search"
+            placeholder="Search webinars"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <button
+            onClick={clearAll}
+            style={{
+              padding: "12px 14px",
+              borderRadius: 12,
+              border: "1px solid #e5e7eb",
+              background: "#fff",
+              cursor: "pointer",
+              fontWeight: 700,
+            }}
+          >
+            Clear
+          </button>
+        </div>
       </header>
 
       <div className="layout">
-        <main className="grid">
-          {filtered.map((w) => (
-            <a className="eventCard" key={w.id} href={w.link} target="_blank" rel="noreferrer">
-              <div className="eventThumbWrap">
-                <img src={w.thumb} className="eventThumb" alt={w.title} />
-              </div>
+        <aside className="filters">
+          <div className="filterSection">
+            <h3>CE Hours</h3>
+            {ceOptions.map((opt) => (
+              <label key={opt}>
+                <input
+                  type="checkbox"
+                  checked={selectedCE.has(opt)}
+                  onChange={() => toggleSetValue(selectedCE, opt, setSelectedCE)}
+                />{" "}
+                {opt}
+              </label>
+            ))}
+          </div>
 
-              <div className="eventBody">
-                <div className="eventDate">{formatDateLine(w.date, w.time)}</div>
-                <div className="eventTagRow">
-                  <span className="eventTag">LIVE WEBINAR</span>
+          <div className="filterSection">
+            <h3>Presenter</h3>
+            {presenterOptions.map((opt) => (
+              <label key={opt}>
+                <input
+                  type="checkbox"
+                  checked={selectedPresenters.has(opt)}
+                  onChange={() =>
+                    toggleSetValue(selectedPresenters, opt, setSelectedPresenters)
+                  }
+                />{" "}
+                {opt}
+              </label>
+            ))}
+          </div>
+
+          <div className="filterSection">
+            <h3>Category</h3>
+            {categoryOptions.map((opt) => (
+              <label key={opt}>
+                <input
+                  type="checkbox"
+                  checked={selectedCategories.has(opt)}
+                  onChange={() =>
+                    toggleSetValue(selectedCategories, opt, setSelectedCategories)
+                  }
+                />{" "}
+                {opt}
+              </label>
+            ))}
+          </div>
+        </aside>
+
+        <main className="grid">
+          {loading && <div className="status">Loading webinars…</div>}
+          {err && <div className="status error">Error: {err}</div>}
+
+          {!loading &&
+            !err &&
+            filtered.map((w) => (
+              <a
+                className="eventCard"
+                key={w.id}
+                href={w.link || "#"}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <div className="eventThumbWrap">
+                  {w.thumb ? (
+                    <img
+                      src={w.thumb}
+                      className="eventThumb"
+                      alt={w.title}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="eventThumb placeholder" />
+                  )}
                 </div>
-                <h2 className="eventTitle">{w.title}</h2>
-                <div className="eventMeta">
-                  <span>{w.ce} CE Credit</span>
-                  <span className="dot">•</span>
-                  <span>{w.cost?.toUpperCase() || "FREE"}</span>
+
+                <div className="eventBody">
+                  <div className="eventDate">{formatDateLine(w.date, w.time)}</div>
+
+                  <div className="eventTagRow">
+                    <span className="eventTag">LIVE WEBINAR</span>
+                  </div>
+
+                  <h2 className="eventTitle">{w.title}</h2>
+
+                  {w.presenter && (
+                    <div className="eventSubtitle">{w.presenter}</div>
+                  )}
+
+                  <div className="eventMeta">
+                    <span>{w.ce ? `${w.ce} CE Credit` : "CE TBD"}</span>
+                    <span className="dot">•</span>
+                    <span>{w.cost ? safeStr(w.cost).toUpperCase() : "FREE"}</span>
+                  </div>
+
+                  <p className="eventDesc">{w.description}</p>
+
+                  <div className="eventCtaRow">
+                    <span className="eventBtn">
+                      <CalendarIcon />
+                      Register Now
+                    </span>
+                  </div>
                 </div>
-                <p className="eventDesc">{w.description}</p>
-                <div className="eventCtaRow">
-                  <span className="eventBtn">
-                    <CalendarIcon />
-                    Register Now
-                  </span>
-                </div>
-              </div>
-            </a>
-          ))}
+              </a>
+            ))}
         </main>
       </div>
     </div>
