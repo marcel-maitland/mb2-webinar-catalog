@@ -32,29 +32,16 @@ function normalizeTime(timeStr) {
   let t = safeStr(timeStr);
   if (!t) return "";
 
-  // Remove timezone words you don't want displayed
-  t = t.replace(/\b(CENTRAL TIME|MOUNTAIN TIME|PACIFIC TIME|EASTERN TIME)\b/gi, "");
-  t = t.replace(/\b(CST|CDT|MST|MDT|PST|PDT|EST|EDT)\b/gi, "");
-
-  // Normalize spacing around hyphens
+  t = t.replace(/\b(CENTRAL TIME|CST|CDT)\b/gi, "");
   t = t.replace(/\s*-\s*/g, " - ");
-
-  // Ensure a space before AM/PM if missing (8:00PM -> 8:00 PM)
   t = t.replace(/(\d)(AM|PM)\b/gi, "$1 $2");
-
-  // Lowercase am/pm
   t = t.replace(/\bAM\b/g, "am").replace(/\bPM\b/g, "pm");
-
-  // Collapse spaces
   t = t.replace(/\s+/g, " ").trim();
-
-  // Your preference: 8:00 pm -> 8:00pm
   t = t.replace(/\s(am|pm)\b/g, "$1");
 
   return t;
 }
 
-/* FINAL DISPLAY: 1/14/26   7:00 - 8:00pm */
 function formatDateLine(dateStr, timeStr) {
   const d = formatShortDate(dateStr);
   const t = normalizeTime(timeStr);
@@ -62,58 +49,38 @@ function formatDateLine(dateStr, timeStr) {
   return d || t || "";
 }
 
-/**
- * Parse event start datetime so we can hide past events.
- * - Date may come from Sheets as ISO like 2026-01-14T06:00:00.000Z
- * - Time is a string like: "7:00 - 8:00pm" (or with CST/Central Time)
- *
- * We extract the *start* time and combine with the date in local time.
- * If time can't be parsed, we use the date at 12:00 PM (noon) to avoid
- * accidentally hiding same-day events early in the morning.
- */
+/* Parse event start to hide past events */
 function parseEventStart(dateStr, timeStr) {
   const rawDate = safeStr(dateStr);
   const base = new Date(rawDate);
   if (isNaN(base.getTime())) return null;
 
-  // Default to noon local time if no time is parseable
   let hours = 12;
   let minutes = 0;
 
-  const t = normalizeTime(timeStr); // ex: "7:00 - 8:00pm"
+  const t = normalizeTime(timeStr);
   if (t) {
-    // Grab the first time token. Examples we handle:
-    // "7:00 - 8:00pm"
-    // "7 - 8pm"
-    // "7:00pm - 8:00pm"
-    // "7pm - 8pm"
-    // We'll look for: hour[:min] optional am/pm (am/pm may appear only at end in some strings)
-    const startMatch = t.match(/^(\d{1,2})(?::(\d{2}))?/); // start hour/min
-    const ampmMatch = t.match(/\b(am|pm)\b/i); // am/pm anywhere
+    const startMatch = t.match(/^(\d{1,2})(?::(\d{2}))?/);
+    const ampmMatch = t.match(/\b(am|pm)\b/i);
 
     if (startMatch) {
       hours = parseInt(startMatch[1], 10);
       minutes = startMatch[2] ? parseInt(startMatch[2], 10) : 0;
 
       const ampm = ampmMatch ? ampmMatch[1].toLowerCase() : null;
-
-      // Convert to 24h if am/pm exists
       if (ampm) {
         if (hours === 12) hours = ampm === "am" ? 0 : 12;
-        else if (ampm === "pm") hours = hours + 12;
+        else if (ampm === "pm") hours += 12;
       }
     }
   }
 
-  // Build local start datetime
   return new Date(
     base.getFullYear(),
     base.getMonth(),
     base.getDate(),
     hours,
-    minutes,
-    0,
-    0
+    minutes
   );
 }
 
@@ -124,13 +91,14 @@ function toggleSetValue(set, value, setter) {
   setter(next);
 }
 
+/* SMALL INLINE ICON (CANNOT SCALE WRONG) */
 function CalendarIcon() {
   return (
     <svg
-      className="eventBtnIcon"
       viewBox="0 0 24 24"
       aria-hidden="true"
       focusable="false"
+      style={{ width: 14, height: 14, flex: "0 0 14px" }}
     >
       <path
         fill="currentColor"
@@ -151,15 +119,10 @@ export default function App() {
   const [selectedCategories, setSelectedCategories] = useState(new Set());
 
   useEffect(() => {
-    let cancelled = false;
-
     async function load() {
       try {
         setLoading(true);
-        setErr("");
-
         const res = await fetch(DATA_URL, { cache: "no-store" });
-        if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
         const data = await res.json();
 
         const parsed = (data.items || []).map((row, idx) => {
@@ -178,216 +141,74 @@ export default function App() {
             date,
             time,
             categories: normalizeListField(row["Category Tags"]),
-            startAt: parseEventStart(date, time), // used to hide past events + sorting
+            startAt: parseEventStart(date, time),
           };
         });
 
-        if (!cancelled) setItems(parsed);
+        setItems(parsed);
       } catch (e) {
-        if (!cancelled) setErr(e?.message || "Failed to load data");
+        setErr(e?.message || "Failed to load data");
       } finally {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       }
     }
 
     load();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
-  const now = useMemo(() => new Date(), []); // stable per render session
-
-  const upcomingItems = useMemo(() => {
-    // Hide past events (if startAt is missing, keep it visible rather than accidentally hiding)
-    return items.filter((i) => !i.startAt || i.startAt >= new Date());
-  }, [items]);
-
-  const ceOptions = useMemo(() => {
-    const set = new Set(upcomingItems.map((i) => i.ce).filter(Boolean));
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [upcomingItems]);
-
-  const presenterOptions = useMemo(() => {
-    const set = new Set(upcomingItems.map((i) => i.presenter).filter(Boolean));
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [upcomingItems]);
-
-  const categoryOptions = useMemo(() => {
-    const set = new Set();
-    upcomingItems.forEach((i) => i.categories.forEach((c) => set.add(c)));
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [upcomingItems]);
+  const upcomingItems = useMemo(
+    () => items.filter((i) => !i.startAt || i.startAt >= new Date()),
+    [items]
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-
-    const matchesQuery = (i) =>
-      !q ||
-      i.title.toLowerCase().includes(q) ||
-      i.presenter.toLowerCase().includes(q) ||
-      i.description.toLowerCase().includes(q) ||
-      i.categories.join(", ").toLowerCase().includes(q);
-
-    const matchesCE = (i) => selectedCE.size === 0 || selectedCE.has(i.ce);
-    const matchesPresenter =
-      (i) => selectedPresenters.size === 0 || selectedPresenters.has(i.presenter);
-    const matchesCategory =
-      (i) =>
-        selectedCategories.size === 0 ||
-        i.categories.some((c) => selectedCategories.has(c));
-
-    // Sort by upcoming date (nice bonus while we’re here)
     return upcomingItems
-      .filter((i) => matchesQuery(i) && matchesCE(i) && matchesPresenter(i) && matchesCategory(i))
-      .sort((a, b) => {
-        const at = a.startAt ? a.startAt.getTime() : Number.POSITIVE_INFINITY;
-        const bt = b.startAt ? b.startAt.getTime() : Number.POSITIVE_INFINITY;
-        return at - bt;
-      });
-  }, [upcomingItems, query, selectedCE, selectedPresenters, selectedCategories]);
-
-  const clearAll = () => {
-    setQuery("");
-    setSelectedCE(new Set());
-    setSelectedPresenters(new Set());
-    setSelectedCategories(new Set());
-  };
+      .filter((i) => !q || i.title.toLowerCase().includes(q))
+      .sort((a, b) => (a.startAt?.getTime() || 0) - (b.startAt?.getTime() || 0));
+  }, [upcomingItems, query]);
 
   return (
     <div className="page">
       <header className="topbar">
         <h1>MB2 Webinar Catalog</h1>
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <input
-            className="search"
-            placeholder="Search webinars"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <button
-            onClick={clearAll}
-            style={{
-              padding: "12px 14px",
-              borderRadius: 12,
-              border: "1px solid #e5e7eb",
-              background: "#fff",
-              cursor: "pointer",
-              fontWeight: 700,
-            }}
-          >
-            Clear
-          </button>
-        </div>
+        <input
+          className="search"
+          placeholder="Search webinars"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
       </header>
 
       <div className="layout">
-        <aside className="filters">
-          <div className="filterSection">
-            <h3>CE Hours</h3>
-            {ceOptions.map((opt) => (
-              <label key={opt}>
-                <input
-                  type="checkbox"
-                  checked={selectedCE.has(opt)}
-                  onChange={() => toggleSetValue(selectedCE, opt, setSelectedCE)}
-                />{" "}
-                {opt}
-              </label>
-            ))}
-          </div>
-
-          <div className="filterSection">
-            <h3>Presenter</h3>
-            {presenterOptions.map((opt) => (
-              <label key={opt}>
-                <input
-                  type="checkbox"
-                  checked={selectedPresenters.has(opt)}
-                  onChange={() =>
-                    toggleSetValue(selectedPresenters, opt, setSelectedPresenters)
-                  }
-                />{" "}
-                {opt}
-              </label>
-            ))}
-          </div>
-
-          <div className="filterSection">
-            <h3>Category</h3>
-            {categoryOptions.map((opt) => (
-              <label key={opt}>
-                <input
-                  type="checkbox"
-                  checked={selectedCategories.has(opt)}
-                  onChange={() =>
-                    toggleSetValue(selectedCategories, opt, setSelectedCategories)
-                  }
-                />{" "}
-                {opt}
-              </label>
-            ))}
-          </div>
-        </aside>
-
         <main className="grid">
-          {loading && <div className="status">Loading webinars…</div>}
-          {err && <div className="status error">Error: {err}</div>}
+          {filtered.map((w) => (
+            <a className="eventCard" key={w.id} href={w.link} target="_blank" rel="noreferrer">
+              <div className="eventThumbWrap">
+                <img src={w.thumb} className="eventThumb" alt={w.title} />
+              </div>
 
-          {!loading &&
-            !err &&
-            filtered.map((w) => (
-              <a
-                className="eventCard"
-                key={w.id}
-                href={w.link || "#"}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <div className="eventThumbWrap">
-                  {w.thumb ? (
-                    <img
-                      src={w.thumb}
-                      className="eventThumb"
-                      alt={w.title}
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="eventThumb placeholder" />
-                  )}
+              <div className="eventBody">
+                <div className="eventDate">{formatDateLine(w.date, w.time)}</div>
+                <div className="eventTagRow">
+                  <span className="eventTag">LIVE WEBINAR</span>
                 </div>
-
-                <div className="eventBody">
-                  <div className="eventDate">{formatDateLine(w.date, w.time)}</div>
-
-                  <div className="eventTagRow">
-                    <span className="eventTag">LIVE WEBINAR</span>
-                  </div>
-
-                  <h2 className="eventTitle">{w.title}</h2>
-
-                  {w.presenter && (
-                    <div className="eventSubtitle">{w.presenter}</div>
-                  )}
-
-                  <div className="eventMeta">
-                    <span>{w.ce ? `${w.ce} CE Credit` : "CE TBD"}</span>
-                    <span className="dot">•</span>
-                    <span>{w.cost ? safeStr(w.cost).toUpperCase() : "FREE"}</span>
-                  </div>
-
-                  <p className="eventDesc">{w.description}</p>
-
-                  <div className="eventCtaRow">
-                    <span className="eventBtn">
-                      <CalendarIcon />
-                      Register Now
-                    </span>
-                  </div>
+                <h2 className="eventTitle">{w.title}</h2>
+                <div className="eventMeta">
+                  <span>{w.ce} CE Credit</span>
+                  <span className="dot">•</span>
+                  <span>{w.cost?.toUpperCase() || "FREE"}</span>
                 </div>
-              </a>
-            ))}
+                <p className="eventDesc">{w.description}</p>
+                <div className="eventCtaRow">
+                  <span className="eventBtn">
+                    <CalendarIcon />
+                    Register Now
+                  </span>
+                </div>
+              </div>
+            </a>
+          ))}
         </main>
       </div>
     </div>
