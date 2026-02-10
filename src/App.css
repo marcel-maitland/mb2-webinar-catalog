@@ -1,37 +1,59 @@
+:root {
+  --bg: #f4f6f8;
+  --card: #ffffff;
+  --border: #e5e7eb;
+  --text: #0f172a;
+  --muted: #6b7280;
+  --blue: #0b4aa2;
+  --accent-blue: #0ea5e9;
+  --orange: #f97316;
+  --shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
+  --radius: 22px;
+}
+
+* { box-sizing: border-box; }
+
 body {
   margin: 0;
   font-family: Arial, Helvetica, sans-serif;
-  background: #f5f6f7;
+  background: var(--bg);
+  color: var(--text);
 }
 
 .page {
-  padding: 20px;
+  padding: 26px;
 }
 
+/* HEADER */
 .topbar h1 {
-  margin: 0 0 12px;
+  margin: 0 0 14px;
+  font-size: 22px;
+  font-weight: 900;
 }
 
 .search {
   width: 100%;
   max-width: 520px;
   padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid #ddd;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: #fff;
 }
 
+/* LAYOUT */
 .layout {
   display: grid;
   grid-template-columns: 280px 1fr;
-  gap: 18px;
+  gap: 20px;
   margin-top: 20px;
 }
 
 .filters {
   background: #fff;
-  padding: 14px;
+  padding: 16px;
   border-radius: 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
+  height: fit-content;
 }
 
 .filterSection {
@@ -40,6 +62,7 @@ body {
 
 .filterSection h3 {
   margin: 0 0 8px;
+  font-size: 15px;
 }
 
 .filterSection label {
@@ -48,64 +71,156 @@ body {
   margin: 6px 0;
 }
 
+/* GRID */
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
 }
 
-.card {
-  background: #fff;
-  border-radius: 16px;
-  border: 1px solid #e5e7eb;
+/* EVENT CARD */
+.eventCard {
+  background: var(--card);
+  border-radius: var(--radius);
   overflow: hidden;
   text-decoration: none;
-  color: black;
+  color: inherit;
   display: flex;
   flex-direction: column;
+  box-shadow: var(--shadow);
+  transition: transform 150ms ease, box-shadow 150ms ease;
 }
 
-.thumb {
+.eventCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 30px 70px rgba(15, 23, 42, 0.18);
+}
+
+/* IMAGE */
+.eventThumbWrap {
   width: 100%;
-  height: 160px;
+  height: 200px;
+  overflow: hidden;
+  background: #e8eefc;
+}
+
+.eventThumb {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
 }
 
-.cardBody {
-  padding: 14px;
+/* BODY */
+.eventBody {
+  padding: 20px;
 }
 
-.cardBody h2 {
-  font-size: 16px;
-  margin: 0 0 6px;
-}
-
-.meta {
-  font-size: 13px;
-  color: #6b7280;
-  margin: 0 0 10px;
-}
-
-.footer {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 12px;
+/* DATE LINE */
+.eventDate {
   font-size: 12px;
-  color: #374151;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  color: #111827;
 }
 
-@media (max-width: 1000px) {
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+/* TAG */
+.eventTagRow {
+  margin-bottom: 10px;
 }
 
-@media (max-width: 800px) {
-  .layout {
-    grid-template-columns: 1fr;
-  }
-  .grid {
-    grid-template-columns: 1fr;
-  }
+.eventTag {
+  display: inline-block;
+  background: var(--orange);
+  color: #fff;
+  font-weight: 900;
+  font-size: 12px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  letter-spacing: 0.02em;
+}
+
+/* TITLE */
+.eventTitle {
+  margin: 0 0 8px;
+  font-size: 22px;
+  line-height: 1.1;
+  font-weight: 900;
+  color: var(--blue);
+  text-transform: uppercase;
+}
+
+/* SUBTITLE (Presenter) */
+.eventSubtitle {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-blue);
+}
+
+/* META LINE */
+.eventMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 14px;
+}
+
+.dot {
+  color: #94a3b8;
+}
+
+/* DESCRIPTION */
+.eventDesc {
+  margin: 0;
+  color: #4b5563;
+  line-height: 1.55;
+  font-size: 14px;
+  min-height: 120px;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* CTA */
+.eventCtaRow {
+  margin-top: 18px;
+}
+
+.eventBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  background: var(--orange);
+  color: #fff;
+  font-weight: 900;
+  border-radius: 16px;
+  padding: 14px 16px;
+  font-size: 16px;
+}
+
+/* STATUS / ERRORS */
+.status {
+  padding: 18px;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.status.error {
+  color: #b91c1c;
+}
+
+/* RESPONSIVE */
+@media (max-width: 1100px) {
+  .grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 850px) {
+  .layout { grid-template-columns: 1fr; }
+  .grid { grid-template-columns: 1fr; }
 }
