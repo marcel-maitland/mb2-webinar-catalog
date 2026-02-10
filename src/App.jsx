@@ -32,29 +32,18 @@ function normalizeTime(timeStr) {
   let t = safeStr(timeStr);
   if (!t) return "";
 
-  // remove timezone words you don't want to display
   t = t.replace(/\b(CENTRAL TIME|MOUNTAIN TIME|PACIFIC TIME|EASTERN TIME)\b/gi, "");
   t = t.replace(/\b(CST|CDT|MST|MDT|PST|PDT|EST|EDT)\b/gi, "");
 
-  // normalize spacing around dashes
   t = t.replace(/\s*-\s*/g, " - ");
-
-  // ensure a space before AM/PM if missing
   t = t.replace(/(\d)(AM|PM)\b/gi, "$1 $2");
-
-  // lowercase am/pm
   t = t.replace(/\bAM\b/g, "am").replace(/\bPM\b/g, "pm");
-
-  // collapse spaces
   t = t.replace(/\s+/g, " ").trim();
-
-  // your preference: "8:00 pm" -> "8:00pm"
   t = t.replace(/\s(am|pm)\b/g, "$1");
 
   return t;
 }
 
-/* final display: 1/14/26   7:00 - 8:00pm */
 function formatDateLine(dateStr, timeStr) {
   const d = formatShortDate(dateStr);
   const t = normalizeTime(timeStr);
@@ -62,11 +51,6 @@ function formatDateLine(dateStr, timeStr) {
   return d || t || "";
 }
 
-/**
- * Parse event start datetime so we can hide past events.
- * If time can't be parsed, we default to noon local time
- * so we don't accidentally hide a same-day event too early.
- */
 function parseEventStart(dateStr, timeStr) {
   const rawDate = safeStr(dateStr);
   const base = new Date(rawDate);
@@ -75,7 +59,7 @@ function parseEventStart(dateStr, timeStr) {
   let hours = 12;
   let minutes = 0;
 
-  const t = normalizeTime(timeStr); // "7:00 - 8:00pm"
+  const t = normalizeTime(timeStr);
   if (t) {
     const startMatch = t.match(/^(\d{1,2})(?::(\d{2}))?/);
     const ampmMatch = t.match(/\b(am|pm)\b/i);
@@ -110,7 +94,6 @@ function toggleSetValue(set, value, setter) {
   setter(next);
 }
 
-/* Small calendar icon that cannot scale wrong */
 function CalendarIcon() {
   return (
     <svg
@@ -136,6 +119,9 @@ export default function App() {
   const [selectedCE, setSelectedCE] = useState(new Set());
   const [selectedPresenters, setSelectedPresenters] = useState(new Set());
   const [selectedCategories, setSelectedCategories] = useState(new Set());
+
+  // Read more / less state
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -183,13 +169,11 @@ export default function App() {
     };
   }, []);
 
-  // Hide past events
   const upcomingItems = useMemo(() => {
     const now = new Date();
     return items.filter((i) => !i.startAt || i.startAt >= now);
   }, [items]);
 
-  // Filter options based on visible (upcoming) items
   const ceOptions = useMemo(() => {
     const set = new Set(upcomingItems.map((i) => i.ce).filter(Boolean));
     return Array.from(set).sort((a, b) => a.localeCompare(b));
@@ -206,7 +190,6 @@ export default function App() {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [upcomingItems]);
 
-  // Apply filters + search + sort by soonest
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
 
@@ -226,7 +209,10 @@ export default function App() {
         i.categories.some((c) => selectedCategories.has(c));
 
     return upcomingItems
-      .filter((i) => matchesQuery(i) && matchesCE(i) && matchesPresenter(i) && matchesCategory(i))
+      .filter(
+        (i) =>
+          matchesQuery(i) && matchesCE(i) && matchesPresenter(i) && matchesCategory(i)
+      )
       .sort((a, b) => {
         const at = a.startAt ? a.startAt.getTime() : Number.POSITIVE_INFINITY;
         const bt = b.startAt ? b.startAt.getTime() : Number.POSITIVE_INFINITY;
@@ -239,6 +225,16 @@ export default function App() {
     setSelectedCE(new Set());
     setSelectedPresenters(new Set());
     setSelectedCategories(new Set());
+    setExpandedIds(new Set());
+  };
+
+  const toggleExpanded = (id) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   return (
@@ -324,57 +320,78 @@ export default function App() {
 
           {!loading &&
             !err &&
-            filtered.map((w) => (
-              <a
-                className="eventCard"
-                key={w.id}
-                href={w.link || "#"}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <div className="eventThumbWrap">
-                  {w.thumb ? (
-                    <img
-                      src={w.thumb}
-                      className="eventThumb"
-                      alt={w.title}
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="eventThumb placeholder" />
-                  )}
-                </div>
+            filtered.map((w) => {
+              const expanded = expandedIds.has(w.id);
+              const showReadMore = (w.description || "").length > 220;
 
-                <div className="eventBody">
-                  <div className="eventDate">{formatDateLine(w.date, w.time)}</div>
-
-                  <div className="eventTagRow">
-                    <span className="eventTag">LIVE WEBINAR</span>
+              return (
+                <a
+                  className="eventCard"
+                  key={w.id}
+                  href={w.link || "#"}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <div className="eventThumbWrap">
+                    {w.thumb ? (
+                      <img
+                        src={w.thumb}
+                        className="eventThumb"
+                        alt={w.title}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="eventThumb placeholder" />
+                    )}
                   </div>
 
-                  <h2 className="eventTitle">{w.title}</h2>
+                  <div className="eventBody">
+                    <div className="eventDate">{formatDateLine(w.date, w.time)}</div>
 
-                  {w.presenter && (
-                    <div className="eventSubtitle">{w.presenter}</div>
-                  )}
+                    <div className="eventTagRow">
+                      <span className="eventTag">LIVE WEBINAR</span>
+                    </div>
 
-                  <div className="eventMeta">
-                    <span>{w.ce ? `${w.ce} CE Credit` : "CE TBD"}</span>
-                    <span className="dot">•</span>
-                    <span>{w.cost ? safeStr(w.cost).toUpperCase() : "FREE"}</span>
+                    <h2 className="eventTitle">{w.title}</h2>
+
+                    {w.presenter && (
+                      <div className="eventSubtitle">{w.presenter}</div>
+                    )}
+
+                    <div className="eventMeta">
+                      <span>{w.ce ? `${w.ce} CE Credit` : "CE TBD"}</span>
+                      <span className="dot">•</span>
+                      <span>{w.cost ? safeStr(w.cost).toUpperCase() : "FREE"}</span>
+                    </div>
+
+                    <p className={`eventDesc ${expanded ? "expanded" : ""}`}>
+                      {w.description}
+                    </p>
+
+                    {showReadMore && (
+                      <button
+                        type="button"
+                        className="readMoreBtn"
+                        onClick={(e) => {
+                          e.preventDefault(); // prevent link navigation
+                          e.stopPropagation();
+                          toggleExpanded(w.id);
+                        }}
+                      >
+                        {expanded ? "Read less" : "Read more"}
+                      </button>
+                    )}
+
+                    <div className="eventCtaRow">
+                      <span className="eventBtn">
+                        <CalendarIcon />
+                        Register Now
+                      </span>
+                    </div>
                   </div>
-
-                  <p className="eventDesc">{w.description}</p>
-
-                  <div className="eventCtaRow">
-                    <span className="eventBtn">
-                      <CalendarIcon />
-                      Register Now
-                    </span>
-                  </div>
-                </div>
-              </a>
-            ))}
+                </a>
+              );
+            })}
         </main>
       </div>
     </div>
