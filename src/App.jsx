@@ -17,27 +17,52 @@ function safeStr(v) {
   return String(v).trim();
 }
 
-/* CLEAN DATE + TIME FORMATTER */
+function formatShortDate(dateStr) {
+  const raw = safeStr(dateStr);
+
+  // Handles ISO strings like 2026-01-14T06:00:00.000Z and also normal date strings
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return raw;
+
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  const yy = String(d.getFullYear()).slice(-2);
+
+  return `${m}/${day}/${yy}`;
+}
+
+function normalizeTime(timeStr) {
+  let t = safeStr(timeStr);
+  if (!t) return "";
+
+  // Remove timezone words you don't want displayed
+  t = t.replace(/\b(CENTRAL TIME|MOUNTAIN TIME|PACIFIC TIME|EASTERN TIME)\b/gi, "");
+  t = t.replace(/\b(CST|CDT|MST|MDT|PST|PDT|EST|EDT)\b/gi, "");
+
+  // Normalize spacing around hyphens
+  t = t.replace(/\s*-\s*/g, " - ");
+
+  // Ensure a space before AM/PM if missing (8:00PM -> 8:00 PM)
+  t = t.replace(/(\d)(AM|PM)\b/gi, "$1 $2");
+
+  // Lowercase am/pm
+  t = t.replace(/\bAM\b/g, "am").replace(/\bPM\b/g, "pm");
+
+  // Collapse extra spaces
+  t = t.replace(/\s+/g, " ").trim();
+
+  // Optional: remove space before am/pm for your exact preference (8:00 pm -> 8:00pm)
+  t = t.replace(/\s(am|pm)\b/g, "$1");
+
+  return t;
+}
+
+/* FINAL DISPLAY: 1/14/26   7:00 - 8:00pm */
 function formatDateLine(dateStr, timeStr) {
-  const dRaw = safeStr(dateStr);
-  const tRaw = safeStr(timeStr);
-
-  const d = new Date(dRaw);
-
-  const dateNice = !isNaN(d.getTime())
-    ? d
-        .toLocaleDateString(undefined, {
-          month: "short",
-          day: "2-digit",
-          year: "numeric",
-        })
-        .toUpperCase()
-    : dRaw.toUpperCase();
-
-  const timeNice = tRaw;
-
-  if (dateNice && timeNice) return `${dateNice} • ${timeNice}`;
-  return dateNice || timeNice || "";
+  const d = formatShortDate(dateStr);
+  const t = normalizeTime(timeStr);
+  if (d && t) return `${d}   ${t}`;
+  return d || t || "";
 }
 
 function toggleSetValue(set, value, setter) {
@@ -78,8 +103,8 @@ export default function App() {
           cost: safeStr(row["Cost"]),
           link: safeStr(row["Registration Link"]),
           thumb: safeStr(row["Thumbnail Link"]),
-          date: safeStr(row["Date of the Event"]),
-          time: safeStr(row["Time of the event"]),
+          date: row["Date of the Event"], // keep raw; formatter handles ISO
+          time: row["Time of the event"],
           categories: normalizeListField(row["Category Tags"]),
         }));
 
@@ -249,9 +274,7 @@ export default function App() {
                 </div>
 
                 <div className="eventBody">
-                  <div className="eventDate">
-                    {formatDateLine(w.date, w.time)}
-                  </div>
+                  <div className="eventDate">{formatDateLine(w.date, w.time)}</div>
 
                   <div className="eventTagRow">
                     <span className="eventTag">LIVE WEBINAR</span>
@@ -266,7 +289,7 @@ export default function App() {
                   <div className="eventMeta">
                     <span>{w.ce ? `${w.ce} CE Credit` : "CE TBD"}</span>
                     <span className="dot">•</span>
-                    <span>{w.cost ? w.cost.toUpperCase() : "FREE"}</span>
+                    <span>{w.cost ? safeStr(w.cost).toUpperCase() : "FREE"}</span>
                   </div>
 
                   <p className="eventDesc">{w.description}</p>
@@ -282,6 +305,7 @@ export default function App() {
     </div>
   );
 }
+
 
   );
 }
