@@ -306,7 +306,3 @@ export default function App() {
   );
 }
 
-
-  );
-}
-
