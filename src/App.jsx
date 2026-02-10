@@ -17,26 +17,27 @@ function safeStr(v) {
   return String(v).trim();
 }
 
+/* CLEAN DATE + TIME FORMATTER */
 function formatDateLine(dateStr, timeStr) {
-  const d = safeStr(dateStr);
-  const t = safeStr(timeStr);
+  const dRaw = safeStr(dateStr);
+  const tRaw = safeStr(timeStr);
 
-  // If date is already formatted nicely in the sheet, we’ll respect it.
-  // Otherwise, try parsing for consistent display.
-  const attempt = new Date(`${d} ${t}`);
-  if (!isNaN(attempt.getTime())) {
-    const datePart = attempt.toLocaleDateString(undefined, {
-      month: "short",
-      day: "2-digit",
-      year: "numeric",
-    });
-    // Keep time string as entered (often includes CST, ranges, etc.)
-    return t ? `${datePart} • ${t}` : datePart;
-  }
+  const d = new Date(dRaw);
 
-  // Fallback: just display what the sheet has
-  if (d && t) return `${d} • ${t}`;
-  return d || t || "";
+  const dateNice = !isNaN(d.getTime())
+    ? d
+        .toLocaleDateString(undefined, {
+          month: "short",
+          day: "2-digit",
+          year: "numeric",
+        })
+        .toUpperCase()
+    : dRaw.toUpperCase();
+
+  const timeNice = tRaw;
+
+  if (dateNice && timeNice) return `${dateNice} • ${timeNice}`;
+  return dateNice || timeNice || "";
 }
 
 function toggleSetValue(set, value, setter) {
@@ -51,7 +52,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  // UI state
   const [query, setQuery] = useState("");
   const [selectedCE, setSelectedCE] = useState(new Set());
   const [selectedPresenters, setSelectedPresenters] = useState(new Set());
@@ -69,32 +69,19 @@ export default function App() {
         if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
         const data = await res.json();
 
-        const parsed = (data.items || []).map((row, idx) => {
-          const title = safeStr(row["Name of Event"]);
-          const presenter = safeStr(row["Presenter / Vendor (Tag)"]);
-          const description = safeStr(row["Description"]);
-          const ce = safeStr(row["Hours (Tag)"]);
-          const cost = safeStr(row["Cost"]);
-          const link = safeStr(row["Registration Link"]);
-          const thumb = safeStr(row["Thumbnail Link"]);
-          const date = safeStr(row["Date of the Event"]);
-          const time = safeStr(row["Time of the event"]);
-          const categories = normalizeListField(row["Category Tags"]);
-
-          return {
-            id: safeStr(row.id) || String(idx + 1),
-            title,
-            presenter,
-            description,
-            ce,
-            cost,
-            link,
-            thumb,
-            date,
-            time,
-            categories,
-          };
-        });
+        const parsed = (data.items || []).map((row, idx) => ({
+          id: safeStr(row.id) || String(idx + 1),
+          title: safeStr(row["Name of Event"]),
+          presenter: safeStr(row["Presenter / Vendor (Tag)"]),
+          description: safeStr(row["Description"]),
+          ce: safeStr(row["Hours (Tag)"]),
+          cost: safeStr(row["Cost"]),
+          link: safeStr(row["Registration Link"]),
+          thumb: safeStr(row["Thumbnail Link"]),
+          date: safeStr(row["Date of the Event"]),
+          time: safeStr(row["Time of the event"]),
+          categories: normalizeListField(row["Category Tags"]),
+        }));
 
         if (!cancelled) setItems(parsed);
       } catch (e) {
@@ -129,15 +116,12 @@ export default function App() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
 
-    const matchesQuery = (i) => {
-      if (!q) return true;
-      return (
-        i.title.toLowerCase().includes(q) ||
-        i.presenter.toLowerCase().includes(q) ||
-        i.description.toLowerCase().includes(q) ||
-        i.categories.join(", ").toLowerCase().includes(q)
-      );
-    };
+    const matchesQuery = (i) =>
+      !q ||
+      i.title.toLowerCase().includes(q) ||
+      i.presenter.toLowerCase().includes(q) ||
+      i.description.toLowerCase().includes(q) ||
+      i.categories.join(", ").toLowerCase().includes(q);
 
     const matchesCE = (i) => selectedCE.size === 0 || selectedCE.has(i.ce);
     const matchesPresenter =
@@ -192,7 +176,6 @@ export default function App() {
         <aside className="filters">
           <div className="filterSection">
             <h3>CE Hours</h3>
-            {ceOptions.length === 0 && <div style={{ color: "#6b7280" }}>—</div>}
             {ceOptions.map((opt) => (
               <label key={opt}>
                 <input
@@ -207,9 +190,6 @@ export default function App() {
 
           <div className="filterSection">
             <h3>Presenter</h3>
-            {presenterOptions.length === 0 && (
-              <div style={{ color: "#6b7280" }}>—</div>
-            )}
             {presenterOptions.map((opt) => (
               <label key={opt}>
                 <input
@@ -226,9 +206,6 @@ export default function App() {
 
           <div className="filterSection">
             <h3>Category</h3>
-            {categoryOptions.length === 0 && (
-              <div style={{ color: "#6b7280" }}>—</div>
-            )}
             {categoryOptions.map((opt) => (
               <label key={opt}>
                 <input
@@ -248,61 +225,64 @@ export default function App() {
           {loading && <div className="status">Loading webinars…</div>}
           {err && <div className="status error">Error: {err}</div>}
 
-          {!loading && !err && filtered.map((w) => (
-            <a
-              className="eventCard"
-              key={w.id}
-              href={w.link || "#"}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <div className="eventThumbWrap">
-                {w.thumb ? (
-                  <img
-                    src={w.thumb}
-                    className="eventThumb"
-                    alt={w.title}
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="eventThumb placeholder" />
-                )}
-              </div>
-
-              <div className="eventBody">
-                <div className="eventDate">{formatDateLine(w.date, w.time)}</div>
-
-                <div className="eventTagRow">
-                  <span className="eventTag">LIVE WEBINAR</span>
+          {!loading &&
+            !err &&
+            filtered.map((w) => (
+              <a
+                className="eventCard"
+                key={w.id}
+                href={w.link || "#"}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <div className="eventThumbWrap">
+                  {w.thumb ? (
+                    <img
+                      src={w.thumb}
+                      className="eventThumb"
+                      alt={w.title}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="eventThumb placeholder" />
+                  )}
                 </div>
 
-                <h2 className="eventTitle">{w.title}</h2>
+                <div className="eventBody">
+                  <div className="eventDate">
+                    {formatDateLine(w.date, w.time)}
+                  </div>
 
-                {w.presenter ? (
-                  <div className="eventSubtitle">{w.presenter}</div>
-                ) : null}
+                  <div className="eventTagRow">
+                    <span className="eventTag">LIVE WEBINAR</span>
+                  </div>
 
-                <div className="eventMeta">
-                  <span className="eventMetaItem">
-                    {w.ce ? `${w.ce} CE Credit` : "CE TBD"}
-                  </span>
-                  <span className="dot">•</span>
-                  <span className="eventMetaItem">
-                    {w.cost ? String(w.cost).toUpperCase() : "FREE"}
-                  </span>
+                  <h2 className="eventTitle">{w.title}</h2>
+
+                  {w.presenter && (
+                    <div className="eventSubtitle">{w.presenter}</div>
+                  )}
+
+                  <div className="eventMeta">
+                    <span>{w.ce ? `${w.ce} CE Credit` : "CE TBD"}</span>
+                    <span className="dot">•</span>
+                    <span>{w.cost ? w.cost.toUpperCase() : "FREE"}</span>
+                  </div>
+
+                  <p className="eventDesc">{w.description}</p>
+
+                  <div className="eventCtaRow">
+                    <span className="eventBtn">Register Now</span>
+                  </div>
                 </div>
-
-                <p className="eventDesc">{w.description}</p>
-
-                <div className="eventCtaRow">
-                  <span className="eventBtn">Register Now</span>
-                </div>
-              </div>
-            </a>
-          ))}
+              </a>
+            ))}
         </main>
       </div>
     </div>
+  );
+}
+
   );
 }
 
