@@ -188,7 +188,7 @@ body {
   overflow: hidden;
 }
 
-/* CTA */
+/* CTA BUTTON */
 .eventCtaRow {
   margin-top: 18px;
 }
@@ -204,6 +204,19 @@ body {
   border-radius: 16px;
   padding: 14px 16px;
   font-size: 16px;
+  gap: 8px;
+  line-height: 1;
+}
+
+/* SMALL CALENDAR ICON */
+.eventBtnIcon {
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  min-height: 14px;
+  display: inline-block;
+  vertical-align: middle;
+  opacity: 0.95;
 }
 
 /* STATUS / ERRORS */
@@ -232,3 +245,4 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
