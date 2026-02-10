@@ -19,15 +19,12 @@ function safeStr(v) {
 
 function formatShortDate(dateStr) {
   const raw = safeStr(dateStr);
-
-  // Handles ISO strings like 2026-01-14T06:00:00.000Z and also normal date strings
   const d = new Date(raw);
   if (isNaN(d.getTime())) return raw;
 
   const m = d.getMonth() + 1;
   const day = d.getDate();
   const yy = String(d.getFullYear()).slice(-2);
-
   return `${m}/${day}/${yy}`;
 }
 
@@ -48,10 +45,10 @@ function normalizeTime(timeStr) {
   // Lowercase am/pm
   t = t.replace(/\bAM\b/g, "am").replace(/\bPM\b/g, "pm");
 
-  // Collapse extra spaces
+  // Collapse spaces
   t = t.replace(/\s+/g, " ").trim();
 
-  // Optional: remove space before am/pm for your exact preference (8:00 pm -> 8:00pm)
+  // Your preference: 8:00 pm -> 8:00pm
   t = t.replace(/\s(am|pm)\b/g, "$1");
 
   return t;
@@ -65,11 +62,82 @@ function formatDateLine(dateStr, timeStr) {
   return d || t || "";
 }
 
+/**
+ * Parse event start datetime so we can hide past events.
+ * - Date may come from Sheets as ISO like 2026-01-14T06:00:00.000Z
+ * - Time is a string like: "7:00 - 8:00pm" (or with CST/Central Time)
+ *
+ * We extract the *start* time and combine with the date in local time.
+ * If time can't be parsed, we use the date at 12:00 PM (noon) to avoid
+ * accidentally hiding same-day events early in the morning.
+ */
+function parseEventStart(dateStr, timeStr) {
+  const rawDate = safeStr(dateStr);
+  const base = new Date(rawDate);
+  if (isNaN(base.getTime())) return null;
+
+  // Default to noon local time if no time is parseable
+  let hours = 12;
+  let minutes = 0;
+
+  const t = normalizeTime(timeStr); // ex: "7:00 - 8:00pm"
+  if (t) {
+    // Grab the first time token. Examples we handle:
+    // "7:00 - 8:00pm"
+    // "7 - 8pm"
+    // "7:00pm - 8:00pm"
+    // "7pm - 8pm"
+    // We'll look for: hour[:min] optional am/pm (am/pm may appear only at end in some strings)
+    const startMatch = t.match(/^(\d{1,2})(?::(\d{2}))?/); // start hour/min
+    const ampmMatch = t.match(/\b(am|pm)\b/i); // am/pm anywhere
+
+    if (startMatch) {
+      hours = parseInt(startMatch[1], 10);
+      minutes = startMatch[2] ? parseInt(startMatch[2], 10) : 0;
+
+      const ampm = ampmMatch ? ampmMatch[1].toLowerCase() : null;
+
+      // Convert to 24h if am/pm exists
+      if (ampm) {
+        if (hours === 12) hours = ampm === "am" ? 0 : 12;
+        else if (ampm === "pm") hours = hours + 12;
+      }
+    }
+  }
+
+  // Build local start datetime
+  return new Date(
+    base.getFullYear(),
+    base.getMonth(),
+    base.getDate(),
+    hours,
+    minutes,
+    0,
+    0
+  );
+}
+
 function toggleSetValue(set, value, setter) {
   const next = new Set(set);
   if (next.has(value)) next.delete(value);
   else next.add(value);
   setter(next);
+}
+
+function CalendarIcon() {
+  return (
+    <svg
+      className="eventBtnIcon"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        fill="currentColor"
+        d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1.5A2.5 2.5 0 0 1 22 6.5v13A2.5 2.5 0 0 1 19.5 22h-15A2.5 2.5 0 0 1 2 19.5v-13A2.5 2.5 0 0 1 4.5 4H6V3a1 1 0 0 1 1-1Zm12.5 6H4.5a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-11a.5.5 0 0 0-.5-.5ZM6 10h3v3H6v-3Zm0 5h3v3H6v-3Zm5-5h3v3h-3v-3Zm0 5h3v3h-3v-3Zm5-5h3v3h-3v-3Z"
+      />
+    </svg>
+  );
 }
 
 export default function App() {
@@ -94,19 +162,25 @@ export default function App() {
         if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
         const data = await res.json();
 
-        const parsed = (data.items || []).map((row, idx) => ({
-          id: safeStr(row.id) || String(idx + 1),
-          title: safeStr(row["Name of Event"]),
-          presenter: safeStr(row["Presenter / Vendor (Tag)"]),
-          description: safeStr(row["Description"]),
-          ce: safeStr(row["Hours (Tag)"]),
-          cost: safeStr(row["Cost"]),
-          link: safeStr(row["Registration Link"]),
-          thumb: safeStr(row["Thumbnail Link"]),
-          date: row["Date of the Event"], // keep raw; formatter handles ISO
-          time: row["Time of the event"],
-          categories: normalizeListField(row["Category Tags"]),
-        }));
+        const parsed = (data.items || []).map((row, idx) => {
+          const date = row["Date of the Event"];
+          const time = row["Time of the event"];
+
+          return {
+            id: safeStr(row.id) || String(idx + 1),
+            title: safeStr(row["Name of Event"]),
+            presenter: safeStr(row["Presenter / Vendor (Tag)"]),
+            description: safeStr(row["Description"]),
+            ce: safeStr(row["Hours (Tag)"]),
+            cost: safeStr(row["Cost"]),
+            link: safeStr(row["Registration Link"]),
+            thumb: safeStr(row["Thumbnail Link"]),
+            date,
+            time,
+            categories: normalizeListField(row["Category Tags"]),
+            startAt: parseEventStart(date, time), // used to hide past events + sorting
+          };
+        });
 
         if (!cancelled) setItems(parsed);
       } catch (e) {
@@ -122,21 +196,28 @@ export default function App() {
     };
   }, []);
 
-  const ceOptions = useMemo(() => {
-    const set = new Set(items.map((i) => i.ce).filter(Boolean));
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  const now = useMemo(() => new Date(), []); // stable per render session
+
+  const upcomingItems = useMemo(() => {
+    // Hide past events (if startAt is missing, keep it visible rather than accidentally hiding)
+    return items.filter((i) => !i.startAt || i.startAt >= new Date());
   }, [items]);
 
-  const presenterOptions = useMemo(() => {
-    const set = new Set(items.map((i) => i.presenter).filter(Boolean));
+  const ceOptions = useMemo(() => {
+    const set = new Set(upcomingItems.map((i) => i.ce).filter(Boolean));
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [items]);
+  }, [upcomingItems]);
+
+  const presenterOptions = useMemo(() => {
+    const set = new Set(upcomingItems.map((i) => i.presenter).filter(Boolean));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [upcomingItems]);
 
   const categoryOptions = useMemo(() => {
     const set = new Set();
-    items.forEach((i) => i.categories.forEach((c) => set.add(c)));
+    upcomingItems.forEach((i) => i.categories.forEach((c) => set.add(c)));
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [items]);
+  }, [upcomingItems]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -156,11 +237,15 @@ export default function App() {
         selectedCategories.size === 0 ||
         i.categories.some((c) => selectedCategories.has(c));
 
-    return items.filter(
-      (i) =>
-        matchesQuery(i) && matchesCE(i) && matchesPresenter(i) && matchesCategory(i)
-    );
-  }, [items, query, selectedCE, selectedPresenters, selectedCategories]);
+    // Sort by upcoming date (nice bonus while we’re here)
+    return upcomingItems
+      .filter((i) => matchesQuery(i) && matchesCE(i) && matchesPresenter(i) && matchesCategory(i))
+      .sort((a, b) => {
+        const at = a.startAt ? a.startAt.getTime() : Number.POSITIVE_INFINITY;
+        const bt = b.startAt ? b.startAt.getTime() : Number.POSITIVE_INFINITY;
+        return at - bt;
+      });
+  }, [upcomingItems, query, selectedCE, selectedPresenters, selectedCategories]);
 
   const clearAll = () => {
     setQuery("");
@@ -295,7 +380,10 @@ export default function App() {
                   <p className="eventDesc">{w.description}</p>
 
                   <div className="eventCtaRow">
-                    <span className="eventBtn">Register Now</span>
+                    <span className="eventBtn">
+                      <CalendarIcon />
+                      Register Now
+                    </span>
                   </div>
                 </div>
               </a>
