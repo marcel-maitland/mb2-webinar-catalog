@@ -232,12 +232,3 @@ body {
     grid-template-columns: 1fr;
   }
 }
-.eventBtn {
-  gap: 10px;               /* add spacing between icon + text */
-}
-
-.eventBtnIcon {
-  width: 18px;
-  height: 18px;
-  display: inline-block;
-}
