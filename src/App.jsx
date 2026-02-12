@@ -1,367 +1,334 @@
-/* ===================================
-   Webinar Catalog — App.css (v8)
-   - Logo overlaps thumbnail (bottom-right)
-   - CE badge moves into top row (right side)
-   - Full title always visible
-   - Description full width (3-line clamp)
-=================================== */
+import { useEffect, useMemo, useState } from "react";
 
-:root{
-  --bg:#f7f8fb;
-  --card:#ffffff;
-  --line:#e2e8f0;
-  --ink:#0f172a;
-  --muted:#64748b;
-  --muted2:#475569;
-  --shadow: 0 10px 26px rgba(2,6,23,.06);
-  --shadowHover: 0 18px 48px rgba(2,6,23,.10);
-  --blue:#2563eb;
-  --blueSoft:#eff6ff;
-  --blueLine:#dbeafe;
-  --soft:#f8fafc;
+const DATA_URL = import.meta.env?.VITE_DATA_URL || "";
+
+/* ---------------- Utilities ---------------- */
+
+const safe = (v) =>
+  typeof v === "string" ? v.trim() : v == null ? "" : String(v).trim();
+
+const isUrl = (u) => safe(u).startsWith("http");
+
+const parseDate = (value) => {
+  const s = safe(value);
+  if (!s) return null;
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+};
+
+const formatDate = (d) =>
+  d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+const endOfDay = (d) => {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x;
+};
+
+const uniq = (arr) => [...new Set(arr.filter(Boolean))];
+
+/* ---------------- JSONP Loader ---------------- */
+
+function loadJsonp(url, timeoutMs = 12000) {
+  return new Promise((resolve, reject) => {
+    const cbName = `__jsonp_cb_${Math.random().toString(36).slice(2)}`;
+    const sep = url.includes("?") ? "&" : "?";
+    const src = `${url}${sep}callback=${cbName}`;
+
+    let script = document.createElement("script");
+
+    const cleanup = () => {
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    };
+
+    window[cbName] = (data) => {
+      cleanup();
+      resolve(data);
+    };
+
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("JSONP load failed"));
+    };
+
+    script.src = src;
+    document.body.appendChild(script);
+
+    setTimeout(() => {
+      cleanup();
+      reject(new Error("JSONP timeout"));
+    }, timeoutMs);
+  });
 }
 
-*{ box-sizing:border-box; }
+/* ---------------- Normalize Sheet Row ---------------- */
 
-html, body{
-  margin:0;
-  padding:0;
-  background:var(--bg);
-  color:var(--ink);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+function normalize(row, i) {
+  const get = (...keys) => {
+    for (const k of keys) {
+      const v = row?.[k];
+      if (v !== undefined && v !== null && String(v).trim() !== "")
+        return String(v).trim();
+    }
+    return "";
+  };
+
+  const ceRaw = get("CE Hours");
+  const ce = Number(String(ceRaw).replace(/[^\d.]/g, ""));
+
+  return {
+    id: `row-${i}`,
+    title: get("Name of Event"),
+    description: get("Description"),
+    date: parseDate(get("Date of the Event")),
+    category: get("category"),
+    ce: Number.isFinite(ce) ? ce : null,
+    vendor: get("Presenter / Vendor (Tag)"),
+    vendorLogo: get("Vendor Logo"),
+    thumb: get("Course Thumb"),
+    sessions: [
+      {
+        label: get("Time of the event"),
+        url: get("Registration Link"),
+      },
+      {
+        label: get("2nd time of the Event"),
+        url: get("Second Registration Link"),
+      },
+    ].filter((s) => safe(s.label) || safe(s.url)),
+  };
 }
 
-img{ max-width:100%; display:block; }
+/* ================= APP ================= */
 
-.page{ min-height:100vh; }
+export default function App() {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
-/* ================= HEADER ================= */
+  const [catSelected, setCatSelected] = useState(new Set());
+  const [vendorSelected, setVendorSelected] = useState(new Set());
+  const [ceSelected, setCeSelected] = useState(new Set());
+  const [query, setQuery] = useState("");
 
-.header{
-  position:sticky;
-  top:0;
-  z-index:20;
-  background:var(--card);
-  border-bottom:1px solid var(--line);
-  padding:16px 18px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:16px;
-}
+  useEffect(() => {
+    async function load() {
+      try {
+        const json = await loadJsonp(DATA_URL);
+        const items = json.items.map(normalize);
+        setRows(items);
+      } catch (e) {
+        setLoadError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
 
-.headerLeft h1{
-  margin:0;
-  font-size:28px;
-  font-weight:900;
-}
+  const categories = useMemo(
+    () => uniq(rows.map((r) => r.category)).sort(),
+    [rows]
+  );
 
-.ver{
-  font-size:12px;
-  font-weight:900;
-  padding:4px 8px;
-  border-radius:999px;
-  border:1px solid var(--line);
-  background:var(--soft);
-  color:#334155;
-}
+  const vendors = useMemo(
+    () => uniq(rows.map((r) => r.vendor)).sort(),
+    [rows]
+  );
 
-.headerLeft p{
-  margin:4px 0 0;
-  font-size:14px;
-  color:var(--muted2);
-}
+  const ceHours = useMemo(
+    () =>
+      [...new Set(rows.map((r) => r.ce).filter((n) => typeof n === "number"))].sort(
+        (a, b) => a - b
+      ),
+    [rows]
+  );
 
-.search{
-  width:min(620px, 100%);
-  padding:12px 14px;
-  border-radius:14px;
-  border:1px solid var(--line);
-  outline:none;
-  background:#fff;
-  transition: box-shadow .2s ease, border-color .2s ease;
-}
+  const toggle = (setFn, value) =>
+    setFn((prev) => {
+      const next = new Set(prev);
+      next.has(value) ? next.delete(value) : next.add(value);
+      return next;
+    });
 
-.search:focus{
-  border-color:var(--blueLine);
-  box-shadow: 0 0 0 4px rgba(37,99,235,.12);
-}
+  const filtered = useMemo(() => {
+    const now = new Date();
+    const q = safe(query).toLowerCase();
 
-/* ================= LAYOUT ================= */
+    return rows
+      .filter((r) => (r.date ? endOfDay(r.date) >= now : true))
+      .filter((r) =>
+        catSelected.size ? catSelected.has(r.category) : true
+      )
+      .filter((r) =>
+        vendorSelected.size ? vendorSelected.has(r.vendor) : true
+      )
+      .filter((r) =>
+        ceSelected.size ? ceSelected.has(r.ce) : true
+      )
+      .filter((r) => {
+        if (!q) return true;
+        return (
+          r.title?.toLowerCase().includes(q) ||
+          r.description?.toLowerCase().includes(q)
+        );
+      })
+      .sort((a, b) => {
+        const ad = a.date ? a.date.getTime() : Infinity;
+        const bd = b.date ? b.date.getTime() : Infinity;
+        return ad - bd;
+      });
+  }, [rows, catSelected, vendorSelected, ceSelected, query]);
 
-.layout{
-  max-width: 1320px;
-  margin:0 auto;
-  padding:16px 18px 28px;
-  display:grid;
-  grid-template-columns: 280px 1fr;
-  gap:14px;
-}
+  return (
+    <div className="page">
+      <header className="header">
+        <div className="headerLeft">
+          <div className="titleRow">
+            <h1>Webinar Catalog</h1>
+            <span className="ver">v8</span>
+          </div>
+          <p>Browse upcoming webinars and register instantly.</p>
+        </div>
+        <input
+          className="search"
+          placeholder="Search..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </header>
 
-/* ================= SIDEBAR ================= */
+      <div className="layout">
+        <aside className="sidebar">
+          <div className="sideTitle">Filters</div>
 
-.sidebar{
-  position:sticky;
-  top:88px;
-  background:var(--card);
-  border:1px solid var(--line);
-  border-radius:16px;
-  padding:12px;
-  box-shadow:var(--shadow);
-}
+          <div className="group">
+            <div className="groupTitle">Category</div>
+            <div className="list">
+              {categories.map((c) => (
+                <label className="pillCheck" key={c}>
+                  <input
+                    type="checkbox"
+                    checked={catSelected.has(c)}
+                    onChange={() => toggle(setCatSelected, c)}
+                  />
+                  {c}
+                </label>
+              ))}
+            </div>
+          </div>
 
-.sideTitle{
-  font-weight:900;
-  font-size:15px;
-  margin-bottom:10px;
-}
+          <div className="group">
+            <div className="groupTitle">Vendor</div>
+            <div className="list">
+              {vendors.map((v) => (
+                <label className="pillCheck" key={v}>
+                  <input
+                    type="checkbox"
+                    checked={vendorSelected.has(v)}
+                    onChange={() => toggle(setVendorSelected, v)}
+                  />
+                  {v}
+                </label>
+              ))}
+            </div>
+          </div>
 
-.group{ margin-bottom:12px; }
+          <div className="group">
+            <div className="groupTitle">CE Hours</div>
+            <div className="list">
+              {ceHours.map((h) => (
+                <label className="pillCheck" key={h}>
+                  <input
+                    type="checkbox"
+                    checked={ceSelected.has(h)}
+                    onChange={() => toggle(setCeSelected, h)}
+                  />
+                  {h} CE
+                </label>
+              ))}
+            </div>
+          </div>
+        </aside>
 
-.groupTitle{
-  font-size:12px;
-  font-weight:900;
-  color:var(--muted2);
-  margin-bottom:8px;
-}
+        <main className="main">
+          {loading && <div className="center">Loading...</div>}
+          {loadError && <div className="center">{loadError}</div>}
 
-.list{
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  max-height:180px;
-  overflow:auto;
-}
-
-.pillCheck{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  border:1px solid var(--line);
-  background:var(--soft);
-  border-radius:12px;
-  padding:9px 10px;
-  font-size:14px;
-  transition: all .18s ease;
-}
-
-.pillCheck:hover{
-  background:#f1f5f9;
-  border-color:#cbd5e1;
-  transform:translateY(-1px);
-}
-
-.clearBtn{
-  width:100%;
-  padding:10px;
-  border-radius:12px;
-  border:1px solid var(--line);
-  background:var(--soft);
-  font-weight:900;
-  cursor:pointer;
-  transition: all .18s ease;
-}
-
-.clearBtn:hover{
-  background:#f1f5f9;
-  border-color:#cbd5e1;
-  transform:translateY(-1px);
-}
-
-/* ================= GRID ================= */
-
-.grid{
-  display:grid;
-  grid-template-columns: 1fr;
-  gap:14px;
-}
-
-@media (min-width:860px){
-  .grid{ grid-template-columns: repeat(2,1fr); }
-}
-
-@media (min-width:1100px){
-  .grid{ grid-template-columns: repeat(3,1fr); }
+          <div className="grid">
+            {filtered.map((item) => (
+              <Card key={item.id} item={item} />
+            ))}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
 }
 
 /* ================= CARD ================= */
 
-.card{
-  position:relative;
-  background:var(--card);
-  border:1px solid var(--line);
-  border-radius:16px;
-  overflow:hidden;
-  box-shadow:var(--shadow);
-  display:flex;
-  flex-direction:column;
-  transition: all .22s ease;
-}
+function Card({ item }) {
+  return (
+    <article className="card">
+      <div className="thumb">
+        {isUrl(item.thumb) && (
+          <img src={item.thumb} alt={item.title} />
+        )}
 
-.card:hover{
-  transform:translateY(-4px);
-  border-color:#cbd5e1;
-  box-shadow:var(--shadowHover);
-}
+        {isUrl(item.vendorLogo) && (
+          <img
+            className="vendorLogo"
+            src={item.vendorLogo}
+            alt="Vendor logo"
+          />
+        )}
+      </div>
 
-/* Thumbnail (make relative so logo can overlap) */
-.thumb{
-  position:relative;
-  aspect-ratio:16/7;
-  overflow:hidden;
-  background:#0b1220;
-}
+      <div className="body">
+        <div className="topRow">
+          <div className="metaRow">
+            {item.date && (
+              <span className="dateBadge">
+                {formatDate(item.date)}
+              </span>
+            )}
+          </div>
 
-.thumb img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  transition:transform .35s ease;
-}
+          {item.ce && (
+            <span className="ceBadge">{item.ce} CE</span>
+          )}
+        </div>
 
-.card:hover .thumb img{
-  transform:scale(1.03);
-}
+        <h3 className="title">{item.title}</h3>
 
-/* ✅ Logo overlaps thumbnail bottom-right */
-.vendorLogo{
-  position:absolute;
-  right:12px;
-  bottom:12px;
-  z-index:5;
+        {item.description && (
+          <p className="descFull">{item.description}</p>
+        )}
 
-  width:96px;
-  height:42px;
-  object-fit:contain;
-
-  background:#ffffff;
-  border:1px solid rgba(226,232,240,.95);
-  border-radius:14px;
-  padding:7px;
-
-  box-shadow: 0 10px 22px rgba(2,6,23,.14);
-  transition: transform .22s ease, box-shadow .22s ease;
-}
-
-/* Slight lift on hover */
-.card:hover .vendorLogo{
-  transform: translateY(-1px);
-  box-shadow: 0 14px 30px rgba(2,6,23,.18);
-}
-
-/* Body */
-.body{
-  padding:14px;
-}
-
-/* Top row: date left, CE right */
-.topRow{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:10px;
-}
-
-/* left side contains date (you can keep metaRow if you want) */
-.metaRow{
-  display:flex;
-  gap:8px;
-  align-items:center;
-}
-
-/* Date badge */
-.dateBadge{
-  font-size:11px;
-  font-weight:950;
-  padding:6px 10px;
-  border-radius:999px;
-  border:1px solid var(--blueLine);
-  background:var(--blueSoft);
-  color:#1d4ed8;
-  white-space:nowrap;
-}
-
-/* ✅ CE badge now sits in the top-right (where logo used to be) */
-.ceBadge{
-  font-size:11px;
-  font-weight:950;
-  padding:6px 10px;
-  border-radius:999px;
-  border:1px solid var(--line);
-  background:var(--soft);
-  color:#334155;
-  white-space:nowrap;
-}
-
-/* Title — full, no truncation */
-.title{
-  margin:0;
-  font-size:17px;
-  font-weight:1000;
-  line-height:1.3;
-  word-break:break-word;
-}
-
-/* Description — full width */
-.descFull{
-  margin:10px 0 14px;
-  color:var(--muted2);
-  font-size:14px;
-  line-height:1.55;
-  display:-webkit-box;
-  -webkit-line-clamp:3;
-  -webkit-box-orient:vertical;
-  overflow:hidden;
-}
-
-/* Sessions */
-.sessions{
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-
-.session{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  border:1px solid var(--line);
-  border-radius:12px;
-  padding:10px;
-  transition:all .18s ease;
-}
-
-.session:hover{
-  border-color:#cbd5e1;
-  transform:translateY(-1px);
-  box-shadow:0 8px 20px rgba(2,6,23,.06);
-}
-
-.sessionLabel{
-  font-size:13px;
-  font-weight:900;
-  color:#334155;
-}
-
-.sessionBtn{
-  text-decoration:none;
-  font-weight:900;
-  font-size:13px;
-  padding:8px 10px;
-  border-radius:12px;
-  border:1px solid var(--blueLine);
-  background:var(--blueSoft);
-  color:#1d4ed8;
-  transition:all .18s ease;
-}
-
-.sessionBtn:hover{
-  background:#dbeafe;
-  transform:translateY(-1px);
-}
-
-/* Responsive */
-@media (max-width:980px){
-  .layout{ grid-template-columns:1fr; }
-  .sidebar{ position:relative; top:auto; }
+        <div className="sessions">
+          {item.sessions.map((s, i) => (
+            <div className="session" key={i}>
+              <span className="sessionLabel">{s.label}</span>
+              {isUrl(s.url) && (
+                <a
+                  className="sessionBtn"
+                  href={s.url}
+                  target="_blank"
+                  rel="noopener"
+                >
+                  Register →
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </article>
+  );
 }
