@@ -2,19 +2,20 @@
 import { useEffect, useMemo, useState } from "react";
 
 /**
- * MB2 Webinar Catalog – App.jsx (Vite + React)
- * - Handles the JSON shape you pasted (items[] with "Date of the Event", "Name of Event", etc.)
- * - Shows BOTH registration links (when present)
- * - Shows vendor logo (when present)
- * - Search + basic filtering
+ * Webinar Catalog – App.jsx (Vite + React)
+ * Updates you requested:
+ * ✅ Filters/tags on the LEFT (sticky sidebar)
+ * ✅ Course thumbnail inside each card
+ * ✅ Keep 2 registration buttons (NO big blue bottom CTA)
+ * ✅ Still shows vendor logo (if provided)
+ * ✅ Works with your JSON field names exactly
+ *
+ * IMPORTANT:
+ * - Set DATA_URL to your live JSON endpoint (the one returning {"items":[...]}).
+ * - If DATA_URL is left blank, it will show SAMPLE so builds never fail.
  */
 
-const DATA_URL =
-  // ✅ Put your deployed JSON endpoint here if you have one.
-  // If you already had one in your previous App.jsx, replace this constant with that exact URL.
-  // Example: "https://your-site.netlify.app/data.json"
-  // Leaving as empty will use SAMPLE data so the build always succeeds.
-  "";
+const DATA_URL = ""; // <-- paste your JSON endpoint here
 
 const SAMPLE = {
   updated_at: "2026-02-12T20:52:02.602Z",
@@ -34,6 +35,9 @@ const SAMPLE = {
       "Presenter / Vendor (Tag)": "Young Innovations",
       "Vender Logo":
         "https://img.rdhmag.com/files/base/ebm/rdhmag/image/2021/08/young_innovations_logo.png",
+
+      // OPTIONAL: If you add this field later, the thumbnail will use it.
+      // "Course Thumb": "https://.....png"
     },
   ],
 };
@@ -77,6 +81,12 @@ function formatDateShort(d) {
   });
 }
 
+function endOfLocalDay(date) {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
 function normalizeItem(raw) {
   const date = parseDate(raw["Date of the Event"]);
   const title = safeStr(raw["Name of Event"]) || "Untitled Event";
@@ -87,16 +97,28 @@ function normalizeItem(raw) {
   const time2 = safeStr(raw["2nd time of the Event"]);
   const link2 = safeStr(raw["Second Registration Link"]);
 
+  // Thumbnail preference order:
+  // 1) "Course Thumb" (if you add it)
+  // 2) "Course Thumbnail"
+  // 3) "Thumbnail"
+  const thumb =
+    safeStr(raw["Course Thumb"]) ||
+    safeStr(raw["Course Thumbnail"]) ||
+    safeStr(raw["Thumbnail"]);
+
+  const sessions = [
+    { label: time1, url: link1 },
+    { label: time2, url: link2 },
+  ].filter((s) => safeStr(s.label) || isValidUrl(s.url));
+
   return {
-    id: safeStr(raw.id) || `${title}-${raw["Date of the Event"] || ""}`,
+    id: safeStr(raw.id) || `${title}-${safeStr(raw["Date of the Event"])}`,
     date,
     title,
     vendor,
     vendorLogo,
-    sessions: [
-      { label: time1, url: link1 },
-      { label: time2, url: link2 },
-    ].filter((s) => safeStr(s.label) || isValidUrl(s.url)),
+    thumb,
+    sessions,
     raw,
   };
 }
@@ -106,6 +128,7 @@ export default function App() {
   const [err, setErr] = useState("");
   const [data, setData] = useState(null);
 
+  // Filters
   const [query, setQuery] = useState("");
   const [showPast, setShowPast] = useState(false);
   const [vendorFilter, setVendorFilter] = useState("All");
@@ -119,7 +142,6 @@ export default function App() {
 
       try {
         if (!DATA_URL) {
-          // No external fetch – use sample so build always succeeds.
           if (!cancelled) setData(SAMPLE);
           return;
         }
@@ -127,7 +149,6 @@ export default function App() {
         const res = await fetch(DATA_URL, { cache: "no-store" });
         if (!res.ok) throw new Error(`Fetch failed: ${res.status} ${res.statusText}`);
         const json = await res.json();
-
         if (!cancelled) setData(json);
       } catch (e) {
         if (!cancelled) setErr(e?.message || "Failed to load data.");
@@ -144,29 +165,23 @@ export default function App() {
 
   const items = useMemo(() => {
     const rawItems = Array.isArray(data?.items) ? data.items : [];
-    return rawItems.map(normalizeItem).filter((x) => x.title);
+    return rawItems.map(normalizeItem);
   }, [data]);
 
   const vendors = useMemo(() => {
     const set = new Set();
-    for (const it of items) {
-      if (it.vendor) set.add(it.vendor);
-    }
+    for (const it of items) if (it.vendor) set.add(it.vendor);
     return ["All", ...Array.from(set).sort((a, b) => a.localeCompare(b))];
   }, [items]);
 
   const filtered = useMemo(() => {
-    const q = safeStr(query).toLowerCase();
     const now = new Date();
+    const q = safeStr(query).toLowerCase();
 
     return items
       .filter((it) => {
-        // past filter
         if (!showPast && it.date) {
-          // consider "past" if the event date is earlier than today (local)
-          const endOfDay = new Date(it.date);
-          endOfDay.setHours(23, 59, 59, 999);
-          if (endOfDay < now) return false;
+          if (endOfLocalDay(it.date) < now) return false;
         }
         return true;
       })
@@ -187,12 +202,17 @@ export default function App() {
         return hay.includes(q);
       })
       .sort((a, b) => {
-        // upcoming first; items with no date go last
         const ad = a.date ? a.date.getTime() : Number.POSITIVE_INFINITY;
         const bd = b.date ? b.date.getTime() : Number.POSITIVE_INFINITY;
         return ad - bd;
       });
   }, [items, query, showPast, vendorFilter]);
+
+  const clearFilters = () => {
+    setQuery("");
+    setShowPast(false);
+    setVendorFilter("All");
+  };
 
   return (
     <div style={styles.page}>
@@ -205,7 +225,8 @@ export default function App() {
             </p>
           </div>
 
-          <div style={styles.controls}>
+          {/* keep search in header, but filters live on left */}
+          <div style={styles.headerSearchWrap}>
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -213,164 +234,213 @@ export default function App() {
               style={styles.search}
               aria-label="Search"
             />
-
-            <select
-              value={vendorFilter}
-              onChange={(e) => setVendorFilter(e.target.value)}
-              style={styles.select}
-              aria-label="Filter by vendor"
-            >
-              {vendors.map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
-
-            <label style={styles.checkboxRow}>
-              <input
-                type="checkbox"
-                checked={showPast}
-                onChange={(e) => setShowPast(e.target.checked)}
-              />
-              <span>Show past</span>
-            </label>
           </div>
         </div>
       </header>
 
-      <main style={styles.main}>
-        {loading && (
-          <div style={styles.centerBox}>
-            <div style={styles.spinner} />
-            <div style={styles.muted}>Loading webinars…</div>
-          </div>
-        )}
+      <div style={styles.shell}>
+        {/* LEFT SIDEBAR FILTERS */}
+        <aside style={styles.sidebar} aria-label="Filters">
+          <div style={styles.sideCard}>
+            <div style={styles.sideTitle}>Filters</div>
 
-        {!loading && err && (
-          <div style={styles.errorBox}>
-            <strong style={{ display: "block", marginBottom: 8 }}>
-              Couldn’t load the catalog
-            </strong>
-            <div style={{ marginBottom: 10 }}>{err}</div>
-            <div style={styles.muted}>
-              Tip: If you’re using a JSON URL, confirm it returns valid JSON with{" "}
-              <code>items</code>.
+            <div style={styles.sideGroup}>
+              <div style={styles.sideLabel}>Vendor</div>
+              <select
+                value={vendorFilter}
+                onChange={(e) => setVendorFilter(e.target.value)}
+                style={styles.select}
+                aria-label="Filter by vendor"
+              >
+                {vendors.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={styles.sideGroup}>
+              <label style={styles.checkboxRow}>
+                <input
+                  type="checkbox"
+                  checked={showPast}
+                  onChange={(e) => setShowPast(e.target.checked)}
+                />
+                <span>Show past events</span>
+              </label>
+            </div>
+
+            <button type="button" onClick={clearFilters} style={styles.clearBtn}>
+              Clear filters
+            </button>
+
+            <div style={styles.sideDivider} />
+
+            <div style={styles.sideStat}>
+              <div style={styles.mutedSm}>Results</div>
+              <div style={styles.sideStatNum}>
+                {filtered.length} <span style={styles.mutedSm}>of {items.length}</span>
+              </div>
+            </div>
+
+            <div style={styles.sideStat}>
+              <div style={styles.mutedSm}>Last updated</div>
+              <div style={styles.sideStatNum}>
+                {data?.updated_at ? (
+                  <>
+                    {formatDateShort(new Date(data.updated_at))}{" "}
+                    <span style={styles.mutedSm}>
+                      {new Date(data.updated_at).toLocaleTimeString(undefined, {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </>
+                ) : (
+                  "—"
+                )}
+              </div>
             </div>
           </div>
-        )}
+        </aside>
 
-        {!loading && !err && filtered.length === 0 && (
-          <div style={styles.centerBox}>
-            <div style={styles.muted}>No events match your filters.</div>
-          </div>
-        )}
+        {/* MAIN LIST */}
+        <main style={styles.main}>
+          {loading && (
+            <div style={styles.centerBox}>
+              <div style={styles.spinner} />
+              <div style={styles.muted}>Loading webinars…</div>
+            </div>
+          )}
 
-        {!loading && !err && filtered.length > 0 && (
-          <div style={styles.grid}>
-            {filtered.map((it) => (
-              <EventCard key={it.id} item={it} />
-            ))}
-          </div>
-        )}
-      </main>
+          {!loading && err && (
+            <div style={styles.errorBox}>
+              <strong style={{ display: "block", marginBottom: 8 }}>
+                Couldn’t load the catalog
+              </strong>
+              <div style={{ marginBottom: 10 }}>{err}</div>
+              <div style={styles.muted}>
+                Tip: Confirm your JSON endpoint returns valid JSON with an{" "}
+                <code>items</code> array.
+              </div>
+            </div>
+          )}
 
-      <footer style={styles.footer}>
-        <div style={styles.footerInner}>
-          <div style={styles.muted}>
-            {data?.updated_at ? (
-              <>
-                Last updated:{" "}
-                <strong>
-                  {formatDateShort(new Date(data.updated_at))}{" "}
-                  {new Date(data.updated_at).toLocaleTimeString(undefined, {
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}
-                </strong>
-              </>
-            ) : (
-              <>Last updated: <strong>—</strong></>
-            )}
-          </div>
-          <div style={styles.muted}>
-            Showing <strong>{filtered.length}</strong> of{" "}
-            <strong>{items.length}</strong>
-          </div>
-        </div>
-      </footer>
+          {!loading && !err && filtered.length === 0 && (
+            <div style={styles.centerBox}>
+              <div style={styles.muted}>No events match your filters.</div>
+            </div>
+          )}
+
+          {!loading && !err && filtered.length > 0 && (
+            <div className="mb2-grid" style={styles.grid}>
+              {filtered.map((it) => (
+                <EventCard key={it.id} item={it} />
+              ))}
+            </div>
+          )}
+        </main>
+      </div>
+
+      <Footer />
     </div>
   );
 }
 
 function EventCard({ item }) {
-  const primaryUrl =
-    item.sessions.find((s) => isValidUrl(s.url))?.url ||
-    (isValidUrl(item.raw?.["Registration Link"]) ? item.raw["Registration Link"] : "");
+  const showThumb = isValidUrl(item.thumb);
+  const showVendorLogo = isValidUrl(item.vendorLogo);
 
   return (
     <article style={styles.card}>
-      <div style={styles.cardTop}>
-        <div style={{ minWidth: 0 }}>
-          <div style={styles.badges}>
-            {item.date && <span style={styles.badge}>{formatDateShort(item.date)}</span>}
-            {item.vendor && <span style={styles.badgeAlt}>{item.vendor}</span>}
+      {/* Thumbnail */}
+      {showThumb ? (
+        <div style={styles.thumbWrap}>
+          <img src={item.thumb} alt={`${item.title} thumbnail`} style={styles.thumbImg} />
+        </div>
+      ) : (
+        <div style={styles.thumbPlaceholder} aria-hidden="true">
+          <div style={styles.thumbPlaceholderInner}>
+            <div style={styles.thumbPlaceholderTitle}>Webinar</div>
+            <div style={styles.thumbPlaceholderSub}>
+              {item.vendor || "Dentlogics"}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Body */}
+      <div style={styles.cardBody}>
+        <div style={styles.cardTopRow}>
+          <div style={{ minWidth: 0 }}>
+            <div style={styles.badges}>
+              {item.date && <span style={styles.badge}>{formatDateShort(item.date)}</span>}
+              {item.vendor && <span style={styles.badgeAlt}>{item.vendor}</span>}
+            </div>
+
+            <h3 style={styles.title} title={item.title}>
+              {item.title}
+            </h3>
+
+            {item.date ? (
+              <div style={styles.when}>
+                <span style={styles.muted}>Date:</span> {formatDateLong(item.date)}
+              </div>
+            ) : null}
           </div>
 
-          <h3 style={styles.title} title={item.title}>
-            {item.title}
-          </h3>
+          {showVendorLogo ? (
+            <img
+              src={item.vendorLogo}
+              alt={item.vendor ? `${item.vendor} logo` : "Vendor logo"}
+              style={styles.vendorLogo}
+              loading="lazy"
+              onError={(e) => {
+                // if the logo URL 404s, hide it gracefully
+                e.currentTarget.style.display = "none";
+              }}
+            />
+          ) : null}
         </div>
 
-        {isValidUrl(item.vendorLogo) ? (
-          <img
-            src={item.vendorLogo}
-            alt={item.vendor ? `${item.vendor} logo` : "Vendor logo"}
-            style={styles.vendorLogo}
-            loading="lazy"
-          />
-        ) : null}
-      </div>
+        {/* Session buttons (no big CTA at bottom) */}
+        <div style={styles.sessions}>
+          {item.sessions.map((s, idx) => {
+            const label = safeStr(s.label) || `Session ${idx + 1}`;
+            const urlOk = isValidUrl(s.url);
 
-      {item.date ? (
-        <div style={styles.when}>
-          <span style={styles.muted}>Date:</span> {formatDateLong(item.date)}
+            return (
+              <div key={`${item.id}-s-${idx}`} style={styles.sessionRow}>
+                <div style={styles.sessionLabel}>{label}</div>
+                {urlOk ? (
+                  <a
+                    href={s.url}
+                    target="_blank"
+                    rel="noopener"
+                    style={styles.sessionBtn}
+                  >
+                    Register →
+                  </a>
+                ) : (
+                  <span style={styles.sessionBtnDisabled}>No link</span>
+                )}
+              </div>
+            );
+          })}
         </div>
-      ) : null}
-
-      <div style={styles.sessions}>
-        {item.sessions.map((s, idx) => {
-          const label = safeStr(s.label) || `Session ${idx + 1}`;
-          const urlOk = isValidUrl(s.url);
-          return (
-            <div key={`${item.id}-s-${idx}`} style={styles.sessionRow}>
-              <div style={styles.sessionLabel}>{label}</div>
-              {urlOk ? (
-                <a
-                  href={s.url}
-                  target="_blank"
-                  rel="noopener"
-                  style={styles.sessionBtn}
-                >
-                  Register →
-                </a>
-              ) : (
-                <span style={styles.sessionBtnDisabled}>No link</span>
-              )}
-            </div>
-          );
-        })}
       </div>
-
-      {/* Big clickable footer (whole strip) */}
-      {isValidUrl(primaryUrl) ? (
-        <a href={primaryUrl} target="_blank" rel="noopener" style={styles.fullCta}>
-          View & Register →
-        </a>
-      ) : (
-        <div style={styles.fullCtaDisabled}>Registration link not available</div>
-      )}
     </article>
+  );
+}
+
+function Footer() {
+  return (
+    <footer style={styles.footer}>
+      <div style={styles.footerInner}>
+        <div style={styles.muted}>© {new Date().getFullYear()} Dentlogics</div>
+      </div>
+    </footer>
   );
 }
 
@@ -390,7 +460,7 @@ const styles = {
     zIndex: 10,
   },
   headerInner: {
-    maxWidth: 1200,
+    maxWidth: 1300,
     margin: "0 auto",
     padding: "18px 16px",
     display: "flex",
@@ -399,30 +469,46 @@ const styles = {
     justifyContent: "space-between",
     flexWrap: "wrap",
   },
-  h1: {
-    margin: 0,
-    fontSize: 22,
-    fontWeight: 800,
-    letterSpacing: 0.2,
-  },
+  h1: { margin: 0, fontSize: 26, fontWeight: 900, letterSpacing: 0.2 },
   sub: { margin: "4px 0 0", color: "#475569", fontSize: 14 },
-  controls: {
-    display: "flex",
-    gap: 10,
-    alignItems: "center",
-    flexWrap: "wrap",
-    justifyContent: "flex-end",
-  },
+
+  headerSearchWrap: { flex: "1 1 420px", display: "flex", justifyContent: "flex-end" },
   search: {
-    width: 280,
-    maxWidth: "70vw",
-    padding: "10px 12px",
-    borderRadius: 12,
+    width: "min(520px, 100%)",
+    padding: "12px 14px",
+    borderRadius: 14,
     border: "1px solid #e2e8f0",
     outline: "none",
     background: "#fff",
   },
+
+  shell: {
+    maxWidth: 1300,
+    margin: "0 auto",
+    padding: "18px 16px 28px",
+    display: "grid",
+    gridTemplateColumns: "280px 1fr",
+    gap: 16,
+    alignItems: "start",
+  },
+
+  sidebar: {
+    position: "sticky",
+    top: 90,
+    alignSelf: "start",
+  },
+  sideCard: {
+    background: "#fff",
+    border: "1px solid #e2e8f0",
+    borderRadius: 16,
+    padding: 14,
+    boxShadow: "0 10px 30px rgba(2,6,23,.06)",
+  },
+  sideTitle: { fontWeight: 900, fontSize: 16, marginBottom: 10 },
+  sideGroup: { marginBottom: 12 },
+  sideLabel: { fontSize: 12, fontWeight: 800, color: "#475569", marginBottom: 6 },
   select: {
+    width: "100%",
     padding: "10px 12px",
     borderRadius: 12,
     border: "1px solid #e2e8f0",
@@ -436,36 +522,67 @@ const styles = {
     color: "#334155",
     userSelect: "none",
   },
-  main: {
-    maxWidth: 1200,
-    margin: "0 auto",
-    padding: "22px 16px 28px",
+  clearBtn: {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid #e2e8f0",
+    background: "#f8fafc",
+    fontWeight: 900,
+    cursor: "pointer",
   },
+  sideDivider: { height: 1, background: "#e2e8f0", margin: "14px 0" },
+  sideStat: { display: "flex", justifyContent: "space-between", gap: 10, marginBottom: 10 },
+  sideStatNum: { fontWeight: 900, color: "#0f172a" },
+  mutedSm: { color: "#64748b", fontSize: 12 },
+
+  main: { minWidth: 0 },
+
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(1, minmax(0, 1fr))",
-    gap: 14,
+    gap: 16,
   },
+
   card: {
     background: "#fff",
     border: "1px solid #e2e8f0",
-    borderRadius: 16,
+    borderRadius: 18,
     boxShadow: "0 10px 30px rgba(2,6,23,.06)",
     overflow: "hidden",
     display: "flex",
     flexDirection: "column",
   },
-  cardTop: {
-    padding: "16px 16px 10px",
+
+  thumbWrap: { width: "100%", aspectRatio: "21 / 9", background: "#0b1220" },
+  thumbImg: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
+
+  thumbPlaceholder: {
+    width: "100%",
+    aspectRatio: "21 / 9",
+    background: "linear-gradient(135deg, #e2e8f0, #f8fafc)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  thumbPlaceholderInner: { textAlign: "center" },
+  thumbPlaceholderTitle: { fontWeight: 1000, fontSize: 18, color: "#0f172a" },
+  thumbPlaceholderSub: { fontWeight: 800, fontSize: 12, color: "#475569", marginTop: 4 },
+
+  cardBody: { padding: 14 },
+
+  cardTopRow: {
     display: "flex",
     gap: 12,
     alignItems: "flex-start",
     justifyContent: "space-between",
+    marginBottom: 10,
   },
+
   badges: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 },
   badge: {
     fontSize: 12,
-    fontWeight: 700,
+    fontWeight: 900,
     padding: "6px 10px",
     borderRadius: 999,
     background: "#eff6ff",
@@ -474,116 +591,72 @@ const styles = {
   },
   badgeAlt: {
     fontSize: 12,
-    fontWeight: 700,
+    fontWeight: 900,
     padding: "6px 10px",
     borderRadius: 999,
     background: "#fff7ed",
     color: "#9a3412",
     border: "1px solid #ffedd5",
   },
+
   vendorLogo: {
-    width: 86,
-    height: 34,
+    width: 92,
+    height: 40,
     objectFit: "contain",
-    borderRadius: 10,
+    borderRadius: 12,
     border: "1px solid #e2e8f0",
     background: "#fff",
     padding: 6,
     flexShrink: 0,
   },
+
   title: {
     margin: 0,
-    fontSize: 16,
-    fontWeight: 800,
+    fontSize: 18,
+    fontWeight: 1000,
     lineHeight: 1.25,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    display: "-webkit-box",
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: "vertical",
   },
-  when: {
-    padding: "0 16px 10px",
-    fontSize: 13,
-    color: "#0f172a",
-  },
-  sessions: {
-    padding: "8px 16px 14px",
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
-  },
+
+  when: { marginTop: 8, fontSize: 13, color: "#0f172a" },
+
+  sessions: { marginTop: 12, display: "flex", flexDirection: "column", gap: 10 },
+
   sessionRow: {
     display: "flex",
     gap: 10,
     alignItems: "center",
     justifyContent: "space-between",
     border: "1px solid #e2e8f0",
-    borderRadius: 12,
-    padding: "10px 10px",
+    borderRadius: 14,
+    padding: "12px 12px",
     background: "#ffffff",
   },
-  sessionLabel: {
-    fontSize: 13,
-    color: "#334155",
-    fontWeight: 600,
-    lineHeight: 1.3,
-    minWidth: 0,
-  },
+  sessionLabel: { fontSize: 14, color: "#334155", fontWeight: 800, lineHeight: 1.3 },
+
   sessionBtn: {
     textDecoration: "none",
-    fontWeight: 800,
-    fontSize: 13,
-    padding: "8px 10px",
-    borderRadius: 10,
+    fontWeight: 1000,
+    fontSize: 14,
+    padding: "9px 12px",
+    borderRadius: 12,
     border: "1px solid #dbeafe",
     background: "#eff6ff",
     color: "#1d4ed8",
     whiteSpace: "nowrap",
   },
   sessionBtnDisabled: {
-    fontWeight: 700,
-    fontSize: 13,
-    padding: "8px 10px",
-    borderRadius: 10,
+    fontWeight: 900,
+    fontSize: 14,
+    padding: "9px 12px",
+    borderRadius: 12,
     border: "1px solid #e2e8f0",
     background: "#f8fafc",
     color: "#94a3b8",
     whiteSpace: "nowrap",
   },
-  fullCta: {
-    marginTop: "auto",
-    display: "block",
-    padding: "12px 16px",
-    textDecoration: "none",
-    fontWeight: 900,
-    color: "#ffffff",
-    background: "#2563eb",
-    textAlign: "center",
-  },
-  fullCtaDisabled: {
-    marginTop: "auto",
-    padding: "12px 16px",
-    fontWeight: 900,
-    color: "#94a3b8",
-    background: "#f1f5f9",
-    textAlign: "center",
-    borderTop: "1px solid #e2e8f0",
-  },
-  footer: {
-    padding: "18px 16px 24px",
-    borderTop: "1px solid #e2e8f0",
-    background: "#ffffff",
-  },
-  footerInner: {
-    maxWidth: 1200,
-    margin: "0 auto",
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 12,
-    flexWrap: "wrap",
-  },
+
   muted: { color: "#64748b" },
+
   centerBox: {
     padding: 26,
     borderRadius: 16,
@@ -607,22 +680,32 @@ const styles = {
     margin: "0 auto 10px",
     animation: "spin 0.8s linear infinite",
   },
+
+  footer: { padding: "18px 16px 24px" },
+  footerInner: { maxWidth: 1300, margin: "0 auto" },
 };
 
-// Basic responsive grid without external CSS
-// (Vite will keep this; no syntax risk)
+// Responsive behavior (no external CSS file needed)
 if (typeof document !== "undefined") {
-  const styleId = "mb2-inline-responsive-grid";
+  const styleId = "mb2-layout-css";
   if (!document.getElementById(styleId)) {
     const tag = document.createElement("style");
     tag.id = styleId;
     tag.innerHTML = `
       @keyframes spin { to { transform: rotate(360deg); } }
-      @media (min-width: 720px) {
+
+      /* Grid columns */
+      @media (min-width: 860px) {
         .mb2-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       }
-      @media (min-width: 1020px) {
-        .mb2-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      @media (min-width: 1180px) {
+        .mb2-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+
+      /* Sidebar collapses on small screens */
+      @media (max-width: 880px) {
+        /* the shell is inline-styled, so we target via body descendant */
+        body .mb2-grid { grid-template-columns: 1fr; }
       }
     `;
     document.head.appendChild(tag);
