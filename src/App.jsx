@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 
 /**
- * Webinar Catalog — App.jsx
- * ✅ Removed "Show past events" filter
- * ✅ Cards smaller + 3 across on desktop
- * ✅ Left filters: Category (category), Vendors, CE Hours
- * ✅ Thumbnail (Course Thumb) + Vendor Logo
- * ✅ Date shown once
- * ✅ Two session register buttons
+ * Webinar Catalog — App.jsx (v4)
+ * ✅ NO "Show past events" UI (removed)
+ * ✅ Past events are automatically hidden (only upcoming)
+ * ✅ 3 cards across on desktop + smaller cards
+ * ✅ Left filters: category, Presenter / Vendor (Tag), CE Hours
+ * ✅ Uses: Course Thumb + Vendor Logo
+ * ✅ Shows a visible "Data not loading" panel (instead of silent fail)
  */
+
 const DATA_URL = import.meta.env?.VITE_DATA_URL || "/data.json";
 
 /* ---------- helpers ---------- */
@@ -26,6 +27,12 @@ const parseDate = (value) => {
 
 const formatDate = (d) =>
   d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+
+const endOfDay = (d) => {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x;
+};
 
 function normalize(row, i) {
   const ceRaw = safe(row["CE Hours"]);
@@ -55,31 +62,43 @@ const uniq = (arr) => [...new Set(arr.filter(Boolean))];
 export default function App() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
-  // UI state
   const [query, setQuery] = useState("");
-
   const [catSelected, setCatSelected] = useState(new Set());
   const [vendorSelected, setVendorSelected] = useState(new Set());
   const [ceSelected, setCeSelected] = useState(new Set());
 
   useEffect(() => {
     let cancelled = false;
+
     async function load() {
       setLoading(true);
+      setLoadError("");
+
       try {
         const res = await fetch(DATA_URL, { cache: "no-store" });
-        if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+        if (!res.ok) throw new Error(`Fetch failed: ${res.status} ${res.statusText}`);
+
         const json = await res.json();
-        const items = Array.isArray(json.items) ? json.items.map(normalize) : [];
+        if (!json || !Array.isArray(json.items)) {
+          throw new Error(`Bad JSON: expected {"items":[...]} but got: ${Object.keys(json || {}).join(", ") || "empty"}`);
+        }
+
+        const items = json.items.map(normalize);
+
         if (!cancelled) setRows(items);
       } catch (e) {
         console.error("Data load error:", e);
-        if (!cancelled) setRows([]);
+        if (!cancelled) {
+          setRows([]);
+          setLoadError(e?.message || "Failed to load data.");
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
+
     load();
     return () => {
       cancelled = true;
@@ -114,6 +133,7 @@ export default function App() {
   };
 
   const filtered = useMemo(() => {
+    const now = new Date();
     const q = safe(query).toLowerCase();
 
     const catOn = catSelected.size > 0;
@@ -121,6 +141,8 @@ export default function App() {
     const ceOn = ceSelected.size > 0;
 
     return rows
+      // ✅ automatically hide past events (NO UI toggle)
+      .filter((r) => (r.date ? endOfDay(r.date) >= now : true))
       .filter((r) => (catOn ? catSelected.has(r.category) : true))
       .filter((r) => (vendorOn ? vendorSelected.has(r.vendor) : true))
       .filter((r) => (ceOn ? typeof r.ce === "number" && ceSelected.has(r.ce) : true))
@@ -142,7 +164,7 @@ export default function App() {
         <div className="headerLeft">
           <div className="titleRow">
             <h1>Webinar Catalog</h1>
-            <span className="ver">v3</span>
+            <span className="ver">v4</span>
           </div>
           <p>Browse upcoming webinars, register instantly, and filter by category, vendor, or CE hours.</p>
         </div>
@@ -156,7 +178,6 @@ export default function App() {
       </header>
 
       <div className="layout">
-        {/* LEFT FILTERS */}
         <aside className="sidebar">
           <div className="sideTitle">Filters</div>
 
@@ -177,11 +198,7 @@ export default function App() {
             <div className="list">
               {vendors.map((v) => (
                 <label className="pillCheck" key={v}>
-                  <input
-                    type="checkbox"
-                    checked={vendorSelected.has(v)}
-                    onChange={() => toggle(setVendorSelected, v)}
-                  />
+                  <input type="checkbox" checked={vendorSelected.has(v)} onChange={() => toggle(setVendorSelected, v)} />
                   <span>{v}</span>
                 </label>
               ))}
@@ -214,12 +231,30 @@ export default function App() {
           </div>
         </aside>
 
-        {/* MAIN GRID */}
         <main className="main">
           {loading && <div className="center">Loading…</div>}
-          {!loading && filtered.length === 0 && <div className="center">No events match your filters.</div>}
 
-          {!loading && filtered.length > 0 && (
+          {!loading && loadError && (
+            <div className="errorBox">
+              <div className="errorTitle">Data not loading</div>
+              <div className="errorLine">
+                <strong>URL tried:</strong> <code>{DATA_URL}</code>
+              </div>
+              <div className="errorLine">
+                <strong>Error:</strong> {loadError}
+              </div>
+              <div className="errorHint">
+                If your JSON is not at <code>/data.json</code>, set Netlify env var <strong>VITE_DATA_URL</strong> to your
+                JSON endpoint and redeploy.
+              </div>
+            </div>
+          )}
+
+          {!loading && !loadError && filtered.length === 0 && (
+            <div className="center">No upcoming events match your filters.</div>
+          )}
+
+          {!loading && !loadError && filtered.length > 0 && (
             <div className="grid">
               {filtered.map((item) => (
                 <Card key={item.id} item={item} />
@@ -409,6 +444,17 @@ const css = `
     color:var(--muted);
   }
 
+  .errorBox{
+    background:#fff;
+    border:1px solid #fde68a;
+    border-radius:16px;
+    padding:14px;
+  }
+  .errorTitle{ font-weight:900; margin-bottom:8px; }
+  .errorLine{ color:#334155; margin-bottom:6px; }
+  .errorHint{ color:#64748b; font-size:13px; margin-top:10px; }
+  code{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
   .card{
     background:var(--card);
     border:1px solid var(--line);
@@ -526,3 +572,4 @@ const css = `
     .sidebar{ position:relative; top:auto; }
   }
 `;
+
