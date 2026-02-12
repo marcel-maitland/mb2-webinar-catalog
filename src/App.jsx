@@ -1,32 +1,37 @@
+
 import { useEffect, useMemo, useState } from "react";
 
-/* ===============================
-   CONFIG
-================================= */
+/**
+ * Webinar Catalog (Vite + React) — Updated
+ * ✅ Cards smaller so 3 across comfortably
+ * ✅ Left sidebar: removed "Last updated" + removed "Feed warning"
+ * ✅ Filters from preferred sheet headers:
+ *    - category
+ *    - CE Hours
+ *    - Presenter / Vendor (Tag)
+ *    - Vendor Logo
+ *    - Course Thumb
+ *    - Name of Event
+ *    - Date of the Event
+ *    - Time of the event / Registration Link (+ 2nd session fields)
+ */
 
-const DATA_URL =
-  import.meta.env?.VITE_DATA_URL || "/data.json";
+const DATA_URL = import.meta.env?.VITE_DATA_URL || "/data.json";
 
-/* ===============================
-   HELPERS
-================================= */
-
+/* ---------- helpers ---------- */
 const safe = (v) =>
   typeof v === "string" ? v.trim() : v == null ? "" : String(v).trim();
-
 const isUrl = (u) => safe(u).startsWith("http");
 
 const parseDate = (value) => {
-  const d = new Date(value);
+  const s = safe(value);
+  if (!s) return null;
+  const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
 };
 
 const formatDate = (d) =>
-  d.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 
 const endOfDay = (d) => {
   const x = new Date(d);
@@ -34,31 +39,27 @@ const endOfDay = (d) => {
   return x;
 };
 
-/* ===============================
-   NORMALIZE SHEET ROW
-================================= */
-
+/* ---------- normalize ---------- */
 function normalize(row, i) {
+  const ce = Number(String(row["CE Hours"] ?? "").replace(/[^\d.]/g, ""));
   return {
-    id: row.id || `row-${i}`,
-    title: safe(row["Name of Event"]),
+    id: safe(row.id) || safe(row.ID) || `row-${i}`,
+    title: safe(row["Name of Event"]) || "Untitled Event",
     date: parseDate(row["Date of the Event"]),
     category: safe(row["category"]),
-    ce: Number(row["CE Hours"]) || null,
+    ce: Number.isFinite(ce) && ce > 0 ? ce : null,
     vendor: safe(row["Presenter / Vendor (Tag)"]),
     vendorLogo: safe(row["Vendor Logo"]),
     thumb: safe(row["Course Thumb"]),
     sessions: [
-      {
-        label: safe(row["Time of the event"]),
-        url: safe(row["Registration Link"]),
-      },
-      {
-        label: safe(row["2nd time of the Event"]),
-        url: safe(row["Second Registration Link"]),
-      },
+      { label: safe(row["Time of the event"]), url: safe(row["Registration Link"]) },
+      { label: safe(row["2nd time of the Event"]), url: safe(row["Second Registration Link"]) },
     ].filter((s) => s.label || s.url),
   };
+}
+
+function uniq(arr) {
+  return [...new Set(arr.filter(Boolean))];
 }
 
 /* ===============================
@@ -66,75 +67,46 @@ function normalize(row, i) {
 ================================= */
 
 export default function App() {
-  const [data, setData] = useState([]);
+  const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // UI state
   const [query, setQuery] = useState("");
   const [showPast, setShowPast] = useState(true);
 
+  // multi-select filters
   const [catSelected, setCatSelected] = useState(new Set());
   const [vendorSelected, setVendorSelected] = useState(new Set());
   const [ceSelected, setCeSelected] = useState(new Set());
 
   useEffect(() => {
+    let cancelled = false;
     async function load() {
+      setLoading(true);
       try {
         const res = await fetch(DATA_URL, { cache: "no-store" });
         const json = await res.json();
-        const items = Array.isArray(json.items)
-          ? json.items.map(normalize)
-          : [];
-        setData(items);
+        const items = Array.isArray(json.items) ? json.items.map(normalize) : [];
+        if (!cancelled) setRows(items);
       } catch (e) {
         console.error("Data load error:", e);
+        if (!cancelled) setRows([]);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  /* ===============================
-     FILTER OPTIONS
-  ================================= */
-
-  const categories = [...new Set(data.map((d) => d.category))].filter(Boolean);
-  const vendors = [...new Set(data.map((d) => d.vendor))].filter(Boolean);
-  const ceHours = [...new Set(data.map((d) => d.ce).filter(Boolean))].sort(
-    (a, b) => a - b
-  );
-
-  /* ===============================
-     FILTER LOGIC
-  ================================= */
-
-  const filtered = data
-    .filter((item) => {
-      if (!showPast && item.date) {
-        return endOfDay(item.date) >= new Date();
-      }
-      return true;
-    })
-    .filter((item) =>
-      catSelected.size ? catSelected.has(item.category) : true
-    )
-    .filter((item) =>
-      vendorSelected.size ? vendorSelected.has(item.vendor) : true
-    )
-    .filter((item) =>
-      ceSelected.size ? ceSelected.has(item.ce) : true
-    )
-    .filter((item) => {
-      if (!query) return true;
-      return (
-        item.title.toLowerCase().includes(query.toLowerCase()) ||
-        item.vendor.toLowerCase().includes(query.toLowerCase()) ||
-        item.category.toLowerCase().includes(query.toLowerCase())
-      );
-    })
-    .sort((a, b) =>
-      a.date && b.date ? a.date - b.date : 0
-    );
+  const categories = useMemo(() => uniq(rows.map((r) => r.category)).sort((a, b) => a.localeCompare(b)), [rows]);
+  const vendors = useMemo(() => uniq(rows.map((r) => r.vendor)).sort((a, b) => a.localeCompare(b)), [rows]);
+  const ceHours = useMemo(() => {
+    const vals = rows.map((r) => r.ce).filter((n) => typeof n === "number");
+    return [...new Set(vals)].sort((a, b) => a - b);
+  }, [rows]);
 
   const toggle = (setFn, value) =>
     setFn((prev) => {
@@ -143,22 +115,52 @@ export default function App() {
       return next;
     });
 
-  /* ===============================
-     RENDER
-  ================================= */
+  const clearFilters = () => {
+    setQuery("");
+    setShowPast(true);
+    setCatSelected(new Set());
+    setVendorSelected(new Set());
+    setCeSelected(new Set());
+  };
+
+  const filtered = useMemo(() => {
+    const now = new Date();
+    const q = safe(query).toLowerCase();
+
+    const catOn = catSelected.size > 0;
+    const vendorOn = vendorSelected.size > 0;
+    const ceOn = ceSelected.size > 0;
+
+    return rows
+      .filter((r) => {
+        if (!showPast && r.date) return endOfDay(r.date) >= now;
+        return true;
+      })
+      .filter((r) => (catOn ? catSelected.has(r.category) : true))
+      .filter((r) => (vendorOn ? vendorSelected.has(r.vendor) : true))
+      .filter((r) => (ceOn ? (typeof r.ce === "number" && ceSelected.has(r.ce)) : true))
+      .filter((r) => {
+        if (!q) return true;
+        const hay = `${r.title} ${r.vendor} ${r.category} ${r.ce ?? ""} ${r.date ? formatDate(r.date) : ""}`.toLowerCase();
+        return hay.includes(q);
+      })
+      .sort((a, b) => {
+        const ad = a.date ? a.date.getTime() : Number.POSITIVE_INFINITY;
+        const bd = b.date ? b.date.getTime() : Number.POSITIVE_INFINITY;
+        return ad - bd;
+      });
+  }, [rows, query, showPast, catSelected, vendorSelected, ceSelected]);
 
   return (
     <div className="page">
       <header className="header">
-        <div>
+        <div className="headerLeft">
           <h1>Webinar Catalog</h1>
-          <p>
-            Browse upcoming webinars, register instantly, and filter by
-            category, vendor, or CE hours.
-          </p>
+          <p>Browse upcoming webinars, register instantly, and filter by category, vendor, or CE hours.</p>
         </div>
         <input
-          placeholder="Search..."
+          className="search"
+          placeholder="Search events, vendors, categories…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -167,187 +169,389 @@ export default function App() {
       <div className="layout">
         {/* LEFT FILTERS */}
         <aside className="sidebar">
-          <div className="filterGroup">
-            <label>
-              <input
-                type="checkbox"
-                checked={showPast}
-                onChange={(e) => setShowPast(e.target.checked)}
-              />
-              Show past events
-            </label>
+          <div className="sideTitle">Filters</div>
+
+          <label className="rowCheck">
+            <input type="checkbox" checked={showPast} onChange={(e) => setShowPast(e.target.checked)} />
+            <span>Show past events</span>
+          </label>
+
+          <div className="sideDivider" />
+
+          <div className="group">
+            <div className="groupTitle">Category</div>
+            <div className="list">
+              {categories.map((c) => (
+                <label className="pillCheck" key={c}>
+                  <input type="checkbox" checked={catSelected.has(c)} onChange={() => toggle(setCatSelected, c)} />
+                  <span>{c}</span>
+                </label>
+              ))}
+            </div>
           </div>
 
-          <div className="filterGroup">
-            <h4>Category</h4>
-            {categories.map((c) => (
-              <label key={c}>
-                <input
-                  type="checkbox"
-                  checked={catSelected.has(c)}
-                  onChange={() => toggle(setCatSelected, c)}
-                />
-                {c}
-              </label>
-            ))}
+          <div className="group">
+            <div className="groupTitle">Vendors</div>
+            <div className="list">
+              {vendors.map((v) => (
+                <label className="pillCheck" key={v}>
+                  <input
+                    type="checkbox"
+                    checked={vendorSelected.has(v)}
+                    onChange={() => toggle(setVendorSelected, v)}
+                  />
+                  <span>{v}</span>
+                </label>
+              ))}
+            </div>
           </div>
 
-          <div className="filterGroup">
-            <h4>Vendor</h4>
-            {vendors.map((v) => (
-              <label key={v}>
-                <input
-                  type="checkbox"
-                  checked={vendorSelected.has(v)}
-                  onChange={() => toggle(setVendorSelected, v)}
-                />
-                {v}
-              </label>
-            ))}
+          <div className="group">
+            <div className="groupTitle">CE Hours</div>
+            <div className="list">
+              {ceHours.map((h) => (
+                <label className="pillCheck" key={h}>
+                  <input type="checkbox" checked={ceSelected.has(h)} onChange={() => toggle(setCeSelected, h)} />
+                  <span>{h} CE</span>
+                </label>
+              ))}
+            </div>
           </div>
 
-          <div className="filterGroup">
-            <h4>CE Hours</h4>
-            {ceHours.map((h) => (
-              <label key={h}>
-                <input
-                  type="checkbox"
-                  checked={ceSelected.has(h)}
-                  onChange={() => toggle(setCeSelected, h)}
-                />
-                {h} CE
-              </label>
-            ))}
+          <button className="clearBtn" type="button" onClick={clearFilters}>
+            Clear filters
+          </button>
+
+          <div className="sideDivider" />
+
+          <div className="sideStat">
+            <span>Results</span>
+            <strong>
+              {filtered.length} <span className="muted">/ {rows.length}</span>
+            </strong>
           </div>
         </aside>
 
         {/* MAIN GRID */}
-        <main className="grid">
-          {loading && <p>Loading...</p>}
-          {!loading &&
-            filtered.map((item) => (
-              <div className="card" key={item.id}>
-                {/* Thumbnail */}
-                <div className="thumb">
-                  {isUrl(item.thumb) ? (
-                    <img src={item.thumb} alt="" />
-                  ) : (
-                    <div className="thumbFallback">
-                      {item.category}
-                    </div>
-                  )}
-                </div>
+        <main className="main">
+          {loading && <div className="center">Loading…</div>}
+          {!loading && filtered.length === 0 && <div className="center">No events match your filters.</div>}
 
-                <div className="cardBody">
-                  <div className="badges">
-                    {item.date && (
-                      <span className="badge">
-                        {formatDate(item.date)}
-                      </span>
-                    )}
-                    {item.category && (
-                      <span className="badge soft">
-                        {item.category}
-                      </span>
-                    )}
-                    {item.ce && (
-                      <span className="badge soft">
-                        {item.ce} CE
-                      </span>
-                    )}
-                    {item.vendor && (
-                      <span className="badge vendor">
-                        {item.vendor}
-                      </span>
-                    )}
-                  </div>
-
-                  <h3>{item.title}</h3>
-
-                  {/* Vendor Logo */}
-                  {isUrl(item.vendorLogo) && (
-                    <img
-                      src={item.vendorLogo}
-                      alt=""
-                      className="vendorLogo"
-                    />
-                  )}
-
-                  {/* Sessions */}
-                  {item.sessions.map((s, i) => (
-                    <div className="session" key={i}>
-                      <span>{s.label}</span>
-                      {isUrl(s.url) && (
-                        <a
-                          href={s.url}
-                          target="_blank"
-                          rel="noopener"
-                        >
-                          Register →
-                        </a>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+          {!loading && filtered.length > 0 && (
+            <div className="grid">
+              {filtered.map((item) => (
+                <Card key={item.id} item={item} />
+              ))}
+            </div>
+          )}
         </main>
       </div>
 
-      <style>{`
-        body { margin:0; font-family:system-ui; background:#f7f8fb; }
-        .header {
-          display:flex; justify-content:space-between; align-items:center;
-          padding:20px; background:#fff; border-bottom:1px solid #e2e8f0;
-        }
-        .header input {
-          padding:10px 14px; border-radius:12px; border:1px solid #e2e8f0;
-        }
-        .layout {
-          display:grid; grid-template-columns:280px 1fr; gap:20px;
-          padding:20px; max-width:1400px; margin:auto;
-        }
-        .sidebar { background:#fff; padding:16px; border-radius:16px; }
-        .filterGroup { margin-bottom:20px; }
-        .grid {
-          display:grid;
-          grid-template-columns:repeat(auto-fit, minmax(320px,1fr));
-          gap:20px;
-        }
-        @media(min-width:1200px){
-          .grid { grid-template-columns:repeat(3,1fr); }
-        }
-        .card {
-          background:#fff; border-radius:18px; overflow:hidden;
-          box-shadow:0 10px 30px rgba(0,0,0,.05);
-          display:flex; flex-direction:column;
-        }
-        .thumb { aspect-ratio:21/9; background:#111; }
-        .thumb img { width:100%; height:100%; object-fit:cover; }
-        .thumbFallback {
-          display:flex; align-items:center; justify-content:center;
-          height:100%; background:linear-gradient(#e2e8f0,#f8fafc);
-        }
-        .cardBody { padding:16px; }
-        .badges { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
-        .badge {
-          font-size:12px; font-weight:700; padding:6px 10px;
-          border-radius:999px; background:#eff6ff; color:#1d4ed8;
-        }
-        .badge.soft { background:#f1f5f9; color:#0f172a; }
-        .badge.vendor { background:#fff7ed; color:#9a3412; }
-        .vendorLogo {
-          max-height:40px; margin:10px 0;
-        }
-        .session {
-          display:flex; justify-content:space-between;
-          padding:10px; border:1px solid #e2e8f0;
-          border-radius:12px; margin-top:10px;
-        }
-        .session a {
-          font-weight:700; color:#1d4ed8; text-decoration:none;
-        }
-      `}</style>
+      <style>{css}</style>
     </div>
   );
 }
+
+/* ===============================
+   CARD
+================================= */
+
+function Card({ item }) {
+  const thumbOk = isUrl(item.thumb);
+  const logoOk = isUrl(item.vendorLogo);
+
+  return (
+    <article className="card">
+      <div className="thumb">
+        {thumbOk ? (
+          <img
+            src={item.thumb}
+            alt={`${item.title} thumbnail`}
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+              e.currentTarget.parentElement.classList.add("thumbNoImg");
+            }}
+          />
+        ) : null}
+
+        <div className="thumbFallback" aria-hidden="true">
+          <div className="thumbFallbackInner">
+            <div className="thumbTitle">{item.category || "Webinar"}</div>
+            <div className="thumbSub">{item.vendor || "Dentlogics"}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="body">
+        <div className="topRow">
+          <div className="left">
+            <div className="badges">
+              {item.date ? <span className="badge blue">{formatDate(item.date)}</span> : null}
+              {item.category ? <span className="badge soft">{item.category}</span> : null}
+              {typeof item.ce === "number" ? <span className="badge soft">{item.ce} CE</span> : null}
+              {item.vendor ? <span className="badge orange">{item.vendor}</span> : null}
+            </div>
+
+            <h3 className="title" title={item.title}>
+              {item.title}
+            </h3>
+          </div>
+
+          {logoOk ? (
+            <img className="vendorLogo" src={item.vendorLogo} alt={item.vendor ? `${item.vendor} logo` : "Vendor logo"} />
+          ) : null}
+        </div>
+
+        <div className="sessions">
+          {item.sessions.length === 0 ? (
+            <div className="mutedSmall">No registration links found.</div>
+          ) : (
+            item.sessions.map((s, i) => (
+              <div className="session" key={i}>
+                <span className="sessionLabel">{s.label}</span>
+                {isUrl(s.url) ? (
+                  <a className="sessionBtn" href={s.url} target="_blank" rel="noopener">
+                    Register →
+                  </a>
+                ) : (
+                  <span className="sessionBtnDisabled">No link</span>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+/* ===============================
+   CSS (smaller cards + 3 across)
+================================= */
+
+const css = `
+  :root{
+    --bg:#f7f8fb;
+    --card:#ffffff;
+    --line:#e2e8f0;
+    --ink:#0f172a;
+    --muted:#64748b;
+    --shadow: 0 10px 26px rgba(2,6,23,.06);
+    --blue:#2563eb;
+    --orange:#f97316;
+  }
+
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial; }
+
+  .page{ min-height:100vh; }
+
+  .header{
+    position:sticky; top:0; z-index:10;
+    background:var(--card);
+    border-bottom:1px solid var(--line);
+    display:flex; gap:16px; align-items:center; justify-content:space-between;
+    padding:16px 18px;
+  }
+  .headerLeft h1{ margin:0; font-size:26px; font-weight:900; }
+  .headerLeft p{ margin:4px 0 0; color:#475569; font-size:14px; }
+  .search{
+    width:min(520px, 100%);
+    padding:11px 14px;
+    border-radius:14px;
+    border:1px solid var(--line);
+    outline:none;
+    background:#fff;
+  }
+
+  .layout{
+    max-width: 1320px;
+    margin:0 auto;
+    padding:16px 18px 28px;
+    display:grid;
+    grid-template-columns: 280px 1fr;
+    gap:14px;
+    align-items:start;
+  }
+
+  .sidebar{
+    position:sticky; top:88px;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:12px;
+    box-shadow:var(--shadow);
+  }
+  .sideTitle{ font-weight:900; font-size:15px; margin-bottom:10px; }
+  .rowCheck{ display:flex; gap:10px; align-items:center; font-size:14px; color:#334155; margin-bottom:10px; }
+  .sideDivider{ height:1px; background:var(--line); margin:12px 0; }
+  .group{ margin-bottom:12px; }
+  .groupTitle{ font-size:12px; font-weight:900; color:#475569; margin-bottom:8px; }
+  .list{ display:flex; flex-direction:column; gap:8px; max-height:180px; overflow:auto; padding-right:4px; }
+
+  .pillCheck{
+    display:flex; align-items:center; gap:10px;
+    background:#f8fafc;
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:9px 10px;
+    font-size:14px;
+  }
+
+  .clearBtn{
+    width:100%;
+    padding:10px 12px;
+    border-radius:12px;
+    border:1px solid var(--line);
+    background:#f8fafc;
+    font-weight:900;
+    cursor:pointer;
+  }
+
+  .sideStat{
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:14px; color:#334155;
+  }
+  .muted{ color:var(--muted); font-weight:700; }
+
+  .main{ min-width:0; }
+
+  /* ✅ Smaller cards and 3 across */
+  .grid{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap:14px;
+  }
+  @media (min-width: 860px){
+    .grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (min-width: 1100px){
+    .grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  .center{
+    padding:26px;
+    background:var(--card);
+    border:1px dashed #cbd5e1;
+    border-radius:16px;
+    text-align:center;
+    color:var(--muted);
+  }
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:16px;
+    overflow:hidden;
+    box-shadow:var(--shadow);
+    display:flex;
+    flex-direction:column;
+  }
+
+  /* smaller thumb height */
+  .thumb{
+    aspect-ratio: 16 / 7;
+    position:relative;
+    overflow:hidden;
+    background:#0b1220;
+  }
+  .thumb img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  .thumbFallback{
+    position:absolute; inset:0;
+    background: linear-gradient(135deg, #e2e8f0, #f8fafc);
+    display:flex; align-items:center; justify-content:center;
+    text-align:center;
+    pointer-events:none;
+  }
+  .thumbNoImg .thumbFallback{ opacity:1; }
+  .thumbFallbackInner{ padding:10px; }
+  .thumbTitle{ font-weight:1000; font-size:16px; }
+  .thumbSub{ margin-top:4px; font-weight:900; font-size:12px; color:#475569; }
+
+  .body{ padding:12px; }
+  .topRow{ display:flex; gap:10px; align-items:flex-start; justify-content:space-between; }
+  .badges{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+
+  .badge{
+    font-size:11px;
+    font-weight:900;
+    padding:5px 9px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    background:#f1f5f9;
+  }
+  .badge.blue{ background:#eff6ff; border-color:#dbeafe; color:#1d4ed8; }
+  .badge.orange{ background:#fff7ed; border-color:#ffedd5; color:#9a3412; }
+  .badge.soft{ background:#f1f5f9; color:#0f172a; }
+
+  .title{
+    margin:0;
+    font-size:16px;
+    font-weight:1000;
+    line-height:1.25;
+    display:-webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow:hidden;
+  }
+
+  .vendorLogo{
+    width:86px;
+    height:36px;
+    object-fit:contain;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:#fff;
+    padding:6px;
+    flex-shrink:0;
+  }
+
+  .sessions{ margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+  .session{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:10px 10px;
+    background:#fff;
+  }
+  .sessionLabel{
+    font-size:13px;
+    font-weight:900;
+    color:#334155;
+    line-height:1.25;
+    min-width:0;
+  }
+
+  .sessionBtn{
+    text-decoration:none;
+    font-weight:1000;
+    font-size:13px;
+    padding:8px 10px;
+    border-radius:12px;
+    border:1px solid #dbeafe;
+    background:#eff6ff;
+    color:#1d4ed8;
+    white-space:nowrap;
+  }
+  .sessionBtnDisabled{
+    font-weight:950;
+    font-size:13px;
+    padding:8px 10px;
+    border-radius:12px;
+    border:1px solid var(--line);
+    background:#f8fafc;
+    color:#94a3b8;
+    white-space:nowrap;
+  }
+
+  .mutedSmall{ color:var(--muted); font-size:12px; }
+
+  @media (max-width: 980px){
+    .layout{ grid-template-columns: 1fr; }
+    .sidebar{ position:relative; top:auto; }
+  }
+`;
