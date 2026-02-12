@@ -40,17 +40,11 @@ function normalizeTime(timeStr) {
   return t;
 }
 
-function formatDateLine(dateStr) {
-  const d = formatShortDate(dateStr);
-  return d || "";
-}
-
 function parseEventStart(dateStr, timeStr) {
   const rawDate = safeStr(dateStr);
   const base = new Date(rawDate);
   if (isNaN(base.getTime())) return null;
 
-  // Default to noon local time if no parseable time
   let hours = 12;
   let minutes = 0;
 
@@ -58,9 +52,11 @@ function parseEventStart(dateStr, timeStr) {
   if (t) {
     const startMatch = t.match(/^(\d{1,2})(?::(\d{2}))?/);
     const ampmMatch = t.match(/\b(am|pm)\b/i);
+
     if (startMatch) {
       hours = parseInt(startMatch[1], 10);
       minutes = startMatch[2] ? parseInt(startMatch[2], 10) : 0;
+
       const ampm = ampmMatch ? ampmMatch[1].toLowerCase() : null;
       if (ampm) {
         if (hours === 12) hours = ampm === "am" ? 0 : 12;
@@ -69,7 +65,15 @@ function parseEventStart(dateStr, timeStr) {
     }
   }
 
-  return new Date(base.getFullYear(), base.getMonth(), base.getDate(), hours, minutes, 0, 0);
+  return new Date(
+    base.getFullYear(),
+    base.getMonth(),
+    base.getDate(),
+    hours,
+    minutes,
+    0,
+    0
+  );
 }
 
 function toggleSetValue(set, value, setter) {
@@ -83,8 +87,6 @@ function CalendarIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
-      aria-hidden="true"
-      focusable="false"
       style={{ width: 14, height: 14, flex: "0 0 14px" }}
     >
       <path
@@ -121,16 +123,16 @@ export default function App() {
         const parsed = (data.items || []).map((row, idx) => {
           const date = row["Date of the Event"];
           const time1 = row["Time of the event"];
-          const time2 = row["Second Time of the Event"]; // <-- NEW
+          const time2 = row["2nd time of the Event"];
           const link1 = row["Registration Link"];
-          const link2 = row["Second Registration Link"]; // <-- NEW
-          const logo = row["Presenter Logo Link"]; // <-- NEW
+          const link2 = row["Second Registration Link"];
+          const vendorLogo = row["Vender Logo"];
 
           return {
             id: safeStr(row.id) || String(idx + 1),
             title: safeStr(row["Name of Event"]),
             presenter: safeStr(row["Presenter / Vendor (Tag)"]),
-            presenterLogo: safeStr(logo),
+            presenterLogo: safeStr(vendorLogo),
             description: safeStr(row["Description"]),
             ce: safeStr(row["Hours (Tag)"]),
             cost: safeStr(row["Cost"]),
@@ -159,7 +161,6 @@ export default function App() {
     };
   }, []);
 
-  // Hide past events
   const upcomingItems = useMemo(() => {
     const now = new Date();
     return items.filter((i) => !i.startAt || i.startAt >= now);
@@ -167,54 +168,49 @@ export default function App() {
 
   const ceOptions = useMemo(() => {
     const set = new Set(upcomingItems.map((i) => i.ce).filter(Boolean));
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
+    return Array.from(set).sort();
   }, [upcomingItems]);
 
   const presenterOptions = useMemo(() => {
     const set = new Set(upcomingItems.map((i) => i.presenter).filter(Boolean));
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
+    return Array.from(set).sort();
   }, [upcomingItems]);
 
   const categoryOptions = useMemo(() => {
     const set = new Set();
     upcomingItems.forEach((i) => i.categories.forEach((c) => set.add(c)));
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
+    return Array.from(set).sort();
   }, [upcomingItems]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
 
-    const matchesQuery = (i) =>
-      !q ||
-      i.title.toLowerCase().includes(q) ||
-      i.presenter.toLowerCase().includes(q) ||
-      i.description.toLowerCase().includes(q) ||
-      i.categories.join(", ").toLowerCase().includes(q);
-
-    const matchesCE = (i) => selectedCE.size === 0 || selectedCE.has(i.ce);
-    const matchesPresenter =
-      (i) => selectedPresenters.size === 0 || selectedPresenters.has(i.presenter);
-    const matchesCategory =
-      (i) =>
-        selectedCategories.size === 0 ||
-        i.categories.some((c) => selectedCategories.has(c));
-
     return upcomingItems
-      .filter((i) => matchesQuery(i) && matchesCE(i) && matchesPresenter(i) && matchesCategory(i))
+      .filter((i) => {
+        const matchesQuery =
+          !q ||
+          i.title.toLowerCase().includes(q) ||
+          i.presenter.toLowerCase().includes(q) ||
+          i.description.toLowerCase().includes(q);
+
+        const matchesCE =
+          selectedCE.size === 0 || selectedCE.has(i.ce);
+
+        const matchesPresenter =
+          selectedPresenters.size === 0 || selectedPresenters.has(i.presenter);
+
+        const matchesCategory =
+          selectedCategories.size === 0 ||
+          i.categories.some((c) => selectedCategories.has(c));
+
+        return matchesQuery && matchesCE && matchesPresenter && matchesCategory;
+      })
       .sort((a, b) => {
-        const at = a.startAt ? a.startAt.getTime() : Number.POSITIVE_INFINITY;
-        const bt = b.startAt ? b.startAt.getTime() : Number.POSITIVE_INFINITY;
+        const at = a.startAt ? a.startAt.getTime() : Infinity;
+        const bt = b.startAt ? b.startAt.getTime() : Infinity;
         return at - bt;
       });
   }, [upcomingItems, query, selectedCE, selectedPresenters, selectedCategories]);
-
-  const clearAll = () => {
-    setQuery("");
-    setSelectedCE(new Set());
-    setSelectedPresenters(new Set());
-    setSelectedCategories(new Set());
-    setExpandedIds(new Set());
-  };
 
   const toggleExpanded = (id) => {
     setExpandedIds((prev) => {
@@ -231,7 +227,7 @@ export default function App() {
 
     return (
       <div className="regBox">
-        <div className="regBoxLeft">
+        <div>
           <div className="regBoxLabel">Time</div>
           <div className="regBoxTime">{t}</div>
         </div>
@@ -245,149 +241,78 @@ export default function App() {
 
   return (
     <div className="page">
-      <header className="topbar">
-        <h1>MB2 Webinar Catalog</h1>
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <input
-            className="search"
-            placeholder="Search webinars"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <button
-            onClick={clearAll}
-            style={{
-              padding: "12px 14px",
-              borderRadius: 12,
-              border: "1px solid #e5e7eb",
-              background: "#fff",
-              cursor: "pointer",
-              fontWeight: 700,
-            }}
-          >
-            Clear
-          </button>
-        </div>
-      </header>
-
       <div className="layout">
         <aside className="filters">
-          <div className="filterSection">
-            <h3>CE Hours</h3>
-            {ceOptions.map((opt) => (
-              <label key={opt}>
-                <input
-                  type="checkbox"
-                  checked={selectedCE.has(opt)}
-                  onChange={() => toggleSetValue(selectedCE, opt, setSelectedCE)}
-                />{" "}
-                {opt}
-              </label>
-            ))}
-          </div>
-
-          <div className="filterSection">
-            <h3>Presenter</h3>
-            {presenterOptions.map((opt) => (
-              <label key={opt}>
-                <input
-                  type="checkbox"
-                  checked={selectedPresenters.has(opt)}
-                  onChange={() => toggleSetValue(selectedPresenters, opt, setSelectedPresenters)}
-                />{" "}
-                {opt}
-              </label>
-            ))}
-          </div>
-
-          <div className="filterSection">
-            <h3>Category</h3>
-            {categoryOptions.map((opt) => (
-              <label key={opt}>
-                <input
-                  type="checkbox"
-                  checked={selectedCategories.has(opt)}
-                  onChange={() => toggleSetValue(selectedCategories, opt, setSelectedCategories)}
-                />{" "}
-                {opt}
-              </label>
-            ))}
-          </div>
+          <h3>CE Hours</h3>
+          {ceOptions.map((opt) => (
+            <label key={opt}>
+              <input
+                type="checkbox"
+                checked={selectedCE.has(opt)}
+                onChange={() => toggleSetValue(selectedCE, opt, setSelectedCE)}
+              />{" "}
+              {opt}
+            </label>
+          ))}
         </aside>
 
         <main className="grid">
-          {loading && <div className="status">Loading webinars…</div>}
-          {err && <div className="status error">Error: {err}</div>}
+          {filtered.map((w) => {
+            const expanded = expandedIds.has(w.id);
 
-          {!loading &&
-            !err &&
-            filtered.map((w) => {
-              const expanded = expandedIds.has(w.id);
-              const showReadMore = (w.description || "").length > 220;
+            return (
+              <div className="eventCard" key={w.id}>
+                {w.thumb && (
+                  <img src={w.thumb} className="eventThumb" alt={w.title} />
+                )}
 
-              return (
-                <div className="eventCard" key={w.id}>
-                  <div className="eventThumbWrap">
-                    {w.thumb ? (
-                      <img src={w.thumb} className="eventThumb" alt={w.title} loading="lazy" />
-                    ) : (
-                      <div className="eventThumb placeholder" />
+                <div className="eventBody">
+                  <div className="eventDate">{formatShortDate(w.date)}</div>
+
+                  <h2 className="eventTitle">{w.title}</h2>
+
+                  <div className="presenterRow">
+                    {w.presenterLogo && (
+                      <img
+                        className="presenterLogo"
+                        src={w.presenterLogo}
+                        alt={w.presenter}
+                      />
                     )}
+                    <div className="presenterText">
+                      {w.presenter}
+                    </div>
                   </div>
 
-                  <div className="eventBody">
-                    <div className="eventDateRow">
-                      <div className="eventDate">{formatDateLine(w.date)}</div>
-                      <span className="eventTag">LIVE WEBINAR</span>
-                    </div>
+                  <div className="eventMeta">
+                    {w.ce} • {w.cost}
+                  </div>
 
-                    <h2 className="eventTitle">{w.title}</h2>
+                  <p className={`eventDesc ${expanded ? "expanded" : ""}`}>
+                    {w.description}
+                  </p>
 
-                    <div className="presenterRow">
-                      {w.presenterLogo ? (
-                        <img className="presenterLogo" src={w.presenterLogo} alt={w.presenter} />
-                      ) : null}
-                      <div className="presenterText">
-                        {w.presenter ? `Presented by ${w.presenter}` : ""}
-                      </div>
-                    </div>
+                  <button
+                    className="readMoreBtn"
+                    onClick={() => toggleExpanded(w.id)}
+                  >
+                    {expanded ? "Read less" : "Read more"}
+                  </button>
 
-                    <div className="eventMeta">
-                      <span>{w.ce ? `${w.ce} CE Credit` : "CE TBD"}</span>
-                      <span className="dot">•</span>
-                      <span>{w.cost ? safeStr(w.cost).toUpperCase() : "FREE"}</span>
-                    </div>
-
-                    <p className={`eventDesc ${expanded ? "expanded" : ""}`}>{w.description}</p>
-
-                    {showReadMore && (
-                      <button
-                        type="button"
-                        className="readMoreBtn"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          toggleExpanded(w.id);
-                        }}
-                      >
-                        {expanded ? "Read less" : "Read more"}
-                      </button>
-                    )}
-
-                    <div className="regWrap">
-                      {timeBox(w.time1, w.link1)}
-                      {timeBox(w.time2, w.link2)}
-                    </div>
+                  <div className="regWrap">
+                    {timeBox(w.time1, w.link1)}
+                    {timeBox(w.time2, w.link2)}
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            );
+          })}
         </main>
       </div>
     </div>
   );
 }
+
 
     </div>
   );
