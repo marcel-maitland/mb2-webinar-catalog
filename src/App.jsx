@@ -1,26 +1,25 @@
-
 import { useEffect, useMemo, useState } from "react";
 
 /**
- * Webinar Catalog (Vite + React) — Updated
- * ✅ Cards smaller so 3 across comfortably
- * ✅ Left sidebar: removed "Last updated" + removed "Feed warning"
- * ✅ Filters from preferred sheet headers:
- *    - category
- *    - CE Hours
- *    - Presenter / Vendor (Tag)
- *    - Vendor Logo
- *    - Course Thumb
- *    - Name of Event
- *    - Date of the Event
- *    - Time of the event / Registration Link (+ 2nd session fields)
+ * Webinar Catalog — App.jsx
+ * - 3 cards across (desktop)
+ * - Smaller cards
+ * - Left filters (Category from "category", Vendors, CE Hours)
+ * - Shows thumbnail ("Course Thumb") and vendor logo ("Vendor Logo")
+ * - Date shown ONCE (badge only)
+ * - Two session Register buttons
+ * - Removes "Last updated" and removes "Feed warning"
+ *
+ * Data source:
+ * - Set Netlify env var VITE_DATA_URL to your JSON endpoint
+ *   OR keep a local /data.json in /public.
  */
-
 const DATA_URL = import.meta.env?.VITE_DATA_URL || "/data.json";
 
 /* ---------- helpers ---------- */
 const safe = (v) =>
   typeof v === "string" ? v.trim() : v == null ? "" : String(v).trim();
+
 const isUrl = (u) => safe(u).startsWith("http");
 
 const parseDate = (value) => {
@@ -39,9 +38,9 @@ const endOfDay = (d) => {
   return x;
 };
 
-/* ---------- normalize ---------- */
 function normalize(row, i) {
-  const ce = Number(String(row["CE Hours"] ?? "").replace(/[^\d.]/g, ""));
+  const ceRaw = safe(row["CE Hours"]);
+  const ce = Number(ceRaw.replace(/[^\d.]/g, ""));
   return {
     id: safe(row.id) || safe(row.ID) || `row-${i}`,
     title: safe(row["Name of Event"]) || "Untitled Event",
@@ -54,13 +53,11 @@ function normalize(row, i) {
     sessions: [
       { label: safe(row["Time of the event"]), url: safe(row["Registration Link"]) },
       { label: safe(row["2nd time of the Event"]), url: safe(row["Second Registration Link"]) },
-    ].filter((s) => s.label || s.url),
+    ].filter((s) => safe(s.label) || safe(s.url)),
   };
 }
 
-function uniq(arr) {
-  return [...new Set(arr.filter(Boolean))];
-}
+const uniq = (arr) => [...new Set(arr.filter(Boolean))];
 
 /* ===============================
    APP
@@ -74,7 +71,6 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [showPast, setShowPast] = useState(true);
 
-  // multi-select filters
   const [catSelected, setCatSelected] = useState(new Set());
   const [vendorSelected, setVendorSelected] = useState(new Set());
   const [ceSelected, setCeSelected] = useState(new Set());
@@ -85,10 +81,12 @@ export default function App() {
       setLoading(true);
       try {
         const res = await fetch(DATA_URL, { cache: "no-store" });
+        if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
         const json = await res.json();
         const items = Array.isArray(json.items) ? json.items.map(normalize) : [];
         if (!cancelled) setRows(items);
       } catch (e) {
+        // IMPORTANT: no "feed warning" UI anymore — just log
         console.error("Data load error:", e);
         if (!cancelled) setRows([]);
       } finally {
@@ -101,8 +99,14 @@ export default function App() {
     };
   }, []);
 
-  const categories = useMemo(() => uniq(rows.map((r) => r.category)).sort((a, b) => a.localeCompare(b)), [rows]);
-  const vendors = useMemo(() => uniq(rows.map((r) => r.vendor)).sort((a, b) => a.localeCompare(b)), [rows]);
+  const categories = useMemo(
+    () => uniq(rows.map((r) => r.category)).sort((a, b) => a.localeCompare(b)),
+    [rows]
+  );
+  const vendors = useMemo(
+    () => uniq(rows.map((r) => r.vendor)).sort((a, b) => a.localeCompare(b)),
+    [rows]
+  );
   const ceHours = useMemo(() => {
     const vals = rows.map((r) => r.ce).filter((n) => typeof n === "number");
     return [...new Set(vals)].sort((a, b) => a - b);
@@ -138,7 +142,7 @@ export default function App() {
       })
       .filter((r) => (catOn ? catSelected.has(r.category) : true))
       .filter((r) => (vendorOn ? vendorSelected.has(r.vendor) : true))
-      .filter((r) => (ceOn ? (typeof r.ce === "number" && ceSelected.has(r.ce)) : true))
+      .filter((r) => (ceOn ? typeof r.ce === "number" && ceSelected.has(r.ce) : true))
       .filter((r) => {
         if (!q) return true;
         const hay = `${r.title} ${r.vendor} ${r.category} ${r.ce ?? ""} ${r.date ? formatDate(r.date) : ""}`.toLowerCase();
@@ -155,9 +159,14 @@ export default function App() {
     <div className="page">
       <header className="header">
         <div className="headerLeft">
-          <h1>Webinar Catalog</h1>
+          <div className="titleRow">
+            <h1>Webinar Catalog</h1>
+            {/* Tiny version badge so you KNOW this deploy updated */}
+            <span className="ver">v2</span>
+          </div>
           <p>Browse upcoming webinars, register instantly, and filter by category, vendor, or CE hours.</p>
         </div>
+
         <input
           className="search"
           placeholder="Search events, vendors, categories…"
@@ -252,17 +261,13 @@ export default function App() {
   );
 }
 
-/* ===============================
-   CARD
-================================= */
-
 function Card({ item }) {
   const thumbOk = isUrl(item.thumb);
   const logoOk = isUrl(item.vendorLogo);
 
   return (
     <article className="card">
-      <div className="thumb">
+      <div className={`thumb ${thumbOk ? "" : "thumbNoImg"}`}>
         {thumbOk ? (
           <img
             src={item.thumb}
@@ -286,6 +291,7 @@ function Card({ item }) {
         <div className="topRow">
           <div className="left">
             <div className="badges">
+              {/* Date only once */}
               {item.date ? <span className="badge blue">{formatDate(item.date)}</span> : null}
               {item.category ? <span className="badge soft">{item.category}</span> : null}
               {typeof item.ce === "number" ? <span className="badge soft">{item.ce} CE</span> : null}
@@ -303,22 +309,18 @@ function Card({ item }) {
         </div>
 
         <div className="sessions">
-          {item.sessions.length === 0 ? (
-            <div className="mutedSmall">No registration links found.</div>
-          ) : (
-            item.sessions.map((s, i) => (
-              <div className="session" key={i}>
-                <span className="sessionLabel">{s.label}</span>
-                {isUrl(s.url) ? (
-                  <a className="sessionBtn" href={s.url} target="_blank" rel="noopener">
-                    Register →
-                  </a>
-                ) : (
-                  <span className="sessionBtnDisabled">No link</span>
-                )}
-              </div>
-            ))
-          )}
+          {item.sessions.map((s, i) => (
+            <div className="session" key={i}>
+              <span className="sessionLabel">{s.label}</span>
+              {isUrl(s.url) ? (
+                <a className="sessionBtn" href={s.url} target="_blank" rel="noopener">
+                  Register →
+                </a>
+              ) : (
+                <span className="sessionBtnDisabled">No link</span>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </article>
@@ -326,7 +328,7 @@ function Card({ item }) {
 }
 
 /* ===============================
-   CSS (smaller cards + 3 across)
+   CSS (3 across + smaller cards)
 ================================= */
 
 const css = `
@@ -337,12 +339,10 @@ const css = `
     --ink:#0f172a;
     --muted:#64748b;
     --shadow: 0 10px 26px rgba(2,6,23,.06);
-    --blue:#2563eb;
-    --orange:#f97316;
   }
-
-  body{ margin:0; background:var(--bg); color:var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial; }
-
+  body{ margin:0; background:var(--bg); color:var(--ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+  }
   .page{ min-height:100vh; }
 
   .header{
@@ -352,10 +352,16 @@ const css = `
     display:flex; gap:16px; align-items:center; justify-content:space-between;
     padding:16px 18px;
   }
+  .titleRow{ display:flex; align-items:center; gap:10px; }
+  .ver{
+    font-size:12px; font-weight:900;
+    padding:4px 8px; border-radius:999px;
+    border:1px solid var(--line); background:#f8fafc; color:#334155;
+  }
   .headerLeft h1{ margin:0; font-size:26px; font-weight:900; }
   .headerLeft p{ margin:4px 0 0; color:#475569; font-size:14px; }
   .search{
-    width:min(520px, 100%);
+    width:min(560px, 100%);
     padding:11px 14px;
     border-radius:14px;
     border:1px solid var(--line);
@@ -415,7 +421,7 @@ const css = `
 
   .main{ min-width:0; }
 
-  /* ✅ Smaller cards and 3 across */
+  /* 3 across on desktop */
   .grid{
     display:grid;
     grid-template-columns: 1fr;
@@ -447,7 +453,7 @@ const css = `
     flex-direction:column;
   }
 
-  /* smaller thumb height */
+  /* smaller thumb */
   .thumb{
     aspect-ratio: 16 / 7;
     position:relative;
@@ -466,6 +472,7 @@ const css = `
     display:flex; align-items:center; justify-content:center;
     text-align:center;
     pointer-events:none;
+    opacity:0;
   }
   .thumbNoImg .thumbFallback{ opacity:1; }
   .thumbFallbackInner{ padding:10px; }
@@ -483,10 +490,11 @@ const css = `
     border-radius:999px;
     border:1px solid var(--line);
     background:#f1f5f9;
+    color:#0f172a;
   }
   .badge.blue{ background:#eff6ff; border-color:#dbeafe; color:#1d4ed8; }
   .badge.orange{ background:#fff7ed; border-color:#ffedd5; color:#9a3412; }
-  .badge.soft{ background:#f1f5f9; color:#0f172a; }
+  .badge.soft{ background:#f1f5f9; }
 
   .title{
     margin:0;
@@ -547,8 +555,6 @@ const css = `
     color:#94a3b8;
     white-space:nowrap;
   }
-
-  .mutedSmall{ color:var(--muted); font-size:12px; }
 
   @media (max-width: 980px){
     .layout{ grid-template-columns: 1fr; }
