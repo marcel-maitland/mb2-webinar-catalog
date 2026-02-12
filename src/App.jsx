@@ -359,42 +359,49 @@ function Card({ item }) {
         <div className="thumbFallback" aria-hidden="true">
           <div className="thumbFallbackInner">
             <div className="thumbTitle">{item.category || "Webinar"}</div>
-            <div className="thumbSub">{item.vendor || "Dentlogics"}</div>
           </div>
         </div>
       </div>
 
       <div className="body">
+
+        {/* TOP ROW — date + logo only */}
         <div className="topRow">
-          <div className="left">
-            {/* ✅ Tags removed. Keep ONLY the date. */}
-            <div className="dateRow">
-              {item.date ? <span className="dateBadge">{formatDate(item.date)}</span> : null}
-              {item.vendor ? <span className="vendorText">{item.vendor}</span> : null}
-            </div>
-
-            <h3 className="title" title={item.title}>
-              {item.title}
-            </h3>
-
-            {safe(item.description) ? (
-              <p className="desc" title={item.description}>
-                {item.description}
-              </p>
-            ) : null}
-          </div>
+          {item.date ? (
+            <span className="dateBadge">{formatDate(item.date)}</span>
+          ) : null}
 
           {logoOk ? (
-            <img className="vendorLogo" src={item.vendorLogo} alt={item.vendor ? `${item.vendor} logo` : "Vendor logo"} />
+            <img
+              className="vendorLogo"
+              src={item.vendorLogo}
+              alt="Vendor logo"
+            />
           ) : null}
         </div>
+
+        <h3 className="title" title={item.title}>
+          {item.title}
+        </h3>
+
+        {/* DESCRIPTION now full width */}
+        {safe(item.description) ? (
+          <p className="descFull" title={item.description}>
+            {item.description}
+          </p>
+        ) : null}
 
         <div className="sessions">
           {item.sessions.map((s, i) => (
             <div className="session" key={i}>
               <span className="sessionLabel">{s.label}</span>
               {isUrl(s.url) ? (
-                <a className="sessionBtn" href={s.url} target="_blank" rel="noopener">
+                <a
+                  className="sessionBtn"
+                  href={s.url}
+                  target="_blank"
+                  rel="noopener"
+                >
                   Register →
                 </a>
               ) : (
@@ -403,10 +410,12 @@ function Card({ item }) {
             </div>
           ))}
         </div>
+
       </div>
     </article>
   );
 }
+
 
 const css = `
   :root{
