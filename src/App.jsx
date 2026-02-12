@@ -35,20 +35,29 @@ const endOfDay = (d) => {
 };
 
 function normalize(row, i) {
-  const ceRaw = safe(row["CE Hours"]);
-  const ce = Number(ceRaw.replace(/[^\d.]/g, ""));
+  const get = (...keys) => {
+    for (const k of keys) {
+      const v = row?.[k];
+      if (v !== undefined && v !== null && String(v).trim() !== "") return String(v).trim();
+    }
+    return "";
+  };
+
+  const ceRaw = get("CE Hours", "CE", "CE Hour", "CE hours");
+  const ce = Number(String(ceRaw).replace(/[^\d.]/g, ""));
+
   return {
-    id: safe(row.id) || safe(row.ID) || `row-${i}`,
-    title: safe(row["Name of Event"]) || "Untitled Event",
-    date: parseDate(row["Date of the Event"]),
-    category: safe(row["category"]),
+    id: get("id", "ID") || `row-${i}`,
+    title: get("Name of Event", "Event Name", "Title") || "Untitled Event",
+    date: parseDate(get("Date of the Event", "Event Date", "Date")),
+    category: get("category", "Category", "CATEGORY"),
     ce: Number.isFinite(ce) && ce > 0 ? ce : null,
-    vendor: safe(row["Presenter / Vendor (Tag)"]),
-    vendorLogo: safe(row["Vendor Logo"]),
-    thumb: safe(row["Course Thumb"]),
+    vendor: get("Presenter / Vendor (Tag)", "Vendor", "Presenter", "Presenter/Vendor"),
+    vendorLogo: get("Vendor Logo", "Vender Logo", "Vendor logo", "Logo"),
+    thumb: get("Course Thumb", "Course Thumbnail", "Thumbnail", "Thumb", "Image"),
     sessions: [
-      { label: safe(row["Time of the event"]), url: safe(row["Registration Link"]) },
-      { label: safe(row["2nd time of the Event"]), url: safe(row["Second Registration Link"]) },
+      { label: get("Time of the event", "Time of Event", "Time 1"), url: get("Registration Link", "Reg Link", "Registration") },
+      { label: get("2nd time of the Event", "Second Time", "Time 2"), url: get("Second Registration Link", "Second Reg Link", "Registration 2") },
     ].filter((s) => safe(s.label) || safe(s.url)),
   };
 }
