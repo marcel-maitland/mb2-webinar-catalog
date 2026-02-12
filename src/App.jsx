@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 
 /**
- * Webinar Catalog — App.jsx (v4)
- * ✅ NO "Show past events" UI (removed)
- * ✅ Past events are automatically hidden (only upcoming)
+ * Webinar Catalog — App.jsx (v5)
+ * ✅ No "Show past events" UI (removed)
+ * ✅ Past events auto-hidden (upcoming only)
+ * ✅ Loads Google Apps Script via JSONP (bypasses CORS)
  * ✅ 3 cards across on desktop + smaller cards
- * ✅ Left filters: category, Presenter / Vendor (Tag), CE Hours
- * ✅ Uses: Course Thumb + Vendor Logo
- * ✅ Shows a visible "Data not loading" panel (instead of silent fail)
+ * ✅ Left filters: category, vendor, CE hours
+ * ✅ Thumbnail + vendor logo
+ * ✅ Date shown once
  */
 
 const DATA_URL = import.meta.env?.VITE_DATA_URL || "/data.json";
@@ -34,6 +35,50 @@ const endOfDay = (d) => {
   return x;
 };
 
+const uniq = (arr) => [...new Set(arr.filter(Boolean))];
+
+/* ---------- JSONP loader (CORS-safe) ---------- */
+function loadJsonp(url, timeoutMs = 12000) {
+  return new Promise((resolve, reject) => {
+    const cbName = `__jsonp_cb_${Math.random().toString(36).slice(2)}`;
+    const sep = url.includes("?") ? "&" : "?";
+    const src = `${url}${sep}callback=${cbName}`;
+
+    let script = null;
+    let timer = null;
+
+    const cleanup = () => {
+      try {
+        delete window[cbName];
+      } catch {}
+      if (script && script.parentNode) script.parentNode.removeChild(script);
+      if (timer) clearTimeout(timer);
+    };
+
+    window[cbName] = (data) => {
+      cleanup();
+      resolve(data);
+    };
+
+    script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("JSONP load failed (script error)"));
+    };
+
+    timer = setTimeout(() => {
+      cleanup();
+      reject(new Error("JSONP timed out"));
+    }, timeoutMs);
+
+    document.body.appendChild(script);
+  });
+}
+
+/* ---------- row normalize ---------- */
 function normalize(row, i) {
   const get = (...keys) => {
     for (const k of keys) {
@@ -56,13 +101,17 @@ function normalize(row, i) {
     vendorLogo: get("Vendor Logo", "Vender Logo", "Vendor logo", "Logo"),
     thumb: get("Course Thumb", "Course Thumbnail", "Thumbnail", "Thumb", "Image"),
     sessions: [
-      { label: get("Time of the event", "Time of Event", "Time 1"), url: get("Registration Link", "Reg Link", "Registration") },
-      { label: get("2nd time of the Event", "Second Time", "Time 2"), url: get("Second Registration Link", "Second Reg Link", "Registration 2") },
+      {
+        label: get("Time of the event", "Time of Event", "Time 1"),
+        url: get("Registration Link", "Reg Link", "Registration"),
+      },
+      {
+        label: get("2nd time of the Event", "Second Time", "Time 2"),
+        url: get("Second Registration Link", "Second Reg Link", "Registration 2"),
+      },
     ].filter((s) => safe(s.label) || safe(s.url)),
   };
 }
-
-const uniq = (arr) => [...new Set(arr.filter(Boolean))];
 
 /* ===============================
    APP
@@ -73,6 +122,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
+  // UI state
   const [query, setQuery] = useState("");
   const [catSelected, setCatSelected] = useState(new Set());
   const [vendorSelected, setVendorSelected] = useState(new Set());
@@ -86,16 +136,15 @@ export default function App() {
       setLoadError("");
 
       try {
-        const res = await fetch(DATA_URL, { cache: "no-store" });
-        if (!res.ok) throw new Error(`Fetch failed: ${res.status} ${res.statusText}`);
+        const json = await loadJsonp(DATA_URL);
 
-        const json = await res.json();
         if (!json || !Array.isArray(json.items)) {
-          throw new Error(`Bad JSON: expected {"items":[...]} but got: ${Object.keys(json || {}).join(", ") || "empty"}`);
+          throw new Error(
+            `Bad JSON: expected {"items":[...]} but got: ${Object.keys(json || {}).join(", ") || "empty"}`
+          );
         }
 
         const items = json.items.map(normalize);
-
         if (!cancelled) setRows(items);
       } catch (e) {
         console.error("Data load error:", e);
@@ -150,7 +199,7 @@ export default function App() {
     const ceOn = ceSelected.size > 0;
 
     return rows
-      // ✅ automatically hide past events (NO UI toggle)
+      // ✅ upcoming only (auto-hide past events)
       .filter((r) => (r.date ? endOfDay(r.date) >= now : true))
       .filter((r) => (catOn ? catSelected.has(r.category) : true))
       .filter((r) => (vendorOn ? vendorSelected.has(r.vendor) : true))
@@ -173,7 +222,7 @@ export default function App() {
         <div className="headerLeft">
           <div className="titleRow">
             <h1>Webinar Catalog</h1>
-            <span className="ver">v4</span>
+            <span className="ver">v5</span>
           </div>
           <p>Browse upcoming webinars, register instantly, and filter by category, vendor, or CE hours.</p>
         </div>
@@ -187,6 +236,7 @@ export default function App() {
       </header>
 
       <div className="layout">
+        {/* LEFT FILTERS */}
         <aside className="sidebar">
           <div className="sideTitle">Filters</div>
 
@@ -207,7 +257,11 @@ export default function App() {
             <div className="list">
               {vendors.map((v) => (
                 <label className="pillCheck" key={v}>
-                  <input type="checkbox" checked={vendorSelected.has(v)} onChange={() => toggle(setVendorSelected, v)} />
+                  <input
+                    type="checkbox"
+                    checked={vendorSelected.has(v)}
+                    onChange={() => toggle(setVendorSelected, v)}
+                  />
                   <span>{v}</span>
                 </label>
               ))}
@@ -240,6 +294,7 @@ export default function App() {
           </div>
         </aside>
 
+        {/* MAIN GRID */}
         <main className="main">
           {loading && <div className="center">Loading…</div>}
 
@@ -253,8 +308,8 @@ export default function App() {
                 <strong>Error:</strong> {loadError}
               </div>
               <div className="errorHint">
-                If your JSON is not at <code>/data.json</code>, set Netlify env var <strong>VITE_DATA_URL</strong> to your
-                JSON endpoint and redeploy.
+                Make sure <code>VITE_DATA_URL</code> points to your Google Apps Script <code>/exec</code> URL and that it
+                supports JSONP (<code>?callback=</code>).
               </div>
             </div>
           )}
@@ -581,4 +636,3 @@ const css = `
     .sidebar{ position:relative; top:auto; }
   }
 `;
-
