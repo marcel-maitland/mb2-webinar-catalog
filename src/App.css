@@ -1,9 +1,5 @@
 /* ===================================
-   Webinar Catalog — App.css (v8)
-   - Logo overlaps thumbnail (bottom-right)
-   - CE badge moves into top row (right side)
-   - Full title always visible
-   - Description full width (3-line clamp)
+   Webinar Catalog — App.css (v7)
 =================================== */
 
 :root{
@@ -187,7 +183,6 @@ img{ max-width:100%; display:block; }
 /* ================= CARD ================= */
 
 .card{
-  position:relative;
   background:var(--card);
   border:1px solid var(--line);
   border-radius:16px;
@@ -204,9 +199,9 @@ img{ max-width:100%; display:block; }
   box-shadow:var(--shadowHover);
 }
 
-/* Thumbnail (make relative so logo can overlap) */
+/* Thumbnail */
+
 .thumb{
-  position:relative;
   aspect-ratio:16/7;
   overflow:hidden;
   background:#0b1220;
@@ -223,53 +218,25 @@ img{ max-width:100%; display:block; }
   transform:scale(1.03);
 }
 
-/* ✅ Logo overlaps thumbnail bottom-right */
-.vendorLogo{
-  position:absolute;
-  right:12px;
-  bottom:12px;
-  z-index:5;
-
-  width:96px;
-  height:42px;
-  object-fit:contain;
-
-  background:#ffffff;
-  border:1px solid rgba(226,232,240,.95);
-  border-radius:14px;
-  padding:7px;
-
-  box-shadow: 0 10px 22px rgba(2,6,23,.14);
-  transition: transform .22s ease, box-shadow .22s ease;
-}
-
-/* Slight lift on hover */
-.card:hover .vendorLogo{
-  transform: translateY(-1px);
-  box-shadow: 0 14px 30px rgba(2,6,23,.18);
-}
-
 /* Body */
-.body{
-  padding:14px;
-}
 
-/* Top row: date left, CE right */
+.body{ padding:14px; }
+
+/* Top row */
+
 .topRow{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  margin-bottom:10px;
+  margin-bottom:8px;
 }
 
-/* left side contains date (you can keep metaRow if you want) */
 .metaRow{
   display:flex;
   gap:8px;
   align-items:center;
 }
 
-/* Date badge */
 .dateBadge{
   font-size:11px;
   font-weight:950;
@@ -278,10 +245,8 @@ img{ max-width:100%; display:block; }
   border:1px solid var(--blueLine);
   background:var(--blueSoft);
   color:#1d4ed8;
-  white-space:nowrap;
 }
 
-/* ✅ CE badge now sits in the top-right (where logo used to be) */
 .ceBadge{
   font-size:11px;
   font-weight:950;
@@ -290,10 +255,20 @@ img{ max-width:100%; display:block; }
   border:1px solid var(--line);
   background:var(--soft);
   color:#334155;
-  white-space:nowrap;
 }
 
-/* Title — full, no truncation */
+.vendorLogo{
+  width:92px;
+  height:38px;
+  object-fit:contain;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#fff;
+  padding:6px;
+}
+
+/* Title — FULL, no truncation */
+
 .title{
   margin:0;
   font-size:17px;
@@ -303,6 +278,7 @@ img{ max-width:100%; display:block; }
 }
 
 /* Description — full width */
+
 .descFull{
   margin:10px 0 14px;
   color:var(--muted2);
@@ -315,6 +291,7 @@ img{ max-width:100%; display:block; }
 }
 
 /* Sessions */
+
 .sessions{
   display:flex;
   flex-direction:column;
@@ -361,8 +338,8 @@ img{ max-width:100%; display:block; }
 }
 
 /* Responsive */
+
 @media (max-width:980px){
   .layout{ grid-template-columns:1fr; }
   .sidebar{ position:relative; top:auto; }
 }
-
