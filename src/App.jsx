@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 
 /**
- * Webinar Catalog — App.jsx (v5)
- * ✅ No "Show past events" UI (removed)
- * ✅ Past events auto-hidden (upcoming only)
- * ✅ Loads Google Apps Script via JSONP (bypasses CORS)
- * ✅ 3 cards across on desktop + smaller cards
- * ✅ Left filters: category, vendor, CE hours
- * ✅ Thumbnail + vendor logo
- * ✅ Date shown once
+ * Webinar Catalog — App.jsx (v6)
+ * ✅ (1) Sort by upcoming date (soonest first)
+ * ✅ (2) Auto-hide past events (no toggle)
+ * ✅ (6) Polished hover animation / micro-interactions
+ * ✅ Remove tags/badges from panels (keep DATE only)
+ * ✅ Show Description (2–3 line clamp) from column "Description"
+ * ✅ Loads Google Apps Script via JSONP (CORS-safe)
+ * ✅ 3 across on desktop, thumbnail + vendor logo
  */
 
 const DATA_URL = import.meta.env?.VITE_DATA_URL || "/data.json";
@@ -94,6 +94,7 @@ function normalize(row, i) {
   return {
     id: get("id", "ID") || `row-${i}`,
     title: get("Name of Event", "Event Name", "Title") || "Untitled Event",
+    description: get("Description", "description", "DESC", "Course Description"),
     date: parseDate(get("Date of the Event", "Event Date", "Date")),
     category: get("category", "Category", "CATEGORY"),
     ce: Number.isFinite(ce) && ce > 0 ? ce : null,
@@ -199,16 +200,19 @@ export default function App() {
     const ceOn = ceSelected.size > 0;
 
     return rows
-      // ✅ upcoming only (auto-hide past events)
+      // ✅ (2) auto-hide past events
       .filter((r) => (r.date ? endOfDay(r.date) >= now : true))
       .filter((r) => (catOn ? catSelected.has(r.category) : true))
       .filter((r) => (vendorOn ? vendorSelected.has(r.vendor) : true))
       .filter((r) => (ceOn ? typeof r.ce === "number" && ceSelected.has(r.ce) : true))
       .filter((r) => {
         if (!q) return true;
-        const hay = `${r.title} ${r.vendor} ${r.category} ${r.ce ?? ""} ${r.date ? formatDate(r.date) : ""}`.toLowerCase();
+        const hay = `${r.title} ${r.vendor} ${r.category} ${r.ce ?? ""} ${r.description ?? ""} ${
+          r.date ? formatDate(r.date) : ""
+        }`.toLowerCase();
         return hay.includes(q);
       })
+      // ✅ (1) sort by upcoming date (soonest first)
       .sort((a, b) => {
         const ad = a.date ? a.date.getTime() : Number.POSITIVE_INFINITY;
         const bd = b.date ? b.date.getTime() : Number.POSITIVE_INFINITY;
@@ -222,7 +226,7 @@ export default function App() {
         <div className="headerLeft">
           <div className="titleRow">
             <h1>Webinar Catalog</h1>
-            <span className="ver">v5</span>
+            <span className="ver">v6</span>
           </div>
           <p>Browse upcoming webinars, register instantly, and filter by category, vendor, or CE hours.</p>
         </div>
@@ -344,6 +348,7 @@ function Card({ item }) {
           <img
             src={item.thumb}
             alt={`${item.title} thumbnail`}
+            loading="lazy"
             onError={(e) => {
               e.currentTarget.style.display = "none";
               e.currentTarget.parentElement.classList.add("thumbNoImg");
@@ -362,16 +367,21 @@ function Card({ item }) {
       <div className="body">
         <div className="topRow">
           <div className="left">
-            <div className="badges">
-              {item.date ? <span className="badge blue">{formatDate(item.date)}</span> : null}
-              {item.category ? <span className="badge soft">{item.category}</span> : null}
-              {typeof item.ce === "number" ? <span className="badge soft">{item.ce} CE</span> : null}
-              {item.vendor ? <span className="badge orange">{item.vendor}</span> : null}
+            {/* ✅ Tags removed. Keep ONLY the date. */}
+            <div className="dateRow">
+              {item.date ? <span className="dateBadge">{formatDate(item.date)}</span> : null}
+              {item.vendor ? <span className="vendorText">{item.vendor}</span> : null}
             </div>
 
             <h3 className="title" title={item.title}>
               {item.title}
             </h3>
+
+            {safe(item.description) ? (
+              <p className="desc" title={item.description}>
+                {item.description}
+              </p>
+            ) : null}
           </div>
 
           {logoOk ? (
@@ -434,6 +444,11 @@ const css = `
     border:1px solid var(--line);
     outline:none;
     background:#fff;
+    transition: box-shadow .2s ease, border-color .2s ease;
+  }
+  .search:focus{
+    border-color:#bfdbfe;
+    box-shadow: 0 0 0 4px rgba(59,130,246,.12);
   }
 
   .layout{
@@ -467,7 +482,9 @@ const css = `
     border-radius:12px;
     padding:9px 10px;
     font-size:14px;
+    transition: transform .18s ease, background .18s ease;
   }
+  .pillCheck:hover{ background:#f1f5f9; transform: translateY(-1px); }
 
   .clearBtn{
     width:100%;
@@ -477,7 +494,9 @@ const css = `
     background:#f8fafc;
     font-weight:900;
     cursor:pointer;
+    transition: transform .18s ease, background .18s ease;
   }
+  .clearBtn:hover{ background:#f1f5f9; transform: translateY(-1px); }
 
   .sideStat{
     display:flex; justify-content:space-between; align-items:center;
@@ -519,6 +538,7 @@ const css = `
   .errorHint{ color:#64748b; font-size:13px; margin-top:10px; }
   code{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
 
+  /* ✅ (6) Upgraded hover / micro-interactions */
   .card{
     background:var(--card);
     border:1px solid var(--line);
@@ -527,6 +547,13 @@ const css = `
     box-shadow:var(--shadow);
     display:flex;
     flex-direction:column;
+    transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+    will-change: transform;
+  }
+  .card:hover{
+    transform: translateY(-4px);
+    border-color:#cbd5e1;
+    box-shadow: 0 18px 48px rgba(2,6,23,.10);
   }
 
   .thumb{
@@ -540,7 +567,11 @@ const css = `
     height:100%;
     object-fit:cover;
     display:block;
+    transform: scale(1);
+    transition: transform .35s ease;
   }
+  .card:hover .thumb img{ transform: scale(1.03); }
+
   .thumbFallback{
     position:absolute; inset:0;
     background: linear-gradient(135deg, #e2e8f0, #f8fafc);
@@ -556,20 +587,27 @@ const css = `
 
   .body{ padding:12px; }
   .topRow{ display:flex; gap:10px; align-items:flex-start; justify-content:space-between; }
-  .badges{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+  .dateRow{ display:flex; gap:10px; align-items:center; margin-bottom:8px; }
 
-  .badge{
+  .dateBadge{
     font-size:11px;
-    font-weight:900;
-    padding:5px 9px;
+    font-weight:950;
+    padding:6px 10px;
     border-radius:999px;
-    border:1px solid var(--line);
-    background:#f1f5f9;
-    color:#0f172a;
+    border:1px solid #dbeafe;
+    background:#eff6ff;
+    color:#1d4ed8;
+    white-space:nowrap;
   }
-  .badge.blue{ background:#eff6ff; border-color:#dbeafe; color:#1d4ed8; }
-  .badge.orange{ background:#fff7ed; border-color:#ffedd5; color:#9a3412; }
-  .badge.soft{ background:#f1f5f9; }
+  .vendorText{
+    font-size:12px;
+    font-weight:900;
+    color:#475569;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    max-width: 180px;
+  }
 
   .title{
     margin:0;
@@ -578,6 +616,18 @@ const css = `
     line-height:1.25;
     display:-webkit-box;
     -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow:hidden;
+  }
+
+  /* ✅ Description clamp (2–3 lines) */
+  .desc{
+    margin:8px 0 0;
+    color:#475569;
+    font-size:13px;
+    line-height:1.45;
+    display:-webkit-box;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow:hidden;
   }
@@ -591,16 +641,25 @@ const css = `
     background:#fff;
     padding:6px;
     flex-shrink:0;
+    transition: transform .22s ease;
   }
+  .card:hover .vendorLogo{ transform: translateY(-1px); }
 
-  .sessions{ margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+  .sessions{ margin-top:12px; display:flex; flex-direction:column; gap:8px; }
   .session{
     display:flex; align-items:center; justify-content:space-between; gap:10px;
     border:1px solid var(--line);
     border-radius:12px;
     padding:10px 10px;
     background:#fff;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
   }
+  .session:hover{
+    transform: translateY(-1px);
+    border-color:#cbd5e1;
+    box-shadow: 0 10px 22px rgba(2,6,23,.06);
+  }
+
   .sessionLabel{
     font-size:13px;
     font-weight:900;
@@ -619,7 +678,13 @@ const css = `
     background:#eff6ff;
     color:#1d4ed8;
     white-space:nowrap;
+    transition: transform .18s ease, background .18s ease;
   }
+  .sessionBtn:hover{
+    background:#dbeafe;
+    transform: translateY(-1px);
+  }
+
   .sessionBtnDisabled{
     font-weight:950;
     font-size:13px;
@@ -634,5 +699,6 @@ const css = `
   @media (max-width: 980px){
     .layout{ grid-template-columns: 1fr; }
     .sidebar{ position:relative; top:auto; }
+    .vendorText{ max-width: 100%; }
   }
 `;
