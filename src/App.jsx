@@ -1,9 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 
+/**
+ * Webinar Catalog — App.jsx (v6-prod rollback)
+ * ✅ Full production version w/ filters + search + result count
+ * ✅ Upcoming-only (past events hidden automatically)
+ * ✅ Sorted by soonest date
+ * ✅ Vendor LOGO in header (NOT overlapping thumbnail)
+ * ✅ CE badge shown (next to date)
+ * ✅ Full title (no truncation)
+ * ✅ Description shown (3-line clamp via CSS class)
+ * ✅ JSONP loading from Google Apps Script (CORS-safe)
+ *
+ * Requires env var:
+ *   VITE_DATA_URL = https://script.google.com/macros/s/XXXX/exec
+ */
+
 const DATA_URL = import.meta.env?.VITE_DATA_URL || "";
 
-/* ---------------- Utilities ---------------- */
-
+/* ---------- helpers ---------- */
 const safe = (v) =>
   typeof v === "string" ? v.trim() : v == null ? "" : String(v).trim();
 
@@ -17,11 +31,7 @@ const parseDate = (value) => {
 };
 
 const formatDate = (d) =>
-  d.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 
 const endOfDay = (d) => {
   const x = new Date(d);
@@ -31,19 +41,27 @@ const endOfDay = (d) => {
 
 const uniq = (arr) => [...new Set(arr.filter(Boolean))];
 
-/* ---------------- JSONP Loader ---------------- */
-
+/* ---------- JSONP loader ---------- */
 function loadJsonp(url, timeoutMs = 12000) {
   return new Promise((resolve, reject) => {
+    if (!safe(url)) {
+      reject(new Error("Missing VITE_DATA_URL"));
+      return;
+    }
+
     const cbName = `__jsonp_cb_${Math.random().toString(36).slice(2)}`;
     const sep = url.includes("?") ? "&" : "?";
     const src = `${url}${sep}callback=${cbName}`;
 
-    let script = document.createElement("script");
+    let script = null;
+    let timer = null;
 
     const cleanup = () => {
-      delete window[cbName];
-      if (script.parentNode) script.parentNode.removeChild(script);
+      try {
+        delete window[cbName];
+      } catch {}
+      if (script && script.parentNode) script.parentNode.removeChild(script);
+      if (timer) clearTimeout(timer);
     };
 
     window[cbName] = (data) => {
@@ -51,103 +69,121 @@ function loadJsonp(url, timeoutMs = 12000) {
       resolve(data);
     };
 
+    script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+
     script.onerror = () => {
       cleanup();
-      reject(new Error("JSONP load failed"));
+      reject(new Error("JSONP load failed (script error)"));
     };
 
-    script.src = src;
-    document.body.appendChild(script);
-
-    setTimeout(() => {
+    timer = setTimeout(() => {
       cleanup();
-      reject(new Error("JSONP timeout"));
+      reject(new Error("JSONP timed out"));
     }, timeoutMs);
+
+    document.body.appendChild(script);
   });
 }
 
-/* ---------------- Normalize Sheet Row ---------------- */
-
+/* ---------- row normalize ---------- */
 function normalize(row, i) {
   const get = (...keys) => {
     for (const k of keys) {
       const v = row?.[k];
-      if (v !== undefined && v !== null && String(v).trim() !== "")
-        return String(v).trim();
+      if (v !== undefined && v !== null && String(v).trim() !== "") return String(v).trim();
     }
     return "";
   };
 
-  const ceRaw = get("CE Hours");
-  const ce = Number(String(ceRaw).replace(/[^\d.]/g, ""));
+  const ceRaw = get("CE Hours", "CE", "CE Hour", "CE hours");
+  const ceNum = Number(String(ceRaw).replace(/[^\d.]/g, ""));
+
+  const sessions = [
+    { label: get("Time of the event", "Time of Event", "Time 1"), url: get("Registration Link", "Reg Link") },
+    {
+      label: get("2nd time of the Event", "Second Time", "Time 2"),
+      url: get("Second Registration Link", "Second Reg Link"),
+    },
+  ].filter((s) => safe(s.label) || safe(s.url));
 
   return {
-    id: `row-${i}`,
-    title: get("Name of Event"),
-    description: get("Description"),
-    date: parseDate(get("Date of the Event")),
-    category: get("category"),
-    ce: Number.isFinite(ce) ? ce : null,
-    vendor: get("Presenter / Vendor (Tag)"),
-    vendorLogo: get("Vendor Logo"),
-    thumb: get("Course Thumb"),
-    sessions: [
-      {
-        label: get("Time of the event"),
-        url: get("Registration Link"),
-      },
-      {
-        label: get("2nd time of the Event"),
-        url: get("Second Registration Link"),
-      },
-    ].filter((s) => safe(s.label) || safe(s.url)),
+    id: get("id", "ID") || `row-${i}`,
+    title: get("Name of Event", "Event Name", "Title") || "Untitled Event",
+    description: get("Description", "description") || "",
+    date: parseDate(get("Date of the Event", "Event Date", "Date")),
+    category: get("category", "Category") || "",
+    ce: Number.isFinite(ceNum) && ceNum > 0 ? ceNum : null,
+    vendor: get("Presenter / Vendor (Tag)", "Vendor", "Presenter") || "",
+    vendorLogo: get("Vendor Logo", "Vender Logo", "Logo") || "",
+    thumb: get("Course Thumb", "Course Thumbnail", "Thumbnail", "Thumb", "Image") || "",
+    sessions,
   };
 }
 
-/* ================= APP ================= */
+/* ===============================
+   APP
+================================= */
 
 export default function App() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
+  // UI state
+  const [query, setQuery] = useState("");
   const [catSelected, setCatSelected] = useState(new Set());
   const [vendorSelected, setVendorSelected] = useState(new Set());
   const [ceSelected, setCeSelected] = useState(new Set());
-  const [query, setQuery] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
+
     async function load() {
+      setLoading(true);
+      setLoadError("");
+
       try {
         const json = await loadJsonp(DATA_URL);
+
+        if (!json || !Array.isArray(json.items)) {
+          throw new Error(
+            `Bad JSON: expected {"items":[...]} but got: ${Object.keys(json || {}).join(", ") || "empty"}`
+          );
+        }
+
         const items = json.items.map(normalize);
-        setRows(items);
+        if (!cancelled) setRows(items);
       } catch (e) {
-        setLoadError(e.message);
+        console.error("Data load error:", e);
+        if (!cancelled) {
+          setRows([]);
+          setLoadError(e?.message || "Failed to load data.");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
+
     load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const categories = useMemo(
-    () => uniq(rows.map((r) => r.category)).sort(),
+    () => uniq(rows.map((r) => r.category)).sort((a, b) => a.localeCompare(b)),
     [rows]
   );
-
   const vendors = useMemo(
-    () => uniq(rows.map((r) => r.vendor)).sort(),
+    () => uniq(rows.map((r) => r.vendor)).sort((a, b) => a.localeCompare(b)),
     [rows]
   );
-
-  const ceHours = useMemo(
-    () =>
-      [...new Set(rows.map((r) => r.ce).filter((n) => typeof n === "number"))].sort(
-        (a, b) => a - b
-      ),
-    [rows]
-  );
+  const ceHours = useMemo(() => {
+    const vals = rows.map((r) => r.ce).filter((n) => typeof n === "number");
+    return [...new Set(vals)].sort((a, b) => a - b);
+  }, [rows]);
 
   const toggle = (setFn, value) =>
     setFn((prev) => {
@@ -156,34 +192,43 @@ export default function App() {
       return next;
     });
 
+  const clearFilters = () => {
+    setQuery("");
+    setCatSelected(new Set());
+    setVendorSelected(new Set());
+    setCeSelected(new Set());
+  };
+
   const filtered = useMemo(() => {
     const now = new Date();
     const q = safe(query).toLowerCase();
 
+    const catOn = catSelected.size > 0;
+    const vendorOn = vendorSelected.size > 0;
+    const ceOn = ceSelected.size > 0;
+
     return rows
+      // upcoming only
       .filter((r) => (r.date ? endOfDay(r.date) >= now : true))
-      .filter((r) =>
-        catSelected.size ? catSelected.has(r.category) : true
-      )
-      .filter((r) =>
-        vendorSelected.size ? vendorSelected.has(r.vendor) : true
-      )
-      .filter((r) =>
-        ceSelected.size ? ceSelected.has(r.ce) : true
-      )
+      // filters
+      .filter((r) => (catOn ? catSelected.has(r.category) : true))
+      .filter((r) => (vendorOn ? vendorSelected.has(r.vendor) : true))
+      .filter((r) => (ceOn ? typeof r.ce === "number" && ceSelected.has(r.ce) : true))
+      // search
       .filter((r) => {
         if (!q) return true;
-        return (
-          r.title?.toLowerCase().includes(q) ||
-          r.description?.toLowerCase().includes(q)
-        );
+        const hay = `${r.title} ${r.vendor} ${r.category} ${r.ce ?? ""} ${r.description ?? ""} ${
+          r.date ? formatDate(r.date) : ""
+        }`.toLowerCase();
+        return hay.includes(q);
       })
+      // sort by soonest date
       .sort((a, b) => {
-        const ad = a.date ? a.date.getTime() : Infinity;
-        const bd = b.date ? b.date.getTime() : Infinity;
+        const ad = a.date ? a.date.getTime() : Number.POSITIVE_INFINITY;
+        const bd = b.date ? b.date.getTime() : Number.POSITIVE_INFINITY;
         return ad - bd;
       });
-  }, [rows, catSelected, vendorSelected, ceSelected, query]);
+  }, [rows, query, catSelected, vendorSelected, ceSelected]);
 
   return (
     <div className="page">
@@ -191,19 +236,21 @@ export default function App() {
         <div className="headerLeft">
           <div className="titleRow">
             <h1>Webinar Catalog</h1>
-            <span className="ver">v8</span>
+            <span className="ver">v6</span>
           </div>
-          <p>Browse upcoming webinars and register instantly.</p>
+          <p>Browse upcoming webinars, register instantly, and filter by category, vendor, or CE hours.</p>
         </div>
+
         <input
           className="search"
-          placeholder="Search..."
+          placeholder="Search events, vendors, categories…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
       </header>
 
       <div className="layout">
+        {/* LEFT FILTERS */}
         <aside className="sidebar">
           <div className="sideTitle">Filters</div>
 
@@ -212,19 +259,15 @@ export default function App() {
             <div className="list">
               {categories.map((c) => (
                 <label className="pillCheck" key={c}>
-                  <input
-                    type="checkbox"
-                    checked={catSelected.has(c)}
-                    onChange={() => toggle(setCatSelected, c)}
-                  />
-                  {c}
+                  <input type="checkbox" checked={catSelected.has(c)} onChange={() => toggle(setCatSelected, c)} />
+                  <span>{c}</span>
                 </label>
               ))}
             </div>
           </div>
 
           <div className="group">
-            <div className="groupTitle">Vendor</div>
+            <div className="groupTitle">Vendors</div>
             <div className="list">
               {vendors.map((v) => (
                 <label className="pillCheck" key={v}>
@@ -233,7 +276,7 @@ export default function App() {
                     checked={vendorSelected.has(v)}
                     onChange={() => toggle(setVendorSelected, v)}
                   />
-                  {v}
+                  <span>{v}</span>
                 </label>
               ))}
             </div>
@@ -244,86 +287,117 @@ export default function App() {
             <div className="list">
               {ceHours.map((h) => (
                 <label className="pillCheck" key={h}>
-                  <input
-                    type="checkbox"
-                    checked={ceSelected.has(h)}
-                    onChange={() => toggle(setCeSelected, h)}
-                  />
-                  {h} CE
+                  <input type="checkbox" checked={ceSelected.has(h)} onChange={() => toggle(setCeSelected, h)} />
+                  <span>{h} CE</span>
                 </label>
               ))}
             </div>
           </div>
+
+          <button className="clearBtn" type="button" onClick={clearFilters}>
+            Clear filters
+          </button>
+
+          <div className="sideDivider" />
+
+          <div className="sideStat">
+            <span>Results</span>
+            <strong>
+              {filtered.length} <span className="muted">/ {rows.length}</span>
+            </strong>
+          </div>
         </aside>
 
+        {/* MAIN GRID */}
         <main className="main">
-          {loading && <div className="center">Loading...</div>}
-          {loadError && <div className="center">{loadError}</div>}
+          {loading && <div className="center">Loading…</div>}
 
-          <div className="grid">
-            {filtered.map((item) => (
-              <Card key={item.id} item={item} />
-            ))}
-          </div>
+          {!loading && loadError && (
+            <div className="errorBox">
+              <div className="errorTitle">Data not loading</div>
+              <div className="errorLine">
+                <strong>URL tried:</strong> <code>{DATA_URL || "(empty)"} </code>
+              </div>
+              <div className="errorLine">
+                <strong>Error:</strong> {loadError}
+              </div>
+              <div className="errorHint">
+                Confirm <code>VITE_DATA_URL</code> is set in Netlify to your Apps Script <code>/exec</code> URL and that
+                <code>?callback=test</code> returns JSONP.
+              </div>
+            </div>
+          )}
+
+          {!loading && !loadError && filtered.length === 0 && (
+            <div className="center">No upcoming events match your filters.</div>
+          )}
+
+          {!loading && !loadError && filtered.length > 0 && (
+            <div className="grid">
+              {filtered.map((item) => (
+                <Card key={item.id} item={item} />
+              ))}
+            </div>
+          )}
         </main>
       </div>
     </div>
   );
 }
 
-/* ================= CARD ================= */
+/* ===============================
+   CARD
+================================= */
 
 function Card({ item }) {
+  const thumbOk = isUrl(item.thumb);
+  const logoOk = isUrl(item.vendorLogo);
+
   return (
     <article className="card">
       <div className="thumb">
-        {isUrl(item.thumb) && (
-          <img src={item.thumb} alt={item.title} />
-        )}
-
-        {isUrl(item.vendorLogo) && (
+        {thumbOk ? (
           <img
-            className="vendorLogo"
-            src={item.vendorLogo}
-            alt="Vendor logo"
+            src={item.thumb}
+            alt={`${item.title} thumbnail`}
+            loading="lazy"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
           />
-        )}
+        ) : null}
       </div>
 
       <div className="body">
         <div className="topRow">
           <div className="metaRow">
-            {item.date && (
-              <span className="dateBadge">
-                {formatDate(item.date)}
-              </span>
-            )}
+            {item.date ? <span className="dateBadge">{formatDate(item.date)}</span> : null}
+            {typeof item.ce === "number" ? <span className="ceBadge">{item.ce} CE</span> : null}
           </div>
 
-          {item.ce && (
-            <span className="ceBadge">{item.ce} CE</span>
-          )}
+          {logoOk ? <img className="vendorLogo" src={item.vendorLogo} alt="Vendor logo" loading="lazy" /> : null}
         </div>
 
-        <h3 className="title">{item.title}</h3>
+        <h3 className="title" title={item.title}>
+          {item.title}
+        </h3>
 
-        {item.description && (
-          <p className="descFull">{item.description}</p>
-        )}
+        {safe(item.description) ? (
+          <p className="descFull" title={item.description}>
+            {item.description}
+          </p>
+        ) : null}
 
         <div className="sessions">
           {item.sessions.map((s, i) => (
             <div className="session" key={i}>
               <span className="sessionLabel">{s.label}</span>
-              {isUrl(s.url) && (
-                <a
-                  className="sessionBtn"
-                  href={s.url}
-                  target="_blank"
-                  rel="noopener"
-                >
+              {isUrl(s.url) ? (
+                <a className="sessionBtn" href={s.url} target="_blank" rel="noopener">
                   Register →
                 </a>
+              ) : (
+                <span className="sessionBtnDisabled">No link</span>
               )}
             </div>
           ))}
