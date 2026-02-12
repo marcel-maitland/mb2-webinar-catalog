@@ -2,17 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 
 /**
  * Webinar Catalog — App.jsx
- * - 3 cards across (desktop)
- * - Smaller cards
- * - Left filters (Category from "category", Vendors, CE Hours)
- * - Shows thumbnail ("Course Thumb") and vendor logo ("Vendor Logo")
- * - Date shown ONCE (badge only)
- * - Two session Register buttons
- * - Removes "Last updated" and removes "Feed warning"
- *
- * Data source:
- * - Set Netlify env var VITE_DATA_URL to your JSON endpoint
- *   OR keep a local /data.json in /public.
+ * ✅ Removed "Show past events" filter
+ * ✅ Cards smaller + 3 across on desktop
+ * ✅ Left filters: Category (category), Vendors, CE Hours
+ * ✅ Thumbnail (Course Thumb) + Vendor Logo
+ * ✅ Date shown once
+ * ✅ Two session register buttons
  */
 const DATA_URL = import.meta.env?.VITE_DATA_URL || "/data.json";
 
@@ -31,12 +26,6 @@ const parseDate = (value) => {
 
 const formatDate = (d) =>
   d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-
-const endOfDay = (d) => {
-  const x = new Date(d);
-  x.setHours(23, 59, 59, 999);
-  return x;
-};
 
 function normalize(row, i) {
   const ceRaw = safe(row["CE Hours"]);
@@ -69,7 +58,6 @@ export default function App() {
 
   // UI state
   const [query, setQuery] = useState("");
-  const [showPast, setShowPast] = useState(true);
 
   const [catSelected, setCatSelected] = useState(new Set());
   const [vendorSelected, setVendorSelected] = useState(new Set());
@@ -86,7 +74,6 @@ export default function App() {
         const items = Array.isArray(json.items) ? json.items.map(normalize) : [];
         if (!cancelled) setRows(items);
       } catch (e) {
-        // IMPORTANT: no "feed warning" UI anymore — just log
         console.error("Data load error:", e);
         if (!cancelled) setRows([]);
       } finally {
@@ -121,14 +108,12 @@ export default function App() {
 
   const clearFilters = () => {
     setQuery("");
-    setShowPast(true);
     setCatSelected(new Set());
     setVendorSelected(new Set());
     setCeSelected(new Set());
   };
 
   const filtered = useMemo(() => {
-    const now = new Date();
     const q = safe(query).toLowerCase();
 
     const catOn = catSelected.size > 0;
@@ -136,10 +121,6 @@ export default function App() {
     const ceOn = ceSelected.size > 0;
 
     return rows
-      .filter((r) => {
-        if (!showPast && r.date) return endOfDay(r.date) >= now;
-        return true;
-      })
       .filter((r) => (catOn ? catSelected.has(r.category) : true))
       .filter((r) => (vendorOn ? vendorSelected.has(r.vendor) : true))
       .filter((r) => (ceOn ? typeof r.ce === "number" && ceSelected.has(r.ce) : true))
@@ -153,7 +134,7 @@ export default function App() {
         const bd = b.date ? b.date.getTime() : Number.POSITIVE_INFINITY;
         return ad - bd;
       });
-  }, [rows, query, showPast, catSelected, vendorSelected, ceSelected]);
+  }, [rows, query, catSelected, vendorSelected, ceSelected]);
 
   return (
     <div className="page">
@@ -161,8 +142,7 @@ export default function App() {
         <div className="headerLeft">
           <div className="titleRow">
             <h1>Webinar Catalog</h1>
-            {/* Tiny version badge so you KNOW this deploy updated */}
-            <span className="ver">v2</span>
+            <span className="ver">v3</span>
           </div>
           <p>Browse upcoming webinars, register instantly, and filter by category, vendor, or CE hours.</p>
         </div>
@@ -179,13 +159,6 @@ export default function App() {
         {/* LEFT FILTERS */}
         <aside className="sidebar">
           <div className="sideTitle">Filters</div>
-
-          <label className="rowCheck">
-            <input type="checkbox" checked={showPast} onChange={(e) => setShowPast(e.target.checked)} />
-            <span>Show past events</span>
-          </label>
-
-          <div className="sideDivider" />
 
           <div className="group">
             <div className="groupTitle">Category</div>
@@ -291,7 +264,6 @@ function Card({ item }) {
         <div className="topRow">
           <div className="left">
             <div className="badges">
-              {/* Date only once */}
               {item.date ? <span className="badge blue">{formatDate(item.date)}</span> : null}
               {item.category ? <span className="badge soft">{item.category}</span> : null}
               {typeof item.ce === "number" ? <span className="badge soft">{item.ce} CE</span> : null}
@@ -326,10 +298,6 @@ function Card({ item }) {
     </article>
   );
 }
-
-/* ===============================
-   CSS (3 across + smaller cards)
-================================= */
 
 const css = `
   :root{
@@ -388,7 +356,6 @@ const css = `
     box-shadow:var(--shadow);
   }
   .sideTitle{ font-weight:900; font-size:15px; margin-bottom:10px; }
-  .rowCheck{ display:flex; gap:10px; align-items:center; font-size:14px; color:#334155; margin-bottom:10px; }
   .sideDivider{ height:1px; background:var(--line); margin:12px 0; }
   .group{ margin-bottom:12px; }
   .groupTitle{ font-size:12px; font-weight:900; color:#475569; margin-bottom:8px; }
@@ -421,7 +388,6 @@ const css = `
 
   .main{ min-width:0; }
 
-  /* 3 across on desktop */
   .grid{
     display:grid;
     grid-template-columns: 1fr;
@@ -453,7 +419,6 @@ const css = `
     flex-direction:column;
   }
 
-  /* smaller thumb */
   .thumb{
     aspect-ratio: 16 / 7;
     position:relative;
