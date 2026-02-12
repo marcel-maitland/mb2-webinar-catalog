@@ -21,7 +21,6 @@ function formatShortDate(dateStr) {
   const raw = safeStr(dateStr);
   const d = new Date(raw);
   if (isNaN(d.getTime())) return raw;
-
   const m = d.getMonth() + 1;
   const day = d.getDate();
   const yy = String(d.getFullYear()).slice(-2);
@@ -31,24 +30,19 @@ function formatShortDate(dateStr) {
 function normalizeTime(timeStr) {
   let t = safeStr(timeStr);
   if (!t) return "";
-
   t = t.replace(/\b(CENTRAL TIME|MOUNTAIN TIME|PACIFIC TIME|EASTERN TIME)\b/gi, "");
   t = t.replace(/\b(CST|CDT|MST|MDT|PST|PDT|EST|EDT)\b/gi, "");
-
   t = t.replace(/\s*-\s*/g, " - ");
   t = t.replace(/(\d)(AM|PM)\b/gi, "$1 $2");
   t = t.replace(/\bAM\b/g, "am").replace(/\bPM\b/g, "pm");
   t = t.replace(/\s+/g, " ").trim();
   t = t.replace(/\s(am|pm)\b/g, "$1");
-
   return t;
 }
 
-function formatDateLine(dateStr, timeStr) {
+function formatDateLine(dateStr) {
   const d = formatShortDate(dateStr);
-  const t = normalizeTime(timeStr);
-  if (d && t) return `${d}   ${t}`;
-  return d || t || "";
+  return d || "";
 }
 
 function parseEventStart(dateStr, timeStr) {
@@ -56,6 +50,7 @@ function parseEventStart(dateStr, timeStr) {
   const base = new Date(rawDate);
   if (isNaN(base.getTime())) return null;
 
+  // Default to noon local time if no parseable time
   let hours = 12;
   let minutes = 0;
 
@@ -63,11 +58,9 @@ function parseEventStart(dateStr, timeStr) {
   if (t) {
     const startMatch = t.match(/^(\d{1,2})(?::(\d{2}))?/);
     const ampmMatch = t.match(/\b(am|pm)\b/i);
-
     if (startMatch) {
       hours = parseInt(startMatch[1], 10);
       minutes = startMatch[2] ? parseInt(startMatch[2], 10) : 0;
-
       const ampm = ampmMatch ? ampmMatch[1].toLowerCase() : null;
       if (ampm) {
         if (hours === 12) hours = ampm === "am" ? 0 : 12;
@@ -76,15 +69,7 @@ function parseEventStart(dateStr, timeStr) {
     }
   }
 
-  return new Date(
-    base.getFullYear(),
-    base.getMonth(),
-    base.getDate(),
-    hours,
-    minutes,
-    0,
-    0
-  );
+  return new Date(base.getFullYear(), base.getMonth(), base.getDate(), hours, minutes, 0, 0);
 }
 
 function toggleSetValue(set, value, setter) {
@@ -104,7 +89,7 @@ function CalendarIcon() {
     >
       <path
         fill="currentColor"
-        d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1.5A2.5 2.5 0 0 1 22 6.5v13A2.5 2.5 0 0 1 19.5 22h-15A2.5 2.5 0 0 1 2 19.5v-13A2.5 2.5 0 0 1 4.5 4H6V3a1 1 0 0 1 1-1Zm12.5 6H4.5a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-11a.5.5 0 0 0-.5-.5ZM6 10h3v3H6v-3Zm0 5h3v3H6v-3Zm5-5h3v3h-3v-3Zm0 5h3v3h-3v-3Zm5-5h3v3h-3v-3Z"
+        d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1.5A2.5 2.5 0 0 1 22 6.5v13A2.5 2.5 0 0 1 19.5 22h-15A2.5 2.5 0 0 1 2 19.5v-13A2.5 2.5 0 0 1 4.5 4H6V3a1 1 0 0 1 1-1Zm12.5 6H4.5a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h15a.5.5 0 0 0 .5-.5v-11a.5.5 0 0 0-.5-.5Z"
       />
     </svg>
   );
@@ -119,8 +104,6 @@ export default function App() {
   const [selectedCE, setSelectedCE] = useState(new Set());
   const [selectedPresenters, setSelectedPresenters] = useState(new Set());
   const [selectedCategories, setSelectedCategories] = useState(new Set());
-
-  // Read more / less state
   const [expandedIds, setExpandedIds] = useState(() => new Set());
 
   useEffect(() => {
@@ -137,21 +120,28 @@ export default function App() {
 
         const parsed = (data.items || []).map((row, idx) => {
           const date = row["Date of the Event"];
-          const time = row["Time of the event"];
+          const time1 = row["Time of the event"];
+          const time2 = row["Second Time of the Event"]; // <-- NEW
+          const link1 = row["Registration Link"];
+          const link2 = row["Second Registration Link"]; // <-- NEW
+          const logo = row["Presenter Logo Link"]; // <-- NEW
 
           return {
             id: safeStr(row.id) || String(idx + 1),
             title: safeStr(row["Name of Event"]),
             presenter: safeStr(row["Presenter / Vendor (Tag)"]),
+            presenterLogo: safeStr(logo),
             description: safeStr(row["Description"]),
             ce: safeStr(row["Hours (Tag)"]),
             cost: safeStr(row["Cost"]),
-            link: safeStr(row["Registration Link"]),
+            link1: safeStr(link1),
+            link2: safeStr(link2),
+            time1: safeStr(time1),
+            time2: safeStr(time2),
             thumb: safeStr(row["Thumbnail Link"]),
-            date,
-            time,
+            date: safeStr(date),
             categories: normalizeListField(row["Category Tags"]),
-            startAt: parseEventStart(date, time),
+            startAt: parseEventStart(date, time1 || time2),
           };
         });
 
@@ -169,6 +159,7 @@ export default function App() {
     };
   }, []);
 
+  // Hide past events
   const upcomingItems = useMemo(() => {
     const now = new Date();
     return items.filter((i) => !i.startAt || i.startAt >= now);
@@ -209,10 +200,7 @@ export default function App() {
         i.categories.some((c) => selectedCategories.has(c));
 
     return upcomingItems
-      .filter(
-        (i) =>
-          matchesQuery(i) && matchesCE(i) && matchesPresenter(i) && matchesCategory(i)
-      )
+      .filter((i) => matchesQuery(i) && matchesCE(i) && matchesPresenter(i) && matchesCategory(i))
       .sort((a, b) => {
         const at = a.startAt ? a.startAt.getTime() : Number.POSITIVE_INFINITY;
         const bt = b.startAt ? b.startAt.getTime() : Number.POSITIVE_INFINITY;
@@ -235,6 +223,24 @@ export default function App() {
       else next.add(id);
       return next;
     });
+  };
+
+  const timeBox = (time, link) => {
+    const t = normalizeTime(time);
+    if (!t || !link) return null;
+
+    return (
+      <div className="regBox">
+        <div className="regBoxLeft">
+          <div className="regBoxLabel">Time</div>
+          <div className="regBoxTime">{t}</div>
+        </div>
+        <a className="regBoxBtn" href={link} target="_blank" rel="noreferrer">
+          <CalendarIcon />
+          Register
+        </a>
+      </div>
+    );
   };
 
   return (
@@ -288,9 +294,7 @@ export default function App() {
                 <input
                   type="checkbox"
                   checked={selectedPresenters.has(opt)}
-                  onChange={() =>
-                    toggleSetValue(selectedPresenters, opt, setSelectedPresenters)
-                  }
+                  onChange={() => toggleSetValue(selectedPresenters, opt, setSelectedPresenters)}
                 />{" "}
                 {opt}
               </label>
@@ -304,9 +308,7 @@ export default function App() {
                 <input
                   type="checkbox"
                   checked={selectedCategories.has(opt)}
-                  onChange={() =>
-                    toggleSetValue(selectedCategories, opt, setSelectedCategories)
-                  }
+                  onChange={() => toggleSetValue(selectedCategories, opt, setSelectedCategories)}
                 />{" "}
                 {opt}
               </label>
@@ -325,38 +327,31 @@ export default function App() {
               const showReadMore = (w.description || "").length > 220;
 
               return (
-                <a
-                  className="eventCard"
-                  key={w.id}
-                  href={w.link || "#"}
-                  target="_blank"
-                  rel="noreferrer"
-                >
+                <div className="eventCard" key={w.id}>
                   <div className="eventThumbWrap">
                     {w.thumb ? (
-                      <img
-                        src={w.thumb}
-                        className="eventThumb"
-                        alt={w.title}
-                        loading="lazy"
-                      />
+                      <img src={w.thumb} className="eventThumb" alt={w.title} loading="lazy" />
                     ) : (
                       <div className="eventThumb placeholder" />
                     )}
                   </div>
 
                   <div className="eventBody">
-                    <div className="eventDate">{formatDateLine(w.date, w.time)}</div>
-
-                    <div className="eventTagRow">
+                    <div className="eventDateRow">
+                      <div className="eventDate">{formatDateLine(w.date)}</div>
                       <span className="eventTag">LIVE WEBINAR</span>
                     </div>
 
                     <h2 className="eventTitle">{w.title}</h2>
 
-                    {w.presenter && (
-                      <div className="eventSubtitle">{w.presenter}</div>
-                    )}
+                    <div className="presenterRow">
+                      {w.presenterLogo ? (
+                        <img className="presenterLogo" src={w.presenterLogo} alt={w.presenter} />
+                      ) : null}
+                      <div className="presenterText">
+                        {w.presenter ? `Presented by ${w.presenter}` : ""}
+                      </div>
+                    </div>
 
                     <div className="eventMeta">
                       <span>{w.ce ? `${w.ce} CE Credit` : "CE TBD"}</span>
@@ -364,16 +359,14 @@ export default function App() {
                       <span>{w.cost ? safeStr(w.cost).toUpperCase() : "FREE"}</span>
                     </div>
 
-                    <p className={`eventDesc ${expanded ? "expanded" : ""}`}>
-                      {w.description}
-                    </p>
+                    <p className={`eventDesc ${expanded ? "expanded" : ""}`}>{w.description}</p>
 
                     {showReadMore && (
                       <button
                         type="button"
                         className="readMoreBtn"
                         onClick={(e) => {
-                          e.preventDefault(); // prevent link navigation
+                          e.preventDefault();
                           e.stopPropagation();
                           toggleExpanded(w.id);
                         }}
@@ -382,18 +375,20 @@ export default function App() {
                       </button>
                     )}
 
-                    <div className="eventCtaRow">
-                      <span className="eventBtn">
-                        <CalendarIcon />
-                        Register Now
-                      </span>
+                    <div className="regWrap">
+                      {timeBox(w.time1, w.link1)}
+                      {timeBox(w.time2, w.link2)}
                     </div>
                   </div>
-                </a>
+                </div>
               );
             })}
         </main>
       </div>
+    </div>
+  );
+}
+
     </div>
   );
 }
