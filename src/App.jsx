@@ -366,10 +366,11 @@ function Card({ item }) {
       <div className="body">
 
         {/* TOP ROW — date + logo only */}
-        <div className="topRow">
-          {item.date ? (
-            <span className="dateBadge">{formatDate(item.date)}</span>
-          ) : null}
+  <div className="metaRow">
+  {item.date ? <span className="dateBadge">{formatDate(item.date)}</span> : null}
+  {typeof item.ce === "number" ? <span className="ceBadge">{item.ce} CE</span> : null}
+</div>
+
 
           {logoOk ? (
             <img
