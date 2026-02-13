@@ -348,3 +348,11 @@ h1{
 .errorHint{
   color:#92400e;
 }
+.card .title{
+  display:block !important;
+  overflow:visible !important;
+  white-space:normal !important;
+  text-overflow:unset !important;
+  -webkit-line-clamp:unset !important;
+  -webkit-box-orient:unset !important;
+}
