@@ -234,7 +234,7 @@ export default function App() {
         <div className="headerLeft">
           <div className="titleRow">
             <h1>Webinar Catalog</h1>
-            <span className="ver"></span>
+            
           </div>
           <p>Browse upcoming webinars, register instantly, and filter by category, vendor, or CE hours.</p>
         </div>
