@@ -2,19 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 
 /**
  * Webinar Catalog — App.jsx (prod)
- * Updates in this version:
- * ✅ In-person: address moved BELOW description
- * ✅ In-person: add a light shaded info box containing Date + Time + Address
- * ✅ In-person: if registration link exists, show a Register button inside that box
- * ✅ Change location icon (uses a simple inline SVG pin)
- * ✅ Filters: make each filter section collapsible (closed until clicked)
- *
- * Keeps everything else the same:
- * - JSONP loading
- * - Upcoming-only
- * - Sort by soonest date
- * - Filters: Format, Role/Position, Category, Vendors, CE Hours
- * - Hides "No link" text by only rendering buttons when URL exists
+ * ✅ Upcoming-only, sorted soonest first
+ * ✅ JSONP feed (CORS-safe) via VITE_DATA_URL
+ * ✅ Filters (left): Format, Role/Position (csv), Category, Vendors, CE Hours
+ * ✅ Filters are collapsible (<details>/<summary>)
+ * ✅ Cards: thumbnail + vendor logo, Date + CE + Format badges
+ * ✅ Description clamped by App.css
+ * ✅ In-person only: shaded info box BELOW description with Date, Time, Location + optional registration button
+ * ✅ Hides "No link" by only rendering sessions that have valid URLs
  */
 
 const DATA_URL = import.meta.env?.VITE_DATA_URL || "/data.json";
@@ -52,7 +47,11 @@ const splitCsv = (value) => {
     .filter(Boolean);
 };
 
-const isInPerson = (format) => safe(format).toLowerCase().includes("in");
+/** STRICT in-person detector to avoid accidental matches */
+const isInPerson = (format) => {
+  const f = safe(format).toLowerCase();
+  return f === "in-person" || f === "in person" || f === "inperson";
+};
 
 /* ---------- JSONP loader (CORS-safe) ---------- */
 function loadJsonp(url, timeoutMs = 12000) {
@@ -160,13 +159,7 @@ function CollapsibleSection({ title, children, defaultOpen = false }) {
 
 function PinIcon() {
   return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      style={{ display: "block" }}
-    >
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style={{ display: "block" }}>
       <path
         fill="currentColor"
         d="M12 2c-3.86 0-7 3.14-7 7c0 5.25 6.18 12.28 6.44 12.58c.3.34.82.34 1.12 0C12.82 21.28 19 14.25 19 9c0-3.86-3.14-7-7-7m0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5"
@@ -177,13 +170,7 @@ function PinIcon() {
 
 function ClockIcon() {
   return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      style={{ display: "block" }}
-    >
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style={{ display: "block" }}>
       <path
         fill="currentColor"
         d="M12 1.75A10.25 10.25 0 1 0 22.25 12A10.26 10.26 0 0 0 12 1.75m0 18.5A8.25 8.25 0 1 1 20.25 12A8.26 8.26 0 0 1 12 20.25M12.75 6a.75.75 0 0 0-1.5 0v6c0 .2.08.39.22.53l3.75 3.75a.75.75 0 1 0 1.06-1.06l-3.53-3.53z"
@@ -294,7 +281,9 @@ export default function App() {
     const rolesOn = rolesSelected.size > 0;
 
     return rows
+      // upcoming-only
       .filter((r) => (r.date ? endOfDay(r.date) >= now : true))
+      // filters
       .filter((r) => (catOn ? catSelected.has(r.category) : true))
       .filter((r) => (vendorOn ? vendorSelected.has(r.vendor) : true))
       .filter((r) => (ceOn ? typeof r.ce === "number" && ceSelected.has(r.ce) : true))
@@ -304,6 +293,7 @@ export default function App() {
         const rRoles = Array.isArray(r.roles) ? r.roles : [];
         return rRoles.some((rr) => rolesSelected.has(rr));
       })
+      // search
       .filter((r) => {
         if (!q) return true;
         const hay = `${r.title} ${r.vendor} ${r.category} ${r.format ?? ""} ${r.ce ?? ""} ${
@@ -313,6 +303,7 @@ export default function App() {
         }`.toLowerCase();
         return hay.includes(q);
       })
+      // sort: soonest first
       .sort((a, b) => {
         const ad = a.date ? a.date.getTime() : Number.POSITIVE_INFINITY;
         const bd = b.date ? b.date.getTime() : Number.POSITIVE_INFINITY;
@@ -376,11 +367,7 @@ export default function App() {
             <div className="list">
               {categories.map((c) => (
                 <label className="pillCheck" key={c}>
-                  <input
-                    type="checkbox"
-                    checked={catSelected.has(c)}
-                    onChange={() => toggle(setCatSelected, c)}
-                  />
+                  <input type="checkbox" checked={catSelected.has(c)} onChange={() => toggle(setCatSelected, c)} />
                   <span>{c}</span>
                 </label>
               ))}
@@ -440,8 +427,8 @@ export default function App() {
                 <strong>Error:</strong> {loadError}
               </div>
               <div className="errorHint">
-                Make sure <code>VITE_DATA_URL</code> points to your Google Apps Script <code>/exec</code> URL and that it
-                supports JSONP (<code>?callback=</code>).
+                Make sure <code>VITE_DATA_URL</code> points to your Google Apps Script <code>/exec</code> URL and supports
+                JSONP (<code>?callback=</code>).
               </div>
             </div>
           )}
@@ -463,17 +450,21 @@ export default function App() {
   );
 }
 
+/* ===============================
+   CARD
+================================= */
+
 function Card({ item }) {
   const thumbOk = isUrl(item.thumb);
   const logoOk = isUrl(item.vendorLogo);
+
   const inPerson = isInPerson(item.format);
   const inPersonRegOk = isUrl(item.inPersonRegistrationLink);
 
-  // Hide any sessions without a valid URL (removes "No link" behavior)
+  // only sessions with valid URLs (removes "No link")
   const sessionsWithLinks = (Array.isArray(item.sessions) ? item.sessions : []).filter((s) => isUrl(s?.url));
 
-  // For the in-person info box, pull the time label from the first session label if present.
-  // (This keeps your existing sheet structure without adding new columns.)
+  // in-person time: use first session label if present (keeps existing sheet structure)
   const timeLabel = safe(item.sessions?.[0]?.label);
 
   return (
@@ -513,7 +504,7 @@ function Card({ item }) {
           </p>
         ) : null}
 
-        {/* ✅ In-person: shaded info box BELOW description */}
+        {/* ✅ ONLY for in-person: shaded info box BELOW description */}
         {inPerson && (item.date || timeLabel || safe(item.location) || inPersonRegOk) ? (
           <div className="inPersonBox">
             <div className="inPersonBoxGrid">
@@ -559,7 +550,7 @@ function Card({ item }) {
           </div>
         ) : null}
 
-        {/* Sessions (webinar links etc.) */}
+        {/* Webinar / general sessions */}
         <div className="sessions">
           {sessionsWithLinks.map((s, i) => (
             <div className="session" key={i}>
