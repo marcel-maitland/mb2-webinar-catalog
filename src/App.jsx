@@ -2,12 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 
 /**
  * Webinar Catalog — App.jsx (prod)
- * Latest updates added:
- * ✅ Differentiate In-Person vs Web events via Sheet column "Format"
- * ✅ Add "Format" filter in left sidebar
- * ✅ Show Format badge on each card (alongside Date + CE)
- *
- * NOTE: This does NOT change anything else.
+ * Latest updates:
+ * ✅ Format (Webinar vs In-Person) from Sheet column "Format"
+ * ✅ Format filter in sidebar + badge on card
+ * ✅ NEW: Roles filter (supports comma-separated multiple roles) from Sheet column "Roles"
  */
 
 const DATA_URL = import.meta.env?.VITE_DATA_URL || "/data.json";
@@ -35,6 +33,15 @@ const endOfDay = (d) => {
 };
 
 const uniq = (arr) => [...new Set(arr.filter(Boolean))];
+
+const splitCsv = (value) => {
+  const s = safe(value);
+  if (!s) return [];
+  return s
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+};
 
 /* ---------- JSONP loader (CORS-safe) ---------- */
 function loadJsonp(url, timeoutMs = 12000) {
@@ -93,16 +100,19 @@ function normalize(row, i) {
   return {
     id: get("id", "ID") || `row-${i}`,
     title: get("Name of Event", "Event Name", "Title") || "Untitled Event",
-    description: get("Description", "description", "DESC", "Course Description"),
+    description: get("Description", "description", "DESC", "Course Description") || "",
     date: parseDate(get("Date of the Event", "Event Date", "Date")),
-    category: get("category", "Category", "CATEGORY"),
+    category: get("category", "Category", "CATEGORY") || "",
     ce: Number.isFinite(ce) && ce > 0 ? ce : null,
-    vendor: get("Presenter / Vendor (Tag)", "Vendor", "Presenter", "Presenter/Vendor"),
-    vendorLogo: get("Vendor Logo", "Vender Logo", "Vendor logo", "Logo"),
-    thumb: get("Course Thumb", "Course Thumbnail", "Thumbnail", "Thumb", "Image"),
+    vendor: get("Presenter / Vendor (Tag)", "Vendor", "Presenter", "Presenter/Vendor") || "",
+    vendorLogo: get("Vendor Logo", "Vender Logo", "Vendor logo", "Logo") || "",
+    thumb: get("Course Thumb", "Course Thumbnail", "Thumbnail", "Thumb", "Image") || "",
 
-    /* ✅ NEW: format to differentiate In-Person vs Web */
-    format: get("Format", "format", "Event Format", "Type"),
+    /* Format */
+    format: get("Format", "format", "Event Format", "Type") || "",
+
+    /* ✅ NEW: Roles (comma-separated supported) */
+    roles: splitCsv(get("Roles", "Role", "Role / Position", "Position", "Positions")),
 
     sessions: [
       {
@@ -131,9 +141,10 @@ export default function App() {
   const [catSelected, setCatSelected] = useState(new Set());
   const [vendorSelected, setVendorSelected] = useState(new Set());
   const [ceSelected, setCeSelected] = useState(new Set());
-
-  /* ✅ NEW: Format filter state */
   const [formatSelected, setFormatSelected] = useState(new Set());
+
+  /* ✅ NEW: Roles filter state */
+  const [rolesSelected, setRolesSelected] = useState(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -183,11 +194,16 @@ export default function App() {
     return [...new Set(vals)].sort((a, b) => a - b);
   }, [rows]);
 
-  /* ✅ NEW: formats list */
   const formats = useMemo(
     () => uniq(rows.map((r) => r.format)).sort((a, b) => a.localeCompare(b)),
     [rows]
   );
+
+  /* ✅ NEW: all roles list */
+  const roles = useMemo(() => {
+    const all = rows.flatMap((r) => Array.isArray(r.roles) ? r.roles : []);
+    return uniq(all).sort((a, b) => a.localeCompare(b));
+  }, [rows]);
 
   const toggle = (setFn, value) =>
     setFn((prev) => {
@@ -201,7 +217,8 @@ export default function App() {
     setCatSelected(new Set());
     setVendorSelected(new Set());
     setCeSelected(new Set());
-    setFormatSelected(new Set()); // ✅ NEW
+    setFormatSelected(new Set());
+    setRolesSelected(new Set()); // ✅ NEW
   };
 
   const filtered = useMemo(() => {
@@ -211,31 +228,34 @@ export default function App() {
     const catOn = catSelected.size > 0;
     const vendorOn = vendorSelected.size > 0;
     const ceOn = ceSelected.size > 0;
-    const formatOn = formatSelected.size > 0; // ✅ NEW
+    const formatOn = formatSelected.size > 0;
+    const rolesOn = rolesSelected.size > 0; // ✅ NEW
 
     return rows
-      // auto-hide past events
       .filter((r) => (r.date ? endOfDay(r.date) >= now : true))
-      // filters
       .filter((r) => (catOn ? catSelected.has(r.category) : true))
       .filter((r) => (vendorOn ? vendorSelected.has(r.vendor) : true))
       .filter((r) => (ceOn ? typeof r.ce === "number" && ceSelected.has(r.ce) : true))
-      .filter((r) => (formatOn ? formatSelected.has(r.format) : true)) // ✅ NEW
-      // search
+      .filter((r) => (formatOn ? formatSelected.has(r.format) : true))
+      /* ✅ NEW: roles match if ANY selected role is in r.roles */
+      .filter((r) => {
+        if (!rolesOn) return true;
+        const rRoles = Array.isArray(r.roles) ? r.roles : [];
+        return rRoles.some((rr) => rolesSelected.has(rr));
+      })
       .filter((r) => {
         if (!q) return true;
-        const hay = `${r.title} ${r.vendor} ${r.category} ${r.format ?? ""} ${r.ce ?? ""} ${
-          r.description ?? ""
-        } ${r.date ? formatDate(r.date) : ""}`.toLowerCase();
+        const hay = `${r.title} ${r.vendor} ${r.category} ${r.format ?? ""} ${r.ce ?? ""} ${r.description ?? ""} ${
+          r.date ? formatDate(r.date) : ""
+        } ${(Array.isArray(r.roles) ? r.roles.join(" ") : "")}`.toLowerCase();
         return hay.includes(q);
       })
-      // sort by soonest date
       .sort((a, b) => {
         const ad = a.date ? a.date.getTime() : Number.POSITIVE_INFINITY;
         const bd = b.date ? b.date.getTime() : Number.POSITIVE_INFINITY;
         return ad - bd;
       });
-  }, [rows, query, catSelected, vendorSelected, ceSelected, formatSelected]);
+  }, [rows, query, catSelected, vendorSelected, ceSelected, formatSelected, rolesSelected]);
 
   return (
     <div className="page">
@@ -244,7 +264,7 @@ export default function App() {
           <div className="titleRow">
             <h1>Webinar Catalog</h1>
           </div>
-          <p>Browse upcoming webinars, register instantly, and filter by category, vendor, or CE hours.</p>
+          <p>Browse upcoming webinars, register instantly, and filter by category, vendor, CE hours, format, or role.</p>
         </div>
 
         <input
@@ -256,11 +276,10 @@ export default function App() {
       </header>
 
       <div className="layout">
-        {/* LEFT FILTERS */}
         <aside className="sidebar">
           <div className="sideTitle">Filters</div>
 
-          {/* ✅ NEW: Format filter */}
+          {/* Format */}
           <div className="group">
             <div className="groupTitle">Format</div>
             <div className="list">
@@ -277,6 +296,24 @@ export default function App() {
             </div>
           </div>
 
+          {/* ✅ NEW: Roles */}
+          <div className="group">
+            <div className="groupTitle">Role / Position</div>
+            <div className="list">
+              {roles.map((r) => (
+                <label className="pillCheck" key={r}>
+                  <input
+                    type="checkbox"
+                    checked={rolesSelected.has(r)}
+                    onChange={() => toggle(setRolesSelected, r)}
+                  />
+                  <span>{r}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Category */}
           <div className="group">
             <div className="groupTitle">Category</div>
             <div className="list">
@@ -289,6 +326,7 @@ export default function App() {
             </div>
           </div>
 
+          {/* Vendors */}
           <div className="group">
             <div className="groupTitle">Vendors</div>
             <div className="list">
@@ -305,6 +343,7 @@ export default function App() {
             </div>
           </div>
 
+          {/* CE */}
           <div className="group">
             <div className="groupTitle">CE Hours</div>
             <div className="list">
@@ -331,7 +370,6 @@ export default function App() {
           </div>
         </aside>
 
-        {/* MAIN GRID */}
         <main className="main">
           {loading && <div className="center">Loading…</div>}
 
@@ -345,8 +383,8 @@ export default function App() {
                 <strong>Error:</strong> {loadError}
               </div>
               <div className="errorHint">
-                Make sure <code>VITE_DATA_URL</code> points to your Google Apps Script <code>/exec</code> URL and that it
-                supports JSONP (<code>?callback=</code>).
+                Make sure <code>VITE_DATA_URL</code> points to your Apps Script <code>/exec</code> URL and supports JSONP
+                (<code>?callback=</code>).
               </div>
             </div>
           )}
@@ -393,8 +431,6 @@ function Card({ item }) {
           <div className="metaRow">
             {item.date ? <span className="dateBadge">{formatDate(item.date)}</span> : null}
             {typeof item.ce === "number" ? <span className="ceBadge">{item.ce} CE</span> : null}
-
-            {/* ✅ NEW: Format badge */}
             {safe(item.format) ? <span className="formatBadge">{item.format}</span> : null}
           </div>
 
