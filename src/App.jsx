@@ -5,7 +5,12 @@ import { useEffect, useMemo, useState } from "react";
  * Latest updates:
  * ✅ Format (Webinar vs In-Person) from Sheet column "Format"
  * ✅ Format filter in sidebar + badge on card
- * ✅ NEW: Roles filter (supports comma-separated multiple roles) from Sheet column "Roles"
+ * ✅ Roles filter (comma-separated multiple roles) from Sheet column "Roles"
+ * ✅ In-person Location from Sheet column "Location" (shown only for In-Person)
+ * ✅ In-person Registration Link from Sheet column "In person registration link"
+ * ✅ If a session has NO valid URL, we do NOT show "No link" (we hide the button area)
+ *
+ * NOTE: Does not change anything else.
  */
 
 const DATA_URL = import.meta.env?.VITE_DATA_URL || "/data.json";
@@ -42,6 +47,8 @@ const splitCsv = (value) => {
     .map((x) => x.trim())
     .filter(Boolean);
 };
+
+const isInPerson = (format) => safe(format).toLowerCase().includes("in");
 
 /* ---------- JSONP loader (CORS-safe) ---------- */
 function loadJsonp(url, timeoutMs = 12000) {
@@ -111,8 +118,19 @@ function normalize(row, i) {
     /* Format */
     format: get("Format", "format", "Event Format", "Type") || "",
 
-    /* ✅ NEW: Roles (comma-separated supported) */
+    /* Roles */
     roles: splitCsv(get("Roles", "Role", "Role / Position", "Position", "Positions")),
+
+    /* ✅ NEW: in-person fields */
+    location: get("Location", "location", "Venue", "Address") || "",
+    inPersonRegistrationLink: get(
+      "In person registration link",
+      "In Person Registration Link",
+      "In-Person Registration Link",
+      "In person Registration link",
+      "In Person Reg Link",
+      "In-Person Reg Link"
+    ) || "",
 
     sessions: [
       {
@@ -142,8 +160,6 @@ export default function App() {
   const [vendorSelected, setVendorSelected] = useState(new Set());
   const [ceSelected, setCeSelected] = useState(new Set());
   const [formatSelected, setFormatSelected] = useState(new Set());
-
-  /* ✅ NEW: Roles filter state */
   const [rolesSelected, setRolesSelected] = useState(new Set());
 
   useEffect(() => {
@@ -199,9 +215,8 @@ export default function App() {
     [rows]
   );
 
-  /* ✅ NEW: all roles list */
   const roles = useMemo(() => {
-    const all = rows.flatMap((r) => Array.isArray(r.roles) ? r.roles : []);
+    const all = rows.flatMap((r) => (Array.isArray(r.roles) ? r.roles : []));
     return uniq(all).sort((a, b) => a.localeCompare(b));
   }, [rows]);
 
@@ -218,7 +233,7 @@ export default function App() {
     setVendorSelected(new Set());
     setCeSelected(new Set());
     setFormatSelected(new Set());
-    setRolesSelected(new Set()); // ✅ NEW
+    setRolesSelected(new Set());
   };
 
   const filtered = useMemo(() => {
@@ -229,7 +244,7 @@ export default function App() {
     const vendorOn = vendorSelected.size > 0;
     const ceOn = ceSelected.size > 0;
     const formatOn = formatSelected.size > 0;
-    const rolesOn = rolesSelected.size > 0; // ✅ NEW
+    const rolesOn = rolesSelected.size > 0;
 
     return rows
       .filter((r) => (r.date ? endOfDay(r.date) >= now : true))
@@ -237,7 +252,6 @@ export default function App() {
       .filter((r) => (vendorOn ? vendorSelected.has(r.vendor) : true))
       .filter((r) => (ceOn ? typeof r.ce === "number" && ceSelected.has(r.ce) : true))
       .filter((r) => (formatOn ? formatSelected.has(r.format) : true))
-      /* ✅ NEW: roles match if ANY selected role is in r.roles */
       .filter((r) => {
         if (!rolesOn) return true;
         const rRoles = Array.isArray(r.roles) ? r.roles : [];
@@ -245,9 +259,11 @@ export default function App() {
       })
       .filter((r) => {
         if (!q) return true;
-        const hay = `${r.title} ${r.vendor} ${r.category} ${r.format ?? ""} ${r.ce ?? ""} ${r.description ?? ""} ${
+        const hay = `${r.title} ${r.vendor} ${r.category} ${r.format ?? ""} ${r.ce ?? ""} ${
+          r.description ?? ""
+        } ${r.location ?? ""} ${(Array.isArray(r.roles) ? r.roles.join(" ") : "")} ${
           r.date ? formatDate(r.date) : ""
-        } ${(Array.isArray(r.roles) ? r.roles.join(" ") : "")}`.toLowerCase();
+        }`.toLowerCase();
         return hay.includes(q);
       })
       .sort((a, b) => {
@@ -264,7 +280,7 @@ export default function App() {
           <div className="titleRow">
             <h1>Webinar Catalog</h1>
           </div>
-          <p>Browse upcoming webinars, register instantly, and filter by category, vendor, CE hours, format, or role.</p>
+          <p>Browse upcoming events, register instantly, and filter by category, vendor, CE hours, format, or role.</p>
         </div>
 
         <input
@@ -296,7 +312,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* ✅ NEW: Roles */}
+          {/* Role / Position */}
           <div className="group">
             <div className="groupTitle">Role / Position</div>
             <div className="list">
@@ -409,6 +425,11 @@ export default function App() {
 function Card({ item }) {
   const thumbOk = isUrl(item.thumb);
   const logoOk = isUrl(item.vendorLogo);
+  const inPerson = isInPerson(item.format);
+  const inPersonRegOk = isUrl(item.inPersonRegistrationLink);
+
+  // Hide any sessions without a valid URL (removes "No link" behavior)
+  const sessionsWithLinks = (Array.isArray(item.sessions) ? item.sessions : []).filter((s) => isUrl(s?.url));
 
   return (
     <article className="card">
@@ -441,6 +462,9 @@ function Card({ item }) {
           {item.title}
         </h3>
 
+        {/* In-person location line (only if in-person and location exists) */}
+        {inPerson && safe(item.location) ? <div className="locationLine">📍 {item.location}</div> : null}
+
         {safe(item.description) ? (
           <p className="descFull" title={item.description}>
             {item.description}
@@ -448,16 +472,23 @@ function Card({ item }) {
         ) : null}
 
         <div className="sessions">
-          {item.sessions.map((s, i) => (
+          {/* Optional in-person registration row */}
+          {inPerson && inPersonRegOk ? (
+            <div className="session">
+              <span className="sessionLabel">In-Person Registration</span>
+              <a className="sessionBtn" href={item.inPersonRegistrationLink} target="_blank" rel="noopener">
+                Register →
+              </a>
+            </div>
+          ) : null}
+
+          {/* Existing sessions (only show if URL exists) */}
+          {sessionsWithLinks.map((s, i) => (
             <div className="session" key={i}>
               <span className="sessionLabel">{s.label}</span>
-              {isUrl(s.url) ? (
-                <a className="sessionBtn" href={s.url} target="_blank" rel="noopener">
-                  Register →
-                </a>
-              ) : (
-                <span className="sessionBtnDisabled">No link</span>
-              )}
+              <a className="sessionBtn" href={s.url} target="_blank" rel="noopener">
+                Register →
+              </a>
             </div>
           ))}
         </div>
