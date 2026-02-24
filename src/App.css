@@ -337,20 +337,22 @@ h1{ margin:0; font-size:30px; }
 }
 
 /* ✅ Registration buttons now ORANGE */
-.sessionBtn{
-  background:var(--primarySoft);
-  color:#9a3412;
-  padding:6px 12px;
+sessionBtn{
+  background:var(--primary);      /* solid orange */
+  color:#ffffff;                  /* white text */
+  padding:8px 14px;
   border-radius:10px;
   text-decoration:none;
   font-weight:800;
-  border:1px solid #fed7aa;
-  transition:.2s ease;
+  border:1px solid var(--primary);
+  transition:all .2s ease;
+  display:inline-block;
 }
+
 .sessionBtn:hover{
-  background:var(--primary);
-  color:white;
-  border-color:var(--primary);
+  background:#ea580c;             /* slightly darker orange */
+  border-color:#ea580c;
+  transform:translateY(-1px);
 }
 
 .sessionBtnDisabled{
