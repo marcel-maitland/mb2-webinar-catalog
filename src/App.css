@@ -13,11 +13,11 @@
 }
 
 /* PAGE */
-body{
-  margin:0;
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background:var(--bg);
-  color:var(--text);
+.body{
+  padding:16px 18px 20px;
+  display:flex;
+  flex-direction:column;
+  flex:1;
 }
 
 .page{ padding:30px 40px; }
