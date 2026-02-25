@@ -369,11 +369,17 @@ h1{
    WEBINAR SESSIONS (bottom pinned)
 ========================= */
 
+/* SESSIONS (Webinar time blocks) */
 .sessions{
-  margin-top:auto; /* pins to bottom for non in-person cards */
+  margin-top:auto;
   display:flex;
   flex-direction:column;
-  gap:10px;
+  gap:14px;              /* ✅ spacing between session boxes */
+}
+
+/* fallback spacing if some CSS overrides gap */
+.sessions > .session + .session{
+  margin-top:14px;
 }
 
 .session{
@@ -381,13 +387,11 @@ h1{
   justify-content:space-between;
   align-items:center;
   background:#f8fafc;
-  padding:10px 12px;
-  border-radius:12px;
+  padding:12px 14px;
+  border-radius:14px;
   border:1px solid var(--border);
   font-size:14px;
-  font-family: inherit;
 }
-
 .sessionLabel{
   font-weight:900;
   color:#0f172a;
