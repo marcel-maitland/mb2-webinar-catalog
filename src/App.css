@@ -6,23 +6,42 @@
   --muted:#64748b;
   --muted2:#475569;
 
-  /* Primary action color (now ORANGE) */
-  --primary:#f97316;       /* orange */
-  --primarySoft:#fff7ed;   /* light orange */
+  /* Primary action color (orange) */
+  --primary:#f97316;
+  --primaryDark:#ea580c;
+  --primarySoft:#fff7ed;
+
   --shadow:0 6px 20px rgba(0,0,0,.06);
 }
 
-/* PAGE */
-.body{
-  padding:16px 18px 20px;
-  display:flex;
-  flex-direction:column;
-  flex:1;
+/* =========================
+   GLOBAL / PAGE
+========================= */
+
+html, body{
+  height:100%;
 }
 
-.page{ padding:30px 40px; }
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  /* Force consistent font everywhere */
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
 
-/* HEADER */
+*{
+  box-sizing:border-box;
+}
+
+.page{
+  padding:30px 40px;
+}
+
+/* =========================
+   HEADER
+========================= */
+
 .header{
   display:flex;
   justify-content:space-between;
@@ -30,9 +49,25 @@
   gap:40px;
   margin-bottom:30px;
 }
-.titleRow{ display:flex; align-items:center; gap:10px; }
-h1{ margin:0; font-size:30px; }
-.header p{ margin:6px 0 0; color:var(--muted); }
+
+.titleRow{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+h1{
+  margin:0;
+  font-size:30px;
+  font-weight:900;
+  letter-spacing:-0.02em;
+}
+
+.header p{
+  margin:6px 0 0;
+  color:var(--muted);
+  font-size:14px;
+}
 
 .search{
   min-width:360px;
@@ -41,17 +76,30 @@ h1{ margin:0; font-size:30px; }
   border:1px solid var(--border);
   font-size:14px;
   outline:none;
+  background:#fff;
+  font-family: inherit;
 }
-.search:focus{ border-color:var(--primary); }
 
-/* LAYOUT */
+.search:focus{
+  border-color:var(--primary);
+  box-shadow:0 0 0 4px rgba(249,115,22,.12);
+}
+
+/* =========================
+   LAYOUT
+========================= */
+
 .layout{
   display:grid;
   grid-template-columns:260px 1fr;
   gap:30px;
+  align-items:start;
 }
 
-/* SIDEBAR */
+/* =========================
+   SIDEBAR
+========================= */
+
 .sidebar{
   background:var(--card);
   padding:20px;
@@ -60,22 +108,30 @@ h1{ margin:0; font-size:30px; }
   box-shadow:var(--shadow);
   height:fit-content;
 }
+
 .sideTitle{
-  font-weight:800;
+  font-weight:900;
   font-size:18px;
   margin-bottom:14px;
 }
+
 .sideDivider{
   height:1px;
   background:var(--border);
   margin:18px 0 14px;
 }
+
 .sideStat{
   display:flex;
   justify-content:space-between;
   font-size:14px;
+  font-weight:800;
 }
-.muted{ color:var(--muted); }
+
+.muted{
+  color:var(--muted);
+  font-weight:700;
+}
 
 /* Collapsible filters */
 .filterDetails{
@@ -85,33 +141,44 @@ h1{ margin:0; font-size:30px; }
   margin:0 0 12px;
   overflow:hidden;
 }
+
 .filterSummary{
   list-style:none;
   cursor:pointer;
   padding:10px 12px;
-  font-weight:800;
+  font-weight:900;
   color:var(--muted2);
   display:flex;
   align-items:center;
   justify-content:space-between;
   user-select:none;
+  font-family: inherit;
 }
+
 .filterSummary::-webkit-details-marker{ display:none; }
+
 .filterSummary::after{
   content:"▾";
   font-size:12px;
   color:var(--muted);
   transform: translateY(-1px);
 }
-.filterDetails[open] .filterSummary::after{ content:"▴"; }
-.filterBody{ padding:10px 12px 12px; }
 
-/* Lists + check pills (used inside filterBody) */
+.filterDetails[open] .filterSummary::after{
+  content:"▴";
+}
+
+.filterBody{
+  padding:10px 12px 12px;
+}
+
+/* Filter lists + checkbox pills */
 .list{
   display:flex;
   flex-direction:column;
   gap:8px;
 }
+
 .pillCheck{
   display:flex;
   align-items:center;
@@ -122,36 +189,60 @@ h1{ margin:0; font-size:30px; }
   font-size:14px;
   cursor:pointer;
   background:#fff;
+  font-family: inherit;
 }
-.pillCheck input{ accent-color:var(--primary); }
+
+.pillCheck input{
+  accent-color:var(--primary);
+}
 
 .clearBtn{
   width:100%;
   margin-top:6px;
-  padding:10px;
+  padding:10px 12px;
   border-radius:12px;
   border:1px solid var(--border);
   background:#f8fafc;
-  font-weight:700;
+  font-weight:900;
   cursor:pointer;
+  font-family: inherit;
+  transition: transform .15s ease, background .15s ease;
 }
 
-/* MAIN */
-.main{ min-height:200px; }
+.clearBtn:hover{
+  background:#f1f5f9;
+  transform: translateY(-1px);
+}
+
+/* =========================
+   MAIN
+========================= */
+
+.main{
+  min-height:200px;
+}
+
 .center{
   text-align:center;
   padding:40px;
   color:var(--muted);
+  font-family: inherit;
 }
 
-/* GRID */
+/* =========================
+   GRID
+========================= */
+
 .grid{
   display:grid;
   grid-template-columns:repeat(3, 1fr);
   gap:24px;
 }
 
-/* CARD */
+/* =========================
+   CARD
+========================= */
+
 .card{
   background:var(--card);
   border-radius:18px;
@@ -160,8 +251,10 @@ h1{ margin:0; font-size:30px; }
   box-shadow:var(--shadow);
   display:flex;
   flex-direction:column;
-  transition:.25s ease;
+  transition: transform .2s ease, box-shadow .2s ease;
+  font-family: inherit; /* ensure card uses same font */
 }
+
 .card:hover{
   transform:translateY(-4px);
   box-shadow:0 12px 30px rgba(0,0,0,.08);
@@ -174,10 +267,12 @@ h1{ margin:0; font-size:30px; }
   background:#e2e8f0;
   overflow:hidden;
 }
+
 .thumb img{
   width:100%;
   height:100%;
   object-fit:cover;
+  display:block;
 }
 
 /* BODY */
@@ -186,19 +281,23 @@ h1{ margin:0; font-size:30px; }
   display:flex;
   flex-direction:column;
   flex:1;
+  font-family: inherit;
 }
 
-/* TOP ROW */
+/* TOP META */
 .topRow{
   display:flex;
   justify-content:space-between;
   align-items:center;
   margin-bottom:10px;
 }
+
 .metaRow{
   display:flex;
   gap:8px;
   flex-wrap:wrap;
+  align-items:center;
+  font-family: inherit;
 }
 
 /* Badges */
@@ -208,58 +307,54 @@ h1{ margin:0; font-size:30px; }
   padding:5px 10px;
   border-radius:999px;
   font-size:12px;
-  font-weight:700;
+  font-weight:900;
   border:1px solid #e0e7ff;
 }
+
 .ceBadge{
   background:#f1f5f9;
   color:#0f172a;
   padding:5px 10px;
   border-radius:999px;
   font-size:12px;
-  font-weight:700;
+  font-weight:900;
 }
+
 .formatBadge{
   background:var(--primarySoft);
   color:#9a3412;
   padding:5px 10px;
   border-radius:999px;
   font-size:12px;
-  font-weight:700;
+  font-weight:900;
   border:1px solid #fed7aa;
 }
 
 .vendorLogo{
-  max-height:30px;
-  max-width:90px;
+  max-height:34px;
+  max-width:110px;
   object-fit:contain;
+  display:block;
 }
 
 /* TITLE — always full */
 .title{
-  margin:0;
-  font-size:17px;
-  font-weight:800;
-  line-height:1.3;
+  margin:10px 0 0;
+  font-size:20px;
+  font-weight:950;
+  line-height:1.25;
   display:block;
   overflow:visible;
-  text-overflow:unset;
   white-space:normal;
+  text-overflow:unset;
   -webkit-line-clamp:unset;
   -webkit-box-orient:unset;
-}
-.card .title{
-  display:block !important;
-  overflow:visible !important;
-  white-space:normal !important;
-  text-overflow:unset !important;
-  -webkit-line-clamp:unset !important;
-  -webkit-box-orient:unset !important;
+  font-family: inherit;
 }
 
 /* DESCRIPTION — 5 lines max */
 .descFull{
-  margin:10px 0 14px;
+  margin:12px 0 14px;
   color:var(--muted2);
   font-size:14px;
   line-height:1.55;
@@ -267,84 +362,20 @@ h1{ margin:0; font-size:30px; }
   -webkit-line-clamp:5;
   -webkit-box-orient:vertical;
   overflow:hidden;
+  font-family: inherit;
 }
 
-/* ===============================
-   IN-PERSON EVENT BOX
-================================= */
+/* =========================
+   WEBINAR SESSIONS (bottom pinned)
+========================= */
 
-.inPersonBox{
-  margin:16px 0 0;                 /* space above box */
-  background:#f8fafc;
-  border:1px solid var(--border);
-  border-radius:16px;
-  padding:16px;
-
-  /* ✅ Critical fix for spacing */
-  display:flex;
-  flex-direction:column;
-  gap:18px;                        /* space between info + register */
-}
-
-/* Top info area (date, time, location) */
-.inPersonBoxGrid{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  padding-bottom:14px;
-  border-bottom:1px solid var(--border);  /* subtle divider */
-}
-
-/* Each row inside info area */
-.inPersonRow{
-  display:flex;
-  justify-content:space-between;
-  gap:14px;
-  align-items:flex-start;
-}
-
-/* Left side label + icon */
-.inPersonKey{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  font-size:12px;
-  font-weight:800;
-  color:var(--muted);
-  white-space:nowrap;
-}
-
-/* Location / time icon */
-.inPersonIcon{
-  color:#475569;
-  display:inline-flex;
-}
-
-/* Right side value (date, time, address) */
-.inPersonVal{
-  font-size:14px;
-  font-weight:700;
-  color:#0f172a;
-  text-align:right;
-  flex:1;
-}
-
-/* Registration row inside in-person box */
-.inPersonActions{
-  display:flex;
-  justify-content:flex-end;
-  align-items:center;
-  margin-top:4px; /* extra breathing room below divider */
-}
-}
-
-/* SESSIONS */
 .sessions{
-  margin-top:auto;
+  margin-top:auto; /* pins to bottom for non in-person cards */
   display:flex;
   flex-direction:column;
   gap:10px;
 }
+
 .session{
   display:flex;
   justify-content:space-between;
@@ -354,55 +385,180 @@ h1{ margin:0; font-size:30px; }
   border-radius:12px;
   border:1px solid var(--border);
   font-size:14px;
-}
-.sessionLabel{
-  font-weight:700;
-  color:#0f172a;
+  font-family: inherit;
 }
 
-/* ✅ Registration buttons now ORANGE */
+.sessionLabel{
+  font-weight:900;
+  color:#0f172a;
+  font-family: inherit;
+}
+
+/* ORANGE Register button */
 .sessionBtn{
-  background:var(--primary);      /* solid orange */
-  color:#ffffff;                  /* white text */
-  padding:8px 14px;
-  border-radius:10px;
+  background:var(--primary);
+  color:#ffffff;
+  padding:10px 16px;
+  border-radius:14px;
   text-decoration:none;
-  font-weight:800;
+  font-weight:950;
   border:1px solid var(--primary);
-  transition:all .2s ease;
-  display:inline-block;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  transition: transform .15s ease, background .15s ease, border-color .15s ease;
+  font-family: inherit;
 }
 
 .sessionBtn:hover{
-  background:#ea580c;             /* slightly darker orange */
-  border-color:#ea580c;
-  transform:translateY(-1px);
+  background:var(--primaryDark);
+  border-color:var(--primaryDark);
+  transform: translateY(-1px);
 }
 
 .sessionBtnDisabled{
   color:var(--muted);
   font-size:13px;
+  font-weight:800;
+  font-family: inherit;
 }
 
-/* ERROR BOX */
+/* =========================
+   IN-PERSON BOXES
+========================= */
+
+/* The address/date/time box */
+.inPersonBox{
+  margin:12px 0 0;
+  background:#f8fafc;
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:14px;
+  font-family: inherit;
+}
+
+/* This is the KEY FIX:
+   Add guaranteed spacing BEFORE the registration box that follows the inPersonBox */
+.inPersonBox + .inPersonReg,
+.inPersonBox + .sessions,
+.inPersonBox + .session,
+.inPersonBox + .inPersonActions,
+.inPersonBox + .inPersonRegWrap{
+  margin-top:16px; /* <- makes the boxes NOT touch */
+}
+
+.inPersonBoxGrid{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.inPersonRow{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+}
+
+.inPersonKey{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12px;
+  font-weight:950;
+  color:var(--muted);
+  white-space:nowrap;
+}
+
+.inPersonIcon{
+  color:#475569;
+  display:inline-flex;
+  line-height:0;
+}
+
+.inPersonVal{
+  font-size:14px;
+  font-weight:950;
+  color:#0f172a;
+  text-align:right;
+  flex:1;
+}
+
+/* Optional divider inside the in-person info box */
+.inPersonDivider{
+  height:1px;
+  background:var(--border);
+  margin-top:8px;
+}
+
+/* If you render the in-person registration as its own box, use this */
+.inPersonReg{
+  background:#f8fafc;
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  font-family: inherit;
+}
+
+/* If your in-person registration row uses the normal .session styles,
+   this ensures it still looks consistent */
+.inPersonReg .sessionBtn{
+  border-radius:16px;
+  padding:12px 18px;
+}
+
+/* =========================
+   ERROR BOX
+========================= */
+
 .errorBox{
   background:#fff7ed;
   border:1px solid #facc15;
   padding:20px;
   border-radius:14px;
   font-size:14px;
+  font-family: inherit;
 }
+
 .errorTitle{
-  font-weight:700;
+  font-weight:900;
   margin-bottom:6px;
 }
-.errorLine{ margin-bottom:6px; }
-.errorHint{ color:#92400e; }
 
-/* Mobile */
+.errorLine{
+  margin-bottom:6px;
+}
+
+.errorHint{
+  color:#92400e;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 1100px){
+  .grid{
+    grid-template-columns:repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 980px){
-  .layout{ grid-template-columns:1fr; }
-  .page{ padding:20px 16px; }
-  .search{ min-width:0; width:100%; }
-  .grid{ grid-template-columns:1fr; }
+  .layout{
+    grid-template-columns:1fr;
+  }
+  .page{
+    padding:20px 16px;
+  }
+  .search{
+    min-width:0;
+    width:100%;
+  }
+  .grid{
+    grid-template-columns:1fr;
+  }
 }
