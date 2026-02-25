@@ -277,17 +277,20 @@ h1{ margin:0; font-size:30px; }
   border-radius:14px;
   padding:12px;
 }
+
 .inPersonBoxGrid{
   display:flex;
   flex-direction:column;
   gap:10px;
 }
+
 .inPersonRow{
   display:flex;
   justify-content:space-between;
   gap:12px;
   align-items:flex-start;
 }
+
 .inPersonKey{
   display:flex;
   align-items:center;
@@ -297,10 +300,12 @@ h1{ margin:0; font-size:30px; }
   color:var(--muted);
   white-space:nowrap;
 }
+
 .inPersonIcon{
   color:#475569;
   display:inline-flex;
 }
+
 .inPersonVal{
   font-size:13px;
   font-weight:700;
@@ -308,10 +313,12 @@ h1{ margin:0; font-size:30px; }
   text-align:right;
   flex:1;
 }
+
+/* ✅ spacing so content doesn't touch the register area */
 .inPersonActions{
-  margin-top:16px;   /* increased spacing */
-  padding-top:16px;  /* adds internal separation */
-  border-top:1px solid var(--border); /* subtle divider line */
+  margin-top:18px;                 /* more space */
+  padding-top:12px;                /* separation inside */
+  border-top:1px solid var(--border);
   display:flex;
   justify-content:flex-end;
 }
