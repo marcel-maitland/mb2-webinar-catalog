@@ -309,9 +309,12 @@ h1{ margin:0; font-size:30px; }
   flex:1;
 }
 .inPersonActions{
-  margin-top:12px;
+  margin-top:16px;   /* increased spacing */
+  padding-top:12px;  /* adds internal separation */
+  border-top:1px solid var(--border); /* subtle divider line */
   display:flex;
   justify-content:flex-end;
+}
 }
 
 /* SESSIONS */
