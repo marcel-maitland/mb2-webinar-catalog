@@ -353,6 +353,7 @@ h1{ margin:0; font-size:30px; }
   background:#ea580c;             /* slightly darker orange */
   border-color:#ea580c;
   transform:translateY(-1px);
+}
 
 .sessionBtnDisabled{
   color:var(--muted);
