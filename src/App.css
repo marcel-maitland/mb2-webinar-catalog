@@ -310,7 +310,7 @@ h1{ margin:0; font-size:30px; }
 }
 .inPersonActions{
   margin-top:16px;   /* increased spacing */
-  padding-top:12px;  /* adds internal separation */
+  padding-top:16px;  /* adds internal separation */
   border-top:1px solid var(--border); /* subtle divider line */
   display:flex;
   justify-content:flex-end;
