@@ -337,7 +337,7 @@ h1{ margin:0; font-size:30px; }
 }
 
 /* ✅ Registration buttons now ORANGE */
-sessionBtn{
+.sessionBtn{
   background:var(--primary);      /* solid orange */
   color:#ffffff;                  /* white text */
   padding:8px 14px;
@@ -353,7 +353,6 @@ sessionBtn{
   background:#ea580c;             /* slightly darker orange */
   border-color:#ea580c;
   transform:translateY(-1px);
-}
 
 .sessionBtnDisabled{
   color:var(--muted);
