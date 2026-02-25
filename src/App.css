@@ -269,28 +269,41 @@ h1{ margin:0; font-size:30px; }
   overflow:hidden;
 }
 
-/* In-person info box */
+/* ===============================
+   IN-PERSON EVENT BOX
+================================= */
+
 .inPersonBox{
-  margin:12px 0 0;
+  margin:16px 0 0;                 /* space above box */
   background:#f8fafc;
   border:1px solid var(--border);
-  border-radius:14px;
-  padding:12px;
+  border-radius:16px;
+  padding:16px;
+
+  /* ✅ Critical fix for spacing */
+  display:flex;
+  flex-direction:column;
+  gap:18px;                        /* space between info + register */
 }
 
+/* Top info area (date, time, location) */
 .inPersonBoxGrid{
   display:flex;
   flex-direction:column;
-  gap:10px;
+  gap:12px;
+  padding-bottom:14px;
+  border-bottom:1px solid var(--border);  /* subtle divider */
 }
 
+/* Each row inside info area */
 .inPersonRow{
   display:flex;
   justify-content:space-between;
-  gap:12px;
+  gap:14px;
   align-items:flex-start;
 }
 
+/* Left side label + icon */
 .inPersonKey{
   display:flex;
   align-items:center;
@@ -301,26 +314,27 @@ h1{ margin:0; font-size:30px; }
   white-space:nowrap;
 }
 
+/* Location / time icon */
 .inPersonIcon{
   color:#475569;
   display:inline-flex;
 }
 
+/* Right side value (date, time, address) */
 .inPersonVal{
-  font-size:13px;
+  font-size:14px;
   font-weight:700;
   color:#0f172a;
   text-align:right;
   flex:1;
 }
 
-/* ✅ spacing so content doesn't touch the register area */
+/* Registration row inside in-person box */
 .inPersonActions{
-  margin-top:18px;                 /* more space */
-  padding-top:12px;                /* separation inside */
-  border-top:1px solid var(--border);
   display:flex;
   justify-content:flex-end;
+  align-items:center;
+  margin-top:4px; /* extra breathing room below divider */
 }
 }
 
