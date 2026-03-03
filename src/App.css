@@ -18,25 +18,18 @@
    GLOBAL / PAGE
 ========================= */
 
-html, body{
-  height:100%;
-}
+html, body{ height:100%; }
 
 body{
   margin:0;
   background:var(--bg);
   color:var(--text);
-  /* Force consistent font everywhere */
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-*{
-  box-sizing:border-box;
-}
+*{ box-sizing:border-box; }
 
-.page{
-  padding:30px 40px;
-}
+.page{ padding:30px 40px; }
 
 /* =========================
    HEADER
@@ -164,13 +157,9 @@ h1{
   transform: translateY(-1px);
 }
 
-.filterDetails[open] .filterSummary::after{
-  content:"▴";
-}
+.filterDetails[open] .filterSummary::after{ content:"▴"; }
 
-.filterBody{
-  padding:10px 12px 12px;
-}
+.filterBody{ padding:10px 12px 12px; }
 
 /* Filter lists + checkbox pills */
 .list{
@@ -192,9 +181,7 @@ h1{
   font-family: inherit;
 }
 
-.pillCheck input{
-  accent-color:var(--primary);
-}
+.pillCheck input{ accent-color:var(--primary); }
 
 .clearBtn{
   width:100%;
@@ -218,9 +205,7 @@ h1{
    MAIN
 ========================= */
 
-.main{
-  min-height:200px;
-}
+.main{ min-height:200px; }
 
 .center{
   text-align:center;
@@ -252,7 +237,7 @@ h1{
   display:flex;
   flex-direction:column;
   transition: transform .2s ease, box-shadow .2s ease;
-  font-family: inherit; /* ensure card uses same font */
+  font-family: inherit;
 }
 
 .card:hover{
@@ -354,7 +339,7 @@ h1{
 
 /* DESCRIPTION — 5 lines max */
 .descFull{
-  margin:12px 0 14px;
+  margin:12px 0 10px;
   color:var(--muted2);
   font-size:14px;
   line-height:1.55;
@@ -365,22 +350,36 @@ h1{
   font-family: inherit;
 }
 
+/* ✅ Roles line (if you add it in JSX) */
+.rolesLine{
+  margin:0 0 14px;
+  font-size:13px;
+  line-height:1.45;
+  color:var(--muted2);
+  font-family: inherit;
+}
+.rolesLabel{
+  font-weight:900;
+  color:#334155;
+}
+.rolesValue{
+  font-weight:750;
+  color:var(--muted2);
+}
+
 /* =========================
    WEBINAR SESSIONS (bottom pinned)
 ========================= */
 
-/* SESSIONS (Webinar time blocks) */
 .sessions{
   margin-top:auto;
   display:flex;
   flex-direction:column;
-  gap:14px;              /* ✅ spacing between session boxes */
+  gap:14px;
 }
 
 /* fallback spacing if some CSS overrides gap */
-.sessions > .session + .session{
-  margin-top:14px;
-}
+.sessions > .session + .session{ margin-top:14px; }
 
 .session{
   display:flex;
@@ -392,6 +391,7 @@ h1{
   border:1px solid var(--border);
   font-size:14px;
 }
+
 .sessionLabel{
   font-weight:900;
   color:#0f172a;
@@ -441,14 +441,16 @@ h1{
   font-family: inherit;
 }
 
-/* This is the KEY FIX:
-   Add guaranteed spacing BEFORE the registration box that follows the inPersonBox */
-.inPersonBox + .inPersonReg,
-.inPersonBox + .sessions,
-.inPersonBox + .session,
-.inPersonBox + .inPersonActions,
-.inPersonBox + .inPersonRegWrap{
-  margin-top:16px; /* <- makes the boxes NOT touch */
+/* ✅ FIX: force spacing BELOW the in-person info box no matter what comes next */
+.inPersonBox{
+  margin-bottom:16px; /* THIS is the reliable fix */
+}
+
+/* If you later wrap a single in-person register button, this keeps it aligned */
+.inPersonActions{
+  display:flex;
+  justify-content:flex-end;
+  margin-top:0; /* spacing handled by inPersonBox margin-bottom */
 }
 
 .inPersonBoxGrid{
@@ -495,26 +497,6 @@ h1{
   margin-top:8px;
 }
 
-/* If you render the in-person registration as its own box, use this */
-.inPersonReg{
-  background:#f8fafc;
-  border:1px solid var(--border);
-  border-radius:14px;
-  padding:12px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  font-family: inherit;
-}
-
-/* If your in-person registration row uses the normal .session styles,
-   this ensures it still looks consistent */
-.inPersonReg .sessionBtn{
-  border-radius:16px;
-  padding:12px 18px;
-}
-
 /* =========================
    ERROR BOX
 ========================= */
@@ -533,36 +515,21 @@ h1{
   margin-bottom:6px;
 }
 
-.errorLine{
-  margin-bottom:6px;
-}
+.errorLine{ margin-bottom:6px; }
 
-.errorHint{
-  color:#92400e;
-}
+.errorHint{ color:#92400e; }
 
 /* =========================
    RESPONSIVE
 ========================= */
 
 @media (max-width: 1100px){
-  .grid{
-    grid-template-columns:repeat(2, 1fr);
-  }
+  .grid{ grid-template-columns:repeat(2, 1fr); }
 }
 
 @media (max-width: 980px){
-  .layout{
-    grid-template-columns:1fr;
-  }
-  .page{
-    padding:20px 16px;
-  }
-  .search{
-    min-width:0;
-    width:100%;
-  }
-  .grid{
-    grid-template-columns:1fr;
-  }
+  .layout{ grid-template-columns:1fr; }
+  .page{ padding:20px 16px; }
+  .search{ min-width:0; width:100%; }
+  .grid{ grid-template-columns:1fr; }
 }
