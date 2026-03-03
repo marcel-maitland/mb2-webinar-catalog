@@ -503,7 +503,13 @@ function Card({ item }) {
             {item.description}
           </p>
         ) : null}
-
+{/* Roles / Positions (from sheet, comma-separated) */}
+{Array.isArray(item.roles) && item.roles.length > 0 ? (
+  <div className="rolesLine">
+    <span className="rolesLabel">This event is ideal for</span>{" "}
+    <span className="rolesValue">{item.roles.join(", ")}</span>
+  </div>
+) : null}
         {/* ✅ ONLY for in-person: shaded info box BELOW description */}
         {inPerson && (item.date || timeLabel || safe(item.location) || inPersonRegOk) ? (
           <div className="inPersonBox">
