@@ -316,7 +316,7 @@ export default function App() {
       <header className="header">
         <div className="headerLeft">
           <div className="titleRow">
-            <h1>Webinar Catalog</h1>
+            <h1>Upcoming Events</h1>
           </div>
           <p>Browse upcoming events, register instantly, and filter by category, vendor, CE hours, format, or role.</p>
         </div>
