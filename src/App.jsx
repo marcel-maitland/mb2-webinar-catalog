@@ -5,11 +5,8 @@ import { useEffect, useMemo, useState } from "react";
  * ✅ Upcoming-only, sorted soonest first
  * ✅ JSONP feed (CORS-safe) via VITE_DATA_URL
  * ✅ Filters (left): MB2 Exclusive toggle, Format, Role/Position (csv), Category, Vendors, CE Hours
- * ✅ Filters are collapsible (<details>/<summary>)
- * ✅ Cards: thumbnail + vendor logo, Date + CE + Format + MB2 Exclusive badges
- * ✅ Description clamped by App.css
- * ✅ In-person only: shaded info box BELOW description with Date, Time, Location + optional registration button
- * ✅ Hides "No link" by only rendering sessions that have valid URLs
+ * ✅ Filters are collapsible (<details>/<summary>) and sticky
+ * ✅ Cards: thumbnail (with MB2 Exclusive overlay badge), vendor logo, Date + CE + Format badges
  */
 
 const DATA_URL = import.meta.env?.VITE_DATA_URL || "/data.json";
@@ -47,17 +44,11 @@ const splitCsv = (value) => {
     .filter(Boolean);
 };
 
-/** STRICT in-person detector to avoid accidental matches */
 const isInPerson = (format) => {
   const f = safe(format).toLowerCase();
   return f === "in-person" || f === "in person" || f === "inperson";
 };
 
-/**
- * Truthy detector for the "MB2 Exclusive" column.
- * Accepts Yes/Y/True/1/X/Checked (case-insensitive) as exclusive.
- * Anything else (including blank, No, False, 0) → not exclusive.
- */
 const isTruthyFlag = (value) => {
   const v = safe(value).toLowerCase();
   return v === "yes" || v === "y" || v === "true" || v === "1" || v === "x" || v === "✓" || v === "checked";
@@ -200,7 +191,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
-  // UI state
   const [query, setQuery] = useState("");
   const [catSelected, setCatSelected] = useState(new Set());
   const [vendorSelected, setVendorSelected] = useState(new Set());
@@ -295,9 +285,7 @@ export default function App() {
     const rolesOn = rolesSelected.size > 0;
 
     return rows
-      // upcoming-only
       .filter((r) => (r.date ? endOfDay(r.date) >= now : true))
-      // filters
       .filter((r) => (catOn ? catSelected.has(r.category) : true))
       .filter((r) => (vendorOn ? vendorSelected.has(r.vendor) : true))
       .filter((r) => (ceOn ? typeof r.ce === "number" && ceSelected.has(r.ce) : true))
@@ -308,7 +296,6 @@ export default function App() {
         const rRoles = Array.isArray(r.roles) ? r.roles : [];
         return rRoles.some((rr) => rolesSelected.has(rr));
       })
-      // search
       .filter((r) => {
         if (!q) return true;
         const hay = `${r.title} ${r.vendor} ${r.category} ${r.format ?? ""} ${r.ce ?? ""} ${
@@ -318,7 +305,6 @@ export default function App() {
         }`.toLowerCase();
         return hay.includes(q);
       })
-      // sort: soonest first
       .sort((a, b) => {
         const ad = a.date ? a.date.getTime() : Number.POSITIVE_INFINITY;
         const bd = b.date ? b.date.getTime() : Number.POSITIVE_INFINITY;
@@ -485,10 +471,7 @@ function Card({ item }) {
   const inPerson = isInPerson(item.format);
   const inPersonRegOk = isUrl(item.inPersonRegistrationLink);
 
-  // only sessions with valid URLs (removes "No link")
   const sessionsWithLinks = (Array.isArray(item.sessions) ? item.sessions : []).filter((s) => isUrl(s?.url));
-
-  // in-person time: use first session label if present (keeps existing sheet structure)
   const timeLabel = safe(item.sessions?.[0]?.label);
 
   return (
@@ -505,6 +488,7 @@ function Card({ item }) {
             }}
           />
         ) : null}
+        {item.mb2Exclusive ? <span className="mb2Badge">MB2 Exclusive</span> : null}
       </div>
 
       <div className="body">
@@ -513,7 +497,6 @@ function Card({ item }) {
             {item.date ? <span className="dateBadge">{formatDate(item.date)}</span> : null}
             {typeof item.ce === "number" ? <span className="ceBadge">{item.ce} CE</span> : null}
             {safe(item.format) ? <span className="formatBadge">{item.format}</span> : null}
-            {item.mb2Exclusive ? <span className="mb2Badge">MB2 Exclusive</span> : null}
           </div>
 
           {logoOk ? <img className="vendorLogo" src={item.vendorLogo} alt="Vendor logo" loading="lazy" /> : null}
@@ -528,14 +511,14 @@ function Card({ item }) {
             {item.description}
           </p>
         ) : null}
-{/* Roles / Positions (from sheet, comma-separated) */}
-{Array.isArray(item.roles) && item.roles.length > 0 ? (
-  <div className="rolesLine">
-    <span className="rolesLabel">This event is ideal for</span>{" "}
-    <span className="rolesValue">{item.roles.join(", ")}</span>
-  </div>
-) : null}
-        {/* ✅ ONLY for in-person: shaded info box BELOW description */}
+
+        {Array.isArray(item.roles) && item.roles.length > 0 ? (
+          <div className="rolesLine">
+            <span className="rolesLabel">This event is ideal for</span>{" "}
+            <span className="rolesValue">{item.roles.join(", ")}</span>
+          </div>
+        ) : null}
+
         {inPerson && (item.date || timeLabel || safe(item.location) || inPersonRegOk) ? (
           <div className="inPersonBox">
             <div className="inPersonBoxGrid">
@@ -581,7 +564,6 @@ function Card({ item }) {
           </div>
         ) : null}
 
-        {/* Webinar / general sessions */}
         <div className="sessions">
           {sessionsWithLinks.map((s, i) => (
             <div className="session" key={i}>
