@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
  * Webinar Catalog — App.jsx (prod)
  * ✅ Upcoming-only, sorted soonest first
  * ✅ JSONP feed (CORS-safe) via VITE_DATA_URL
- * ✅ Filters (left): Format, Role/Position (csv), Category, Vendors, CE Hours
+ * ✅ Filters (left): MB2 Exclusive toggle, Format, Role/Position (csv), Category, Vendors, CE Hours
  * ✅ Filters are collapsible (<details>/<summary>)
- * ✅ Cards: thumbnail + vendor logo, Date + CE + Format badges
+ * ✅ Cards: thumbnail + vendor logo, Date + CE + Format + MB2 Exclusive badges
  * ✅ Description clamped by App.css
  * ✅ In-person only: shaded info box BELOW description with Date, Time, Location + optional registration button
  * ✅ Hides "No link" by only rendering sessions that have valid URLs
@@ -51,6 +51,16 @@ const splitCsv = (value) => {
 const isInPerson = (format) => {
   const f = safe(format).toLowerCase();
   return f === "in-person" || f === "in person" || f === "inperson";
+};
+
+/**
+ * Truthy detector for the "MB2 Exclusive" column.
+ * Accepts Yes/Y/True/1/X/Checked (case-insensitive) as exclusive.
+ * Anything else (including blank, No, False, 0) → not exclusive.
+ */
+const isTruthyFlag = (value) => {
+  const v = safe(value).toLowerCase();
+  return v === "yes" || v === "y" || v === "true" || v === "1" || v === "x" || v === "✓" || v === "checked";
 };
 
 /* ---------- JSONP loader (CORS-safe) ---------- */
@@ -120,6 +130,8 @@ function normalize(row, i) {
 
     format: get("Format", "format", "Event Format", "Type") || "",
     roles: splitCsv(get("Roles", "Role", "Role / Position", "Position", "Positions")),
+
+    mb2Exclusive: isTruthyFlag(get("MB2 Exclusive", "MB2Exclusive", "Exclusive")),
 
     location: get("Location", "location", "Venue", "Address") || "",
     inPersonRegistrationLink: get(
@@ -195,6 +207,7 @@ export default function App() {
   const [ceSelected, setCeSelected] = useState(new Set());
   const [formatSelected, setFormatSelected] = useState(new Set());
   const [rolesSelected, setRolesSelected] = useState(new Set());
+  const [mb2ExclusiveOnly, setMb2ExclusiveOnly] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -268,6 +281,7 @@ export default function App() {
     setCeSelected(new Set());
     setFormatSelected(new Set());
     setRolesSelected(new Set());
+    setMb2ExclusiveOnly(false);
   };
 
   const filtered = useMemo(() => {
@@ -288,6 +302,7 @@ export default function App() {
       .filter((r) => (vendorOn ? vendorSelected.has(r.vendor) : true))
       .filter((r) => (ceOn ? typeof r.ce === "number" && ceSelected.has(r.ce) : true))
       .filter((r) => (formatOn ? formatSelected.has(r.format) : true))
+      .filter((r) => (mb2ExclusiveOnly ? r.mb2Exclusive === true : true))
       .filter((r) => {
         if (!rolesOn) return true;
         const rRoles = Array.isArray(r.roles) ? r.roles : [];
@@ -309,7 +324,7 @@ export default function App() {
         const bd = b.date ? b.date.getTime() : Number.POSITIVE_INFINITY;
         return ad - bd;
       });
-  }, [rows, query, catSelected, vendorSelected, ceSelected, formatSelected, rolesSelected]);
+  }, [rows, query, catSelected, vendorSelected, ceSelected, formatSelected, rolesSelected, mb2ExclusiveOnly]);
 
   return (
     <div className="page">
@@ -332,6 +347,15 @@ export default function App() {
       <div className="layout">
         <aside className="sidebar">
           <div className="sideTitle">Filters</div>
+
+          <label className="pillCheck exclusiveToggle">
+            <input
+              type="checkbox"
+              checked={mb2ExclusiveOnly}
+              onChange={(e) => setMb2ExclusiveOnly(e.target.checked)}
+            />
+            <span>Show only MB2 Exclusive</span>
+          </label>
 
           <CollapsibleSection title="Format">
             <div className="list">
@@ -489,6 +513,7 @@ function Card({ item }) {
             {item.date ? <span className="dateBadge">{formatDate(item.date)}</span> : null}
             {typeof item.ce === "number" ? <span className="ceBadge">{item.ce} CE</span> : null}
             {safe(item.format) ? <span className="formatBadge">{item.format}</span> : null}
+            {item.mb2Exclusive ? <span className="mb2Badge">MB2 Exclusive</span> : null}
           </div>
 
           {logoOk ? <img className="vendorLogo" src={item.vendorLogo} alt="Vendor logo" loading="lazy" /> : null}
