@@ -2,14 +2,21 @@ import { useEffect, useMemo, useState } from "react";
 
 /**
  * Webinar Catalog — App.jsx (prod)
- * ✅ Upcoming-only, sorted soonest first
- * ✅ JSONP feed (CORS-safe) via VITE_DATA_URL
- * ✅ Filters (left): MB2 Exclusive toggle, Format, Role/Position (csv), Category, Vendors, CE Hours
- * ✅ Filters are collapsible (<details>/<summary>) and sticky
- * ✅ Cards: thumbnail (with MB2 Exclusive overlay badge), vendor logo, Date + CE + Format badges
+ * Same app serves both catalogs.
+ * Full catalog: https://chipper-donut-1b3638.netlify.app/
+ * Exclusive:    https://chipper-donut-1b3638.netlify.app/?exclusive=1
  */
 
 const DATA_URL = import.meta.env?.VITE_DATA_URL || "/data.json";
+
+/**
+ * When the iframe URL includes ?exclusive=1 the app switches into
+ * "MB2 Exclusive" mode: toggle starts checked, title/subtext change,
+ * and "Clear filters" resets back to exclusive-only instead of all.
+ */
+const isExclusiveMode =
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).get("exclusive") === "1";
 
 /* ---------- helpers ---------- */
 const safe = (v) =>
@@ -197,7 +204,7 @@ export default function App() {
   const [ceSelected, setCeSelected] = useState(new Set());
   const [formatSelected, setFormatSelected] = useState(new Set());
   const [rolesSelected, setRolesSelected] = useState(new Set());
-  const [mb2ExclusiveOnly, setMb2ExclusiveOnly] = useState(false);
+  const [mb2ExclusiveOnly, setMb2ExclusiveOnly] = useState(isExclusiveMode);
 
   useEffect(() => {
     let cancelled = false;
@@ -271,7 +278,7 @@ export default function App() {
     setCeSelected(new Set());
     setFormatSelected(new Set());
     setRolesSelected(new Set());
-    setMb2ExclusiveOnly(false);
+    setMb2ExclusiveOnly(isExclusiveMode);
   };
 
   const filtered = useMemo(() => {
@@ -317,9 +324,13 @@ export default function App() {
       <header className="header">
         <div className="headerLeft">
           <div className="titleRow">
-            <h1>Upcoming Events</h1>
+            <h1>{isExclusiveMode ? "Upcoming MB2 Exclusive Events" : "Upcoming Events"}</h1>
           </div>
-          <p>Browse upcoming events, register instantly, and filter by category, vendor, CE hours, format, or role.</p>
+          <p>
+            {isExclusiveMode
+              ? "Browse upcoming MB2 Exclusive events, register instantly, and filter by category, vendor, CE hours, format, or role."
+              : "Browse upcoming events, register instantly, and filter by category, vendor, CE hours, format, or role."}
+          </p>
         </div>
 
         <input
