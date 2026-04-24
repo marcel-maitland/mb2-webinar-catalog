@@ -183,6 +183,18 @@ h1{
 
 .pillCheck input{ accent-color:var(--primary); }
 
+/* Prominent single-toggle filter for MB2 Exclusive */
+.exclusiveToggle{
+  background:var(--primarySoft);
+  border-color:#fed7aa;
+  font-weight:900;
+  color:#9a3412;
+  margin-bottom:12px;
+}
+.exclusiveToggle:hover{
+  background:#ffedd5;
+}
+
 .clearBtn{
   width:100%;
   margin-top:6px;
@@ -313,6 +325,18 @@ h1{
   font-size:12px;
   font-weight:900;
   border:1px solid #fed7aa;
+}
+
+.mb2Badge{
+  background:var(--primary);
+  color:#ffffff;
+  padding:5px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:900;
+  border:1px solid var(--primaryDark);
+  letter-spacing:.02em;
+  text-transform:uppercase;
 }
 
 .vendorLogo{
