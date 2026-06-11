@@ -1,19 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
+import { supabase } from "./lib/supabase.js";
 
 /**
- * Webinar Catalog — App.jsx (prod)
- * Same app serves both catalogs.
- * Full catalog: https://chipper-donut-1b3638.netlify.app/
- * Exclusive:    https://chipper-donut-1b3638.netlify.app/?exclusive=1
+ * Webinar Catalog — App.jsx (Supabase edition)
+ * Same app serves both catalogs:
+ *   Full catalog: https://chipper-donut-1b3638.netlify.app/
+ *   Exclusive:    https://chipper-donut-1b3638.netlify.app/?exclusive=1
+ *
+ * Data now comes from Supabase (table: public.events, RLS filters to is_published = true).
+ * The JSONP loader from the Google Sheets version has been removed.
  */
 
-const DATA_URL = import.meta.env?.VITE_DATA_URL || "/data.json";
-
-/**
- * When the iframe URL includes ?exclusive=1 the app switches into
- * "MB2 Exclusive" mode: toggle starts checked, title/subtext change,
- * and "Clear filters" resets back to exclusive-only instead of all.
- */
 const isExclusiveMode =
   typeof window !== "undefined" &&
   new URLSearchParams(window.location.search).get("exclusive") === "1";
@@ -23,13 +20,6 @@ const safe = (v) =>
   typeof v === "string" ? v.trim() : v == null ? "" : String(v).trim();
 
 const isUrl = (u) => safe(u).startsWith("http");
-
-const parseDate = (value) => {
-  const s = safe(value);
-  if (!s) return null;
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
-};
 
 const formatDate = (d) =>
   d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -42,115 +32,33 @@ const endOfDay = (d) => {
 
 const uniq = (arr) => [...new Set(arr.filter(Boolean))];
 
-const splitCsv = (value) => {
-  const s = safe(value);
-  if (!s) return [];
-  return s
-    .split(",")
-    .map((x) => x.trim())
-    .filter(Boolean);
-};
-
 const isInPerson = (format) => {
   const f = safe(format).toLowerCase();
   return f === "in-person" || f === "in person" || f === "inperson";
 };
 
-const isTruthyFlag = (value) => {
-  const v = safe(value).toLowerCase();
-  return v === "yes" || v === "y" || v === "true" || v === "1" || v === "x" || v === "✓" || v === "checked";
-};
-
-/* ---------- JSONP loader (CORS-safe) ---------- */
-function loadJsonp(url, timeoutMs = 12000) {
-  return new Promise((resolve, reject) => {
-    const cbName = `__jsonp_cb_${Math.random().toString(36).slice(2)}`;
-    const sep = url.includes("?") ? "&" : "?";
-    const src = `${url}${sep}callback=${cbName}`;
-
-    let script = null;
-    let timer = null;
-
-    const cleanup = () => {
-      try {
-        delete window[cbName];
-      } catch {}
-      if (script && script.parentNode) script.parentNode.removeChild(script);
-      if (timer) clearTimeout(timer);
-    };
-
-    window[cbName] = (data) => {
-      cleanup();
-      resolve(data);
-    };
-
-    script = document.createElement("script");
-    script.src = src;
-    script.async = true;
-
-    script.onerror = () => {
-      cleanup();
-      reject(new Error("JSONP load failed (script error)"));
-    };
-
-    timer = setTimeout(() => {
-      cleanup();
-      reject(new Error("JSONP timed out"));
-    }, timeoutMs);
-
-    document.body.appendChild(script);
-  });
-}
-
-/* ---------- row normalize ---------- */
-function normalize(row, i) {
-  const get = (...keys) => {
-    for (const k of keys) {
-      const v = row?.[k];
-      if (v !== undefined && v !== null && String(v).trim() !== "") return String(v).trim();
-    }
-    return "";
-  };
-
-  const ceRaw = get("CE Hours", "CE", "CE Hour", "CE hours");
-  const ce = Number(String(ceRaw).replace(/[^\d.]/g, ""));
-
+/* ---------- shape Supabase row -> what the cards expect ---------- */
+function fromDb(row) {
   return {
-    id: get("id", "ID") || `row-${i}`,
-    title: get("Name of Event", "Event Name", "Title") || "Untitled Event",
-    description: get("Description", "description", "DESC", "Course Description") || "",
-    date: parseDate(get("Date of the Event", "Event Date", "Date")),
-    category: get("category", "Category", "CATEGORY") || "",
-    ce: Number.isFinite(ce) && ce > 0 ? ce : null,
-    vendor: get("Presenter / Vendor (Tag)", "Vendor", "Presenter", "Presenter/Vendor") || "",
-    vendorLogo: get("Vendor Logo", "Vender Logo", "Vendor logo", "Logo") || "",
-    thumb: get("Course Thumb", "Course Thumbnail", "Thumbnail", "Thumb", "Image") || "",
-
-    format: get("Format", "format", "Event Format", "Type") || "",
-    roles: splitCsv(get("Roles", "Role", "Role / Position", "Position", "Positions")),
-
-    mb2Exclusive: isTruthyFlag(get("MB2 Exclusive", "MB2Exclusive", "Exclusive")),
-
-    location: get("Location", "location", "Venue", "Address") || "",
-    inPersonRegistrationLink: get(
-      "In person registration link",
-      "In Person Registration Link",
-      "In-Person Registration Link",
-      "In person Registration link",
-      "In Person Reg Link",
-      "In-Person Reg Link"
-    ) || "",
-
+    id: row.id,
+    title: safe(row.title) || "Untitled Event",
+    description: safe(row.description),
+    date: row.event_date ? new Date(row.event_date) : null,
+    category: safe(row.category),
+    ce: typeof row.ce_hours === "number" ? row.ce_hours : null,
+    cost: safe(row.cost),
+    vendor: safe(row.vendor),
+    vendorLogo: safe(row.vendor_logo_url),
+    thumb: safe(row.thumb_url),
+    format: safe(row.format),
+    roles: Array.isArray(row.roles) ? row.roles : [],
+    mb2Exclusive: !!row.mb2_exclusive,
+    location: safe(row.location),
+    inPersonRegistrationLink: safe(row.in_person_registration_url),
     sessions: [
-      {
-        label: get("Time of the event", "Time of Event", "Time 1"),
-        url: get("Registration Link", "Reg Link", "Registration"),
-      },
-      {
-        label: get("2nd time of the Event", "Second Time", "Time 2"),
-        url: get("Second Registration Link", "Second Reg Link", "Registration 2"),
-      },
-    ].filter((s) => safe(s.label) || safe(s.url)),
+      { label: safe(row.session1_label), url: safe(row.session1_url) },
+      { label: safe(row.session2_label), url: safe(row.session2_url) },
+    ].filter((s) => s.label || s.url),
   };
 }
 
@@ -214,16 +122,17 @@ export default function App() {
       setLoadError("");
 
       try {
-        const json = await loadJsonp(DATA_URL);
+        // RLS on the events table only returns is_published = true
+        // for anonymous visitors, so we don't need to repeat the filter here —
+        // but we add it explicitly for clarity.
+        const { data, error } = await supabase
+          .from("events")
+          .select("*")
+          .eq("is_published", true)
+          .order("event_date", { ascending: true });
 
-        if (!json || !Array.isArray(json.items)) {
-          throw new Error(
-            `Bad JSON: expected {"items":[...]} but got: ${Object.keys(json || {}).join(", ") || "empty"}`
-          );
-        }
-
-        const items = json.items.map(normalize);
-        if (!cancelled) setRows(items);
+        if (error) throw error;
+        if (!cancelled) setRows((data || []).map(fromDb));
       } catch (e) {
         console.error("Data load error:", e);
         if (!cancelled) {
@@ -253,12 +162,10 @@ export default function App() {
     const vals = rows.map((r) => r.ce).filter((n) => typeof n === "number");
     return [...new Set(vals)].sort((a, b) => a - b);
   }, [rows]);
-
   const formats = useMemo(
     () => uniq(rows.map((r) => r.format)).sort((a, b) => a.localeCompare(b)),
     [rows]
   );
-
   const roles = useMemo(() => {
     const all = rows.flatMap((r) => (Array.isArray(r.roles) ? r.roles : []));
     return uniq(all).sort((a, b) => a.localeCompare(b));
@@ -345,14 +252,18 @@ export default function App() {
         <aside className="sidebar">
           <div className="sideTitle">Filters</div>
 
-          <label className="pillCheck exclusiveToggle">
-            <input
-              type="checkbox"
-              checked={mb2ExclusiveOnly}
-              onChange={(e) => setMb2ExclusiveOnly(e.target.checked)}
-            />
-            <span>Show only MB2 Exclusive</span>
-          </label>
+          {/* The exclusive toggle is HIDDEN in exclusive mode so visitors of
+              the MB2 Exclusive page can't uncheck it. The state stays true. */}
+          {!isExclusiveMode && (
+            <label className="pillCheck exclusiveToggle">
+              <input
+                type="checkbox"
+                checked={mb2ExclusiveOnly}
+                onChange={(e) => setMb2ExclusiveOnly(e.target.checked)}
+              />
+              <span>Show only MB2 Exclusive</span>
+            </label>
+          )}
 
           <CollapsibleSection title="Format">
             <div className="list">
@@ -442,14 +353,12 @@ export default function App() {
             <div className="errorBox">
               <div className="errorTitle">Data not loading</div>
               <div className="errorLine">
-                <strong>URL tried:</strong> <code>{DATA_URL}</code>
-              </div>
-              <div className="errorLine">
                 <strong>Error:</strong> {loadError}
               </div>
               <div className="errorHint">
-                Make sure <code>VITE_DATA_URL</code> points to your Google Apps Script <code>/exec</code> URL and supports
-                JSONP (<code>?callback=</code>).
+                Check that <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> are set in
+                Netlify → Site settings → Environment variables, and that the events table has at least one
+                row with <code>is_published = true</code>.
               </div>
             </div>
           )}
