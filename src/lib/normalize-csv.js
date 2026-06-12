@@ -33,8 +33,19 @@ const parseDate = (raw) => {
   let start = s.split(/[–—-]/)[0].trim();
   // Strip ordinal suffixes: "June 10th" → "June 10", "Sept 2nd" → "Sept 2"
   start = start.replace(/(\d+)(st|nd|rd|th)\b/gi, "$1");
+
   const d = new Date(start);
-  return isNaN(d.getTime()) ? null : d.toISOString();
+  if (isNaN(d.getTime())) return null;
+
+  // JS quirk: ambiguous strings like "June 10" or "6/10" can default to year 2001
+  // in some engines. If the original cell had no explicit year, force the current year
+  // so dates like "Sept 8th" land on Sept 8 of this year, not 2001.
+  const hasExplicitYear = /\b\d{4}\b|\/\d{2}\b/.test(start);
+  if (!hasExplicitYear) {
+    const thisYear = new Date().getFullYear();
+    return new Date(thisYear, d.getMonth(), d.getDate()).toISOString();
+  }
+  return d.toISOString();
 };
 
 // "Virtual" column → format. "Yes" means online/webinar.
