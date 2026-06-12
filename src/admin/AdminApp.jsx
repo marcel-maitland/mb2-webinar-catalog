@@ -34,19 +34,32 @@ export default function AdminApp() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
-    const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => setSession(s ?? null));
+    // Supabase emits TOKEN_REFRESHED automatically (every hour, AND on tab focus
+    // when the token is about to expire). The session object is a NEW reference
+    // each time even though the user hasn't changed — without this guard, every
+    // tab-focus would re-render the admin tree and remount EventForm, blowing
+    // away in-progress edits.
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => {
+      setSession((prev) => {
+        if (prev?.user?.id === (s?.user?.id ?? null)) return prev;
+        return s ?? null;
+      });
+    });
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  // Only re-check admin status when the actual signed-in user changes — not on
+  // every token refresh, which would unmount the route below.
+  const sessionUserId = session?.user?.id ?? null;
   useEffect(() => {
     let cancelled = false;
     async function check() {
-      if (!session) { setIsAdmin(false); return; }
+      if (!sessionUserId) { setIsAdmin(false); return; }
       setCheckingAdmin(true);
       const { data } = await supabase
         .from("admins")
         .select("user_id")
-        .eq("user_id", session.user.id)
+        .eq("user_id", sessionUserId)
         .maybeSingle();
       if (!cancelled) {
         setIsAdmin(!!data);
@@ -55,7 +68,7 @@ export default function AdminApp() {
     }
     check();
     return () => { cancelled = true; };
-  }, [session]);
+  }, [sessionUserId]);
 
   if (session === undefined) return <div className="admin"><p>Loading…</p></div>;
   if (!session) return <Login />;

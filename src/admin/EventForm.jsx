@@ -61,6 +61,7 @@ export default function EventForm({ mode }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
   const thumbInput = useRef(null);
 
   // Autocomplete suggestions pulled from this client's existing events
@@ -140,6 +141,18 @@ export default function EventForm({ mode }) {
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  // Warn before closing/navigating away with unsaved changes
+  useEffect(() => {
+    if (!dirty) return;
+    const onBeforeUnload = (e) => {
+      e.preventDefault();
+      // Chrome requires returnValue; modern browsers ignore the message text.
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
+
   const uploadThumb = async (file) => {
     if (!file) return;
     setUploading(true);
@@ -173,13 +186,28 @@ export default function EventForm({ mode }) {
     };
     try {
       if (mode === "new") {
-        const { error } = await supabase.from("events").insert(payload);
+        const { data, error } = await supabase
+          .from("events").insert(payload).select().single();
         if (error) throw error;
+        // Navigate into the new event's edit page so the user keeps editing it
+        navigate(`/admin/events/${data.id}`, { replace: true });
       } else {
-        const { error } = await supabase.from("events").update(payload).eq("id", id);
+        const { data, error } = await supabase
+          .from("events").update(payload).eq("id", id).select().single();
         if (error) throw error;
+        // Stay on page. Sync `original` so the form is no longer dirty,
+        // and pop a transient "Saved" badge.
+        const next = {
+          ...BLANK,
+          ...data,
+          event_date: toLocalInput(data.event_date),
+          roles: Array.isArray(data.roles) ? data.roles : [],
+        };
+        setForm(next);
+        setOriginal(next);
+        setJustSaved(true);
+        setTimeout(() => setJustSaved(false), 2500);
       }
-      navigate("/admin");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -251,9 +279,11 @@ export default function EventForm({ mode }) {
           <div>
             <h1 className="evTitle">{mode === "new" ? "New event" : "Edit event"}</h1>
             <p className="evSubtitle">
-              {dirty
-                ? <span className="evDirty">● Unsaved changes</span>
-                : <span className="evClean">All changes saved</span>}
+              {justSaved
+                ? <span className="evJustSaved">✓ Saved just now</span>
+                : dirty
+                  ? <span className="evDirty">● Unsaved changes</span>
+                  : <span className="evClean">All changes saved</span>}
             </p>
           </div>
         </div>

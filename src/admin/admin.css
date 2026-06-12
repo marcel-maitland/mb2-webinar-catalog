@@ -1519,6 +1519,21 @@
 .evSubtitle { margin: 2px 0 0; font-size: 12px; }
 .evDirty { color: #b45309; font-weight: 600; }
 .evClean { color: var(--muted); font-weight: 500; }
+.evJustSaved {
+  color: #047857;
+  font-weight: 700;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 999px;
+  padding: 2px 10px;
+  display: inline-flex;
+  align-items: center;
+  animation: evJustSavedPulse .3s ease;
+}
+@keyframes evJustSavedPulse {
+  0%   { transform: scale(0.92); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
 
 .evToolbarRight {
   display: flex; align-items: center; gap: 10px;
