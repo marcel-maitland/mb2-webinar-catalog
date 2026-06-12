@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "./lib/supabase.js";
+import "./catalog-extras.css";
 
 /**
  * Public catalog — multi-tenant.
@@ -86,6 +87,31 @@ function PinIcon() {
       />
     </svg>
   );
+}
+
+/* Calendar-tear-off date sticker for catalog cards */
+function CalendarBlock({ date }) {
+  if (!(date instanceof Date) || isNaN(date.getTime())) return null;
+  const month = date.toLocaleString(undefined, { month: "short" }).toUpperCase();
+  const day = date.getDate();
+  const year = date.getFullYear();
+  const thisYear = new Date().getFullYear();
+  return (
+    <div className="calBlock" aria-label={date.toLocaleDateString(undefined, { dateStyle: "long" })}>
+      <div className="calBlockMonth">{month}</div>
+      <div className="calBlockDay">{day}</div>
+      {year !== thisYear && <div className="calBlockYear">{year}</div>}
+    </div>
+  );
+}
+
+/* "Soon" chip for events within 7 days */
+function daysUntil(d) {
+  if (!(d instanceof Date)) return Infinity;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dd = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return Math.round((dd - today) / (1000 * 60 * 60 * 24));
 }
 
 function ClockIcon() {
@@ -452,8 +478,12 @@ function Card({ item, clientName = "" }) {
   const sessionsWithLinks = (Array.isArray(item.sessions) ? item.sessions : []).filter((s) => isUrl(s?.url));
   const timeLabel = safe(item.sessions?.[0]?.label);
 
+  const dInDays = item.date ? daysUntil(item.date) : Infinity;
+  const isSoon = dInDays >= 0 && dInDays <= 7;
+  const isToday = dInDays === 0;
+
   return (
-    <article className="card">
+    <article className="card cardElevated">
       <div className={`thumb ${thumbOk ? "" : "thumbNoImg"}`}>
         {thumbOk ? (
           <img
@@ -466,13 +496,19 @@ function Card({ item, clientName = "" }) {
             }}
           />
         ) : null}
+        {/* Gradient overlay so the calendar block reads on any image */}
+        <span className="thumbGradient" aria-hidden="true" />
         {item.mb2Exclusive ? <span className="mb2Badge">{clientName ? `${clientName} Exclusive` : "Exclusive"}</span> : null}
+        {/* Date sticker — the headline visual change */}
+        <CalendarBlock date={item.date} />
       </div>
 
       <div className="body">
         <div className="topRow">
           <div className="metaRow">
-            {item.date ? <span className="dateBadge">{formatDate(item.date)}</span> : null}
+            {isToday
+              ? <span className="soonChip soonChipToday">Today</span>
+              : isSoon && <span className="soonChip">{dInDays === 1 ? "Tomorrow" : `In ${dInDays} days`}</span>}
             {typeof item.ce === "number" ? <span className="ceBadge">{item.ce} CE</span> : null}
             {safe(item.format) ? <span className="formatBadge">{item.format}</span> : null}
           </div>

@@ -1,0 +1,169 @@
+/* ===================================================================
+   Public catalog — elevated card design
+   Adds on top of App.css; doesn't replace anything.
+=================================================================== */
+
+/* Card hover lift */
+.cardElevated {
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.cardElevated:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 32px rgba(17, 24, 39, .12);
+  border-color: rgba(249, 115, 22, .35);
+}
+
+/* Make sure .thumb is a positioned ancestor for the calendar sticker */
+.cardElevated .thumb {
+  position: relative;
+  overflow: visible !important; /* let the sticker hang off the bottom edge */
+}
+.cardElevated .thumb > img {
+  border-radius: 14px 14px 0 0;
+  display: block;
+}
+
+/* Soft gradient at the bottom of the thumbnail so the sticker reads on any image */
+.thumbGradient {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 60%;
+  background: linear-gradient(180deg, transparent 0%, rgba(17, 24, 39, 0.25) 100%);
+  pointer-events: none;
+  border-radius: 0 0 14px 14px;
+}
+
+/* ===== Calendar-tear-off date sticker ===== */
+.calBlock {
+  position: absolute;
+  bottom: -22px;
+  left: 18px;
+  z-index: 3;
+  width: 64px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  box-shadow:
+    0 12px 24px rgba(17, 24, 39, 0.18),
+    0 2px 4px rgba(17, 24, 39, 0.08);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+  transition: transform .18s ease, box-shadow .18s ease;
+  user-select: none;
+}
+.cardElevated:hover .calBlock {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow:
+    0 18px 32px rgba(17, 24, 39, 0.22),
+    0 2px 4px rgba(17, 24, 39, 0.08);
+}
+
+.calBlockMonth {
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 60%, #ea580c 100%);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  padding: 5px 0 4px;
+  text-align: center;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, .15);
+}
+.calBlockDay {
+  font-size: 28px;
+  font-weight: 800;
+  text-align: center;
+  padding: 4px 0;
+  color: #111827;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.calBlockYear {
+  font-size: 9px;
+  text-align: center;
+  color: #6b7280;
+  padding: 0 0 6px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* Make room in the card body for the overlapping sticker */
+.cardElevated .body {
+  padding-top: 36px;
+}
+
+/* "Soon" / "Today" chips */
+.soonChip {
+  display: inline-flex; align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  text-transform: uppercase;
+}
+.soonChipToday {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+  animation: soonPulse 1.6s ease-in-out infinite;
+}
+@keyframes soonPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, .25); }
+  50%      { box-shadow: 0 0 0 6px rgba(220, 38, 38, .05); }
+}
+
+/* Slight title/typography polish */
+.cardElevated .title {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.22;
+}
+
+/* Description: keep cards same height; 4-line clamp with subtle fade */
+.cardElevated .descFull {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.5;
+}
+
+/* Vendor logo gets a tiny breath */
+.cardElevated .vendorLogo {
+  max-height: 26px;
+  max-width: 90px;
+  object-fit: contain;
+}
+
+/* Register button — refined with a gradient + glow */
+.cardElevated .sessionBtn {
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+  border: none;
+  box-shadow: 0 6px 14px rgba(249, 115, 22, .35);
+  transition: transform .12s ease, box-shadow .12s ease;
+  font-weight: 700;
+}
+.cardElevated .sessionBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(249, 115, 22, .45);
+}
+
+/* MB2 / Exclusive badge — slightly more confident */
+.cardElevated .mb2Badge {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  box-shadow: 0 4px 10px rgba(249, 115, 22, .4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Mobile: nudge the sticker so it doesn't collide with edges */
+@media (max-width: 480px) {
+  .calBlock { left: 12px; width: 56px; }
+  .calBlockDay { font-size: 24px; }
+  .cardElevated .body { padding-top: 32px; }
+}
