@@ -301,21 +301,6 @@ export default function App() {
       <header className="header">
         <div className="headerLeft">
           <div className="titleRow">
-            {client?.logo_url && (
-              <img
-                className="clientHeaderLogo"
-                src={client.logo_url}
-                alt={`${clientName} logo`}
-                style={{
-                  height: 44,
-                  width: "auto",
-                  maxWidth: 140,
-                  objectFit: "contain",
-                  marginRight: 14,
-                  verticalAlign: "middle"
-                }}
-              />
-            )}
             <h1>{title}</h1>
           </div>
           <p>
