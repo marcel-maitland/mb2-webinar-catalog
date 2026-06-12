@@ -297,6 +297,7 @@ export default function App() {
 
   return (
     <div className="page">
+      <CatalogElevatedStyles />
       <header className="header">
         <div className="headerLeft">
           <div className="titleRow">
@@ -467,6 +468,93 @@ export default function App() {
 /* ===============================
    CARD
 ================================= */
+
+/* ====================================================================
+   Catalog elevation styles — injected as <style> so we don't touch App.css.
+   Adds: calendar date tile, thumbnail gradient, hover lift, soon chip.
+==================================================================== */
+function CatalogElevatedStyles() {
+  return (
+    <style>{`
+      /* Card hover lift */
+      .cardElevated { transition: transform .15s ease, box-shadow .15s ease; }
+      .cardElevated:hover { transform: translateY(-3px); box-shadow: 0 20px 40px rgba(17,24,39,.10); }
+
+      /* Subtle gradient so the date tile is always legible on the thumbnail */
+      .thumb { position: relative; }
+      .thumbGradient {
+        position: absolute; inset: 0;
+        background: linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,0.45) 100%);
+        pointer-events: none;
+        border-radius: inherit;
+      }
+
+      /* THE STAR: calendar tear-off date tile */
+      .calBlock {
+        position: absolute;
+        left: 14px;
+        bottom: 14px;
+        z-index: 3;
+        width: 64px;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 10px 24px rgba(17,24,39,.20), 0 0 0 1px rgba(17,24,39,.04);
+        overflow: hidden;
+        text-align: center;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+      }
+      .calBlockMonth {
+        background: #f97316;
+        color: #fff;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        padding: 5px 0 4px;
+        text-transform: uppercase;
+      }
+      .calBlockDay {
+        font-size: 28px;
+        font-weight: 800;
+        color: #111827;
+        line-height: 1.1;
+        padding: 6px 0 4px;
+        letter-spacing: -0.02em;
+      }
+      .calBlockYear {
+        font-size: 11px;
+        font-weight: 600;
+        color: #6b7280;
+        padding: 0 0 6px;
+        letter-spacing: 0.04em;
+      }
+
+      /* "Today" / "In N days" urgency chip in the meta row */
+      .soonChip {
+        background: #fffbeb;
+        color: #b45309;
+        border: 1px solid #fde68a;
+        font-size: 11px;
+        font-weight: 800;
+        padding: 4px 9px;
+        border-radius: 999px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .soonChipToday {
+        background: #f97316;
+        color: #fff;
+        border-color: #f97316;
+        box-shadow: 0 4px 10px rgba(249,115,22,.4);
+      }
+
+      /* MB2 / client exclusive badge — bump elevation so it stands out beside the new tile */
+      .mb2Badge {
+        z-index: 3;
+        box-shadow: 0 6px 14px rgba(249,115,22,.35);
+      }
+    `}</style>
+  );
+}
 
 function Card({ item, clientName = "" }) {
   const thumbOk = isUrl(item.thumb);

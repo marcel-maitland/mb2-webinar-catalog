@@ -3,13 +3,15 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { useClient } from "./AdminApp.jsx";
 
-const FILTERS = [
+const TIME_FILTERS = [
+  { id: "all",      label: "All time" },
+  { id: "upcoming", label: "Upcoming" },
+  { id: "past",     label: "Past" },
+];
+const STATUS_FILTERS = [
   { id: "all",       label: "All" },
-  { id: "upcoming",  label: "Upcoming" },
-  { id: "past",      label: "Past" },
   { id: "published", label: "Published" },
   { id: "drafts",    label: "Drafts" },
-  { id: "mb2",       label: "MB2 Exclusive" },
 ];
 
 const isInPerson = (f) => {
@@ -56,15 +58,20 @@ export default function EventsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
-  // Hide past events by default. Persist the user's pick across visits.
-  const [filter, setFilter] = useState(
-    () => localStorage.getItem("eventsListFilter") || "upcoming"
+  // Three independent filter dimensions. Defaults: Upcoming + All status + Exclusive OFF.
+  const [timeFilter, setTimeFilter] = useState(
+    () => localStorage.getItem("eventsTimeFilter") || "upcoming"
+  );
+  const [statusFilter, setStatusFilter] = useState(
+    () => localStorage.getItem("eventsStatusFilter") || "all"
+  );
+  const [exclusiveOnly, setExclusiveOnly] = useState(
+    () => localStorage.getItem("eventsExclusiveOnly") === "1"
   );
 
-  // Persist filter changes so the choice is remembered
-  useEffect(() => {
-    localStorage.setItem("eventsListFilter", filter);
-  }, [filter]);
+  useEffect(() => { localStorage.setItem("eventsTimeFilter", timeFilter); }, [timeFilter]);
+  useEffect(() => { localStorage.setItem("eventsStatusFilter", statusFilter); }, [statusFilter]);
+  useEffect(() => { localStorage.setItem("eventsExclusiveOnly", exclusiveOnly ? "1" : "0"); }, [exclusiveOnly]);
 
   const load = async () => {
     if (!currentClientId) return;
@@ -151,22 +158,27 @@ export default function EventsList() {
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows
+      // Time
       .filter((r) => {
-        if (filter === "published") return r.is_published;
-        if (filter === "drafts")    return !r.is_published;
-        if (filter === "mb2")       return r.mb2_exclusive;
-        if (filter === "upcoming")  {
-          const k = dateStatus(r.event_date).kind;
-          return k === "upcoming" || k === "today" || k === "soon";
-        }
-        if (filter === "past")      return dateStatus(r.event_date).kind === "past";
+        const k = dateStatus(r.event_date).kind;
+        if (timeFilter === "upcoming") return k === "upcoming" || k === "today" || k === "soon" || k === "unscheduled";
+        if (timeFilter === "past")     return k === "past";
         return true;
       })
+      // Status
+      .filter((r) => {
+        if (statusFilter === "published") return r.is_published;
+        if (statusFilter === "drafts")    return !r.is_published;
+        return true;
+      })
+      // Exclusive toggle
+      .filter((r) => !exclusiveOnly || r.mb2_exclusive)
+      // Search
       .filter((r) => {
         if (!q) return true;
         return `${r.title} ${r.vendor ?? ""} ${r.category ?? ""}`.toLowerCase().includes(q);
       });
-  }, [rows, query, filter]);
+  }, [rows, query, timeFilter, statusFilter, exclusiveOnly]);
 
   return (
     <section className="elPage">
@@ -213,23 +225,65 @@ export default function EventsList() {
           )}
         </div>
 
-        <div className="elFilterPills" role="tablist">
-          {FILTERS.map((f) => {
-            const n = f.id === "all" ? counts.all : counts[f.id];
-            return (
-              <button
-                key={f.id}
-                role="tab"
-                aria-selected={filter === f.id}
-                className={`elFilterPill ${filter === f.id ? "active" : ""}`}
-                onClick={() => setFilter(f.id)}
-              >
-                {f.label}
-                <span className="elFilterCount">{n}</span>
-              </button>
-            );
-          })}
+        <div className="elFilterGroup" role="group" aria-label="Time">
+          <span className="elFilterGroupLabel">Time</span>
+          <div className="elFilterPills" role="tablist">
+            {TIME_FILTERS.map((f) => {
+              const n = f.id === "all" ? counts.all
+                      : f.id === "upcoming" ? counts.upcoming
+                      : counts.past;
+              return (
+                <button
+                  key={f.id}
+                  role="tab"
+                  aria-selected={timeFilter === f.id}
+                  className={`elFilterPill ${timeFilter === f.id ? "active" : ""}`}
+                  onClick={() => setTimeFilter(f.id)}
+                >
+                  {f.label}
+                  <span className="elFilterCount">{n}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
+
+        <div className="elFilterGroup" role="group" aria-label="Status">
+          <span className="elFilterGroupLabel">Status</span>
+          <div className="elFilterPills" role="tablist">
+            {STATUS_FILTERS.map((f) => {
+              const n = f.id === "all" ? counts.all
+                      : f.id === "published" ? counts.published
+                      : counts.drafts;
+              return (
+                <button
+                  key={f.id}
+                  role="tab"
+                  aria-selected={statusFilter === f.id}
+                  className={`elFilterPill ${statusFilter === f.id ? "active" : ""}`}
+                  onClick={() => setStatusFilter(f.id)}
+                >
+                  {f.label}
+                  <span className="elFilterCount">{n}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className={`elExclusiveToggle ${exclusiveOnly ? "active" : ""}`}
+          aria-pressed={exclusiveOnly}
+          onClick={() => setExclusiveOnly((v) => !v)}
+          title="Show only events flagged as exclusive"
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+            <path d="M12 2l2.9 6 6.6.6-5 4.5 1.5 6.4L12 16.8 5.9 19.5 7.5 13.1 2.5 8.6l6.6-.6L12 2z" fill="currentColor"/>
+          </svg>
+          Only {exclusiveLabel}
+          <span className="elFilterCount">{counts.mb2}</span>
+        </button>
       </div>
 
       {/* ============================== TABLE ============================== */}
@@ -238,7 +292,16 @@ export default function EventsList() {
       {loading ? (
         <div className="formLoading"><div className="spinner" /> Loading events…</div>
       ) : visible.length === 0 ? (
-        <EmptyState query={query} filter={filter} onClear={() => { setQuery(""); setFilter("all"); }} />
+        <EmptyState
+          query={query}
+          filtered={timeFilter !== "all" || statusFilter !== "all" || exclusiveOnly}
+          onClear={() => {
+            setQuery("");
+            setTimeFilter("all");
+            setStatusFilter("all");
+            setExclusiveOnly(false);
+          }}
+        />
       ) : (
         <div className="elTableWrap">
           <div className="elTableHead">
@@ -362,20 +425,20 @@ function Stat({ label, value, tone }) {
   );
 }
 
-function EmptyState({ query, filter, onClear }) {
-  const filtered = query || filter !== "all";
+function EmptyState({ query, filtered, onClear }) {
+  const hasFilters = !!query || !!filtered;
   return (
     <div className="elEmpty">
       <div className="elEmptyArt">📅</div>
-      <h3>{filtered ? "Nothing matches" : "No events yet"}</h3>
+      <h3>{hasFilters ? "Nothing matches" : "No events yet"}</h3>
       <p>
-        {filtered
-          ? "Try clearing the search or pick a different filter."
+        {hasFilters
+          ? "Try clearing the search or loosening a filter."
           : "Create your first event or import a CSV / Excel file to get started."}
       </p>
       <div className="elEmptyActions">
-        {filtered
-          ? <button className="primaryBtn" onClick={onClear}>Clear filters</button>
+        {hasFilters
+          ? <button className="primaryBtn" onClick={onClear}>Clear all filters</button>
           : (<>
               <Link to="/admin/events/new" className="primaryBtn">+ New event</Link>
               <Link to="/admin/import" className="ghostBtn">Import CSV / Excel</Link>
