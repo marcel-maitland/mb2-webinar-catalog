@@ -976,9 +976,57 @@ function PreviewCard({ form, exclusiveLabel = "Exclusive" }) {
             {form.location && <div><strong>Location</strong> {form.location}</div>}
           </div>
         )}
-        {(isUrl(form.session1_url) || isUrl(form.session2_url) || isUrl(form.in_person_registration_url)) && (
-          <div className="previewRegister">Register →</div>
-        )}
+        {(() => {
+          const links = [];
+          if (isUrl(form.session1_url)) {
+            links.push({ url: form.session1_url, label: safe(form.session1_label) || "Session 1" });
+          }
+          if (isUrl(form.session2_url)) {
+            links.push({ url: form.session2_url, label: safe(form.session2_label) || "Session 2" });
+          }
+          if (isUrl(form.in_person_registration_url)) {
+            links.push({ url: form.in_person_registration_url, label: "In-person registration" });
+          }
+          if (links.length === 0) return null;
+          if (links.length === 1) {
+            return (
+              <a
+                className="previewRegister previewRegisterLink"
+                href={links[0].url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Opens the registration link in a new tab"
+              >
+                Register
+                <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style={{ marginLeft: 6, verticalAlign: "-2px" }}>
+                  <path d="M14 4h6v6M10 14L21 3M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </a>
+            );
+          }
+          return (
+            <div className="previewRegisterList">
+              {links.map((l, i) => (
+                <a
+                  key={i}
+                  className="previewRegisterRow"
+                  href={l.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Opens in a new tab"
+                >
+                  <span className="previewRegisterLabel">{l.label}</span>
+                  <span className="previewRegisterAction">
+                    Register
+                    <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" style={{ marginLeft: 4, verticalAlign: "-1px" }}>
+                      <path d="M14 4h6v6M10 14L21 3M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </span>
+                </a>
+              ))}
+            </div>
+          );
+        })()}
       </div>
     </article>
   );

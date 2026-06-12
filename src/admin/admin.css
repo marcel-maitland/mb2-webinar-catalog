@@ -1970,6 +1970,61 @@
   font-size: 13px;
   text-align: center;
 }
+/* Clickable variant — preview reg buttons that actually open in a new tab */
+.previewRegisterLink {
+  display: block;
+  text-decoration: none !important;
+  cursor: pointer;
+  transition: transform .12s, box-shadow .12s, background .12s;
+  box-shadow: 0 4px 10px rgba(249,115,22,.30);
+}
+.previewRegisterLink:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(249,115,22,.42);
+  background: #ea6a13;
+}
+.previewRegisterList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.previewRegisterRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(249,115,22,.25);
+  border-radius: 10px;
+  padding: 8px 12px;
+  text-decoration: none !important;
+  color: var(--text);
+  font-size: 12px;
+  transition: background .12s, border-color .12s, transform .12s;
+}
+.previewRegisterRow:hover {
+  background: #ffeed9;
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.previewRegisterLabel {
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.previewRegisterAction {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
 
 /* Modal */
 .modalBackdrop {
