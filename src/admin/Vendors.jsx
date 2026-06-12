@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../lib/supabase.js";
+import { useClient } from "./AdminApp.jsx";
 
 /**
  * Vendors / presenters page — card grid.
@@ -9,6 +10,7 @@ import { supabase } from "../lib/supabase.js";
  * - Hover-reveal delete icon on each card.
  */
 export default function Vendors() {
+  const { currentClientId } = useClient();
   const [rows, setRows] = useState([]);
   const [eventCounts, setEventCounts] = useState({});
   const [loading, setLoading] = useState(true);
@@ -18,15 +20,20 @@ export default function Vendors() {
   const [modal, setModal] = useState(null); // { mode: 'add' } | { mode: 'edit', vendor }
 
   const load = async () => {
+    if (!currentClientId) return;
     setLoading(true);
     setError("");
     const { data: vData, error: vErr } = await supabase
       .from("vendors")
       .select("id, name, logo_url, updated_at")
+      .eq("client_id", currentClientId)
       .order("name");
     if (vErr) { setError(vErr.message); setLoading(false); return; }
 
-    const { data: eData } = await supabase.from("events").select("vendor");
+    const { data: eData } = await supabase
+      .from("events")
+      .select("vendor")
+      .eq("client_id", currentClientId);
     const counts = {};
     for (const r of eData || []) {
       const v = (r.vendor || "").trim().toLowerCase();
@@ -37,7 +44,7 @@ export default function Vendors() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [currentClientId]);
 
   const remove = async (row) => {
     if (!confirm(`Delete vendor "${row.name}"?\n\nEvents that reference this vendor will keep the vendor name on them, but it'll be removed from the dropdown.`)) return;
@@ -282,6 +289,7 @@ function EmptyState({ query, filter, onClear, onAdd }) {
    (Exported as AddVendorModal too for EventForm backwards-compat)
 ============================================================ */
 export function VendorModal({ mode = "add", vendor, onClose, onSaved, initialName = "" }) {
+  const { currentClientId } = useClient();
   const isEdit = mode === "edit" && vendor;
   const [name, setName] = useState(isEdit ? vendor.name : initialName);
   const [logoUrl, setLogoUrl] = useState(isEdit ? (vendor.logo_url || "") : "");
@@ -328,7 +336,7 @@ export function VendorModal({ mode = "add", vendor, onClose, onSaved, initialNam
       } else {
         const { data, error } = await supabase
           .from("vendors")
-          .insert({ name: name.trim(), logo_url: logoUrl.trim() || null })
+          .insert({ name: name.trim(), logo_url: logoUrl.trim() || null, client_id: currentClientId })
           .select()
           .single();
         if (error) throw error;

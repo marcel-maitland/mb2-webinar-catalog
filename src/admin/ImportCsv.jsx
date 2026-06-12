@@ -4,12 +4,14 @@ import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { csvRowToEvent } from "../lib/normalize-csv.js";
+import { useClient } from "./AdminApp.jsx";
 
 const isXlsxName = (name) => /\.(xlsx|xlsm|xls)$/i.test(name || "");
 const FORMAT_BADGES = ["CSV", "XLSX", "XLS"];
 
 export default function ImportCsv() {
   const navigate = useNavigate();
+  const { currentClientId, currentClient } = useClient();
   const [parsed, setParsed] = useState([]);
   const [chosenFile, setChosenFile] = useState(null);
   const [error, setError] = useState("");
@@ -103,7 +105,9 @@ export default function ImportCsv() {
     const batchSize = 50;
     try {
       for (let i = 0; i < parsed.length; i += batchSize) {
-        const slice = parsed.slice(i, i + batchSize).map((p) => p.ready);
+        const slice = parsed
+          .slice(i, i + batchSize)
+          .map((p) => ({ ...p.ready, client_id: currentClientId }));
         const { error } = await supabase.from("events").insert(slice);
         if (error) throw error;
         setDoneCount(i + slice.length);
@@ -131,6 +135,9 @@ export default function ImportCsv() {
             <p className="elHeroLead">
               Drop a CSV or Excel file. We read the first sheet, match column headers automatically,
               and stage every row as a draft so you can review before it goes live.
+              {currentClient && (
+                <> Importing into <strong>{currentClient.name}</strong>.</>
+              )}
             </p>
           </div>
           <div className="impFormatBadges">

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
+import { useClient } from "./AdminApp.jsx";
 
 const FILTERS = [
   { id: "all",       label: "All" },
@@ -46,6 +47,7 @@ const formatPillClass = (format) => {
 };
 
 export default function EventsList() {
+  const { currentClientId } = useClient();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -53,18 +55,20 @@ export default function EventsList() {
   const [filter, setFilter] = useState("all");
 
   const load = async () => {
+    if (!currentClientId) return;
     setLoading(true);
     setError("");
     const { data, error } = await supabase
       .from("events")
       .select("*")
+      .eq("client_id", currentClientId)
       .order("event_date", { ascending: true });
     if (error) setError(error.message);
     else setRows(data || []);
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [currentClientId]);
 
   const togglePublish = async (row) => {
     const next = !row.is_published;

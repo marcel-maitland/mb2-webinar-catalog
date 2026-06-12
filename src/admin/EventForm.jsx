@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { AddVendorModal } from "./Vendors.jsx";
+import { useClient } from "./AdminApp.jsx";
 
 const BLANK = {
   title: "",
@@ -50,6 +51,7 @@ const isInPersonFormat = (f) => {
 export default function EventForm({ mode }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { currentClientId } = useClient();
   const [form, setForm] = useState(BLANK);
   const [original, setOriginal] = useState(BLANK);
   const [loading, setLoading] = useState(mode === "edit");
@@ -128,6 +130,7 @@ export default function EventForm({ mode }) {
       ce_hours: form.ce_hours === "" || form.ce_hours == null ? null : Number(form.ce_hours),
       event_date: form.event_date ? new Date(form.event_date).toISOString() : null,
       roles: form.roles,
+      client_id: currentClientId,
     };
     try {
       if (mode === "new") {
@@ -578,20 +581,23 @@ function SessionRow({ n, label, url, onLabel, onUrl }) {
    VENDOR COMBOBOX  (unchanged behavior, polished labels)
 ===================================================================== */
 function VendorCombobox({ value, onChange }) {
+  const { currentClientId } = useClient();
   const [vendors, setVendors] = useState([]);
   const [open, setOpen] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const wrapRef = useRef(null);
 
   const loadVendors = async () => {
+    if (!currentClientId) return;
     const { data, error } = await supabase
       .from("vendors")
       .select("id, name, logo_url")
+      .eq("client_id", currentClientId)
       .order("name");
     if (!error) setVendors(data || []);
   };
 
-  useEffect(() => { loadVendors(); }, []);
+  useEffect(() => { loadVendors(); }, [currentClientId]);
 
   useEffect(() => {
     const onDoc = (e) => {
