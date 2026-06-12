@@ -29,17 +29,47 @@ export default function ImportCsv() {
     setDoneCount(0);
 
     if (isXlsxName(file.name)) {
-      // XLSX path — read as array buffer, take first sheet
+      // XLSX path — read as array buffer, walk first sheet so we can pull hyperlink
+      // targets out of cells (sheet_to_json otherwise gives us only the display text
+      // "Register Here", not the actual URL).
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
           const data = new Uint8Array(e.target.result);
-          const wb = XLSX.read(data, { type: "array" });
+          const wb = XLSX.read(data, { type: "array", cellHTML: false });
           const sheetName = wb.SheetNames[0];
           if (!sheetName) throw new Error("Workbook has no sheets.");
           const sheet = wb.Sheets[sheetName];
-          // raw:false formats numbers/dates as text, matching how PapaParse sees CSVs
-          const rows = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false });
+          const ref = sheet["!ref"];
+          if (!ref) throw new Error("Sheet is empty.");
+          const range = XLSX.utils.decode_range(ref);
+
+          // Read headers from the first row
+          const headers = [];
+          for (let c = range.s.c; c <= range.e.c; c++) {
+            const cell = sheet[XLSX.utils.encode_cell({ r: range.s.r, c })];
+            const h = cell ? String(cell.w ?? cell.v ?? "").trim() : "";
+            headers.push(h || `Col${c}`);
+          }
+
+          // Walk data rows; for each cell, prefer the hyperlink target over the display text
+          const rows = [];
+          for (let r = range.s.r + 1; r <= range.e.r; r++) {
+            const row = {};
+            for (let c = range.s.c; c <= range.e.c; c++) {
+              const cell = sheet[XLSX.utils.encode_cell({ r, c })];
+              if (!cell) continue;
+              const key = headers[c - range.s.c];
+              // cell.l.Target is the hyperlink URL when present (SheetJS docs).
+              // Otherwise fall back to the formatted text (w) or raw value (v).
+              const linkTarget = cell.l?.Target;
+              const value = linkTarget != null && linkTarget !== ""
+                ? linkTarget
+                : (cell.w ?? cell.v ?? "");
+              row[key] = value;
+            }
+            rows.push(row);
+          }
           onParsed(rows);
         } catch (err) {
           setError(err.message || "Failed to read Excel file.");
