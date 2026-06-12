@@ -106,6 +106,309 @@
 .tinyThumbEmpty { background:#f3f4f6; }
 
 /* =================================================================
+   Import page — elevated UI
+================================================================= */
+.impPage { display: flex; flex-direction: column; gap: 22px; padding-bottom: 100px; }
+
+/* Format badges in the hero */
+.impFormatBadges {
+  display: flex; gap: 6px;
+  flex-shrink: 0;
+}
+.impFormatBadge {
+  display: inline-flex; align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Pre-upload layout: split drop zone + 3-step guide */
+.impSplit {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: stretch;
+}
+@media (max-width: 900px) {
+  .impSplit { grid-template-columns: 1fr; }
+}
+
+/* Drop zone */
+.impDropZone {
+  background: #fff;
+  border: 2px dashed var(--border);
+  border-radius: 18px;
+  padding: 60px 40px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, transform .15s;
+  min-height: 320px;
+  position: relative;
+  color: var(--muted);
+}
+.impDropZone:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.impDropZone.drag {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  transform: scale(1.005);
+  box-shadow: 0 0 0 4px rgba(249,115,22,.15);
+}
+.impDropZone.loading {
+  cursor: wait;
+  background: var(--accent-soft);
+}
+.impDropIcon {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 16px;
+  transition: transform .15s;
+}
+.impDropZone:hover .impDropIcon { transform: translateY(-4px); }
+.impDropZone.drag .impDropIcon { transform: translateY(-6px) scale(1.05); }
+.impDropTitle {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.impDropSub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 360px;
+}
+
+/* Guide column */
+.impGuide {
+  display: flex; flex-direction: column;
+  gap: 14px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 24px;
+}
+.impGuideStep {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.impStepN {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 10px rgba(249,115,22,.35);
+}
+.impGuideStep h3 {
+  margin: 4px 0 4px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.impGuideStep p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.impGuideStep p strong { color: var(--text); }
+
+/* Column reference toggle */
+.impColumnRefToggle {
+  margin-top: 8px;
+  background: #fafbfc;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between;
+  transition: color .12s, background .12s, border-color .12s;
+}
+.impColumnRefToggle:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: rgba(249,115,22,.3);
+}
+.impCaret { font-size: 11px; opacity: 0.6; }
+
+.impColumnRef {
+  display: flex; flex-direction: column;
+  gap: 8px;
+  padding: 12px 4px;
+  font-size: 12px;
+}
+.impColRefRow {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+.impColRefField {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--text);
+}
+.impColRefAliases {
+  display: flex; flex-wrap: wrap; gap: 4px;
+}
+.impColRefAliases code {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.impColRefAliases em {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  color: var(--muted);
+  font-style: normal;
+  font-size: 11px;
+}
+
+/* Post-upload: file metadata card */
+.impFileCard {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr) auto;
+  gap: 24px;
+  align-items: center;
+}
+@media (max-width: 900px) {
+  .impFileCard {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+.impFileMeta { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.impFileIcon {
+  width: 48px; height: 48px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.impFileName {
+  font-weight: 700;
+  font-size: 15px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.impFileSub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.impFileStats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+@media (max-width: 540px) {
+  .impFileStats { grid-template-columns: repeat(2, 1fr); }
+}
+.impMini {
+  background: #fafbfc;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  text-align: center;
+}
+.impMiniVal { font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+.impMiniLbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.impMini-accent { background: var(--accent-soft); border-color: rgba(249,115,22,.3); }
+.impMini-accent .impMiniVal { color: var(--accent); }
+.impMini-gold { background: #fffbeb; border-color: #fde68a; }
+.impMini-gold .impMiniVal { color: #b45309; }
+
+.impPickAgainBtn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .12s;
+}
+.impPickAgainBtn:hover { color: var(--text); border-color: var(--accent); background: var(--accent-soft); }
+
+/* Preview card */
+.impPreviewCard {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.impPreviewHead {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+}
+.impPreviewHead h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.impPreviewHead .muted { font-size: 12px; }
+.impPreviewTable { border: none; border-radius: 0; }
+.impPreviewTable .adminTable th { background: #fafbfc; padding: 10px 14px; }
+.impPreviewTable .adminTable tbody tr:nth-child(even) { background: #fafbfc; }
+.impPrevTitle { font-weight: 600; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Sticky bottom import bar */
+.impStickyBar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 18px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 20px;
+  box-shadow: 0 12px 30px rgba(17,24,39,.15);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  z-index: 50;
+  min-width: min(640px, calc(100vw - 40px));
+}
+.impStickyLeft { font-size: 14px; color: var(--text); }
+.impStickyLeft strong { color: var(--accent); }
+.impStickyRight { display: flex; gap: 8px; margin-left: auto; }
+.impImportBtn { min-width: 200px; padding: 12px 18px; font-size: 14px; }
+
+/* =================================================================
    Vendors page — elevated UI
 ================================================================= */
 .vdrPage { display: flex; flex-direction: column; gap: 22px; }
