@@ -311,7 +311,7 @@ export default function App() {
           <div className="sideTitle">Filters</div>
 
           {/* The exclusive toggle is HIDDEN in exclusive mode so visitors of
-              the MB2 Exclusive page can't uncheck it. The state stays true. */}
+              the {Client} Exclusive page can't uncheck it. */}
           {!isExclusiveMode && (
             <label className="pillCheck exclusiveToggle">
               <input
@@ -319,7 +319,7 @@ export default function App() {
                 checked={mb2ExclusiveOnly}
                 onChange={(e) => setMb2ExclusiveOnly(e.target.checked)}
               />
-              <span>Show only MB2 Exclusive</span>
+              <span>Show only {clientName} Exclusive</span>
             </label>
           )}
 
@@ -428,7 +428,7 @@ export default function App() {
           {!loading && !loadError && filtered.length > 0 && (
             <div className="grid">
               {filtered.map((item) => (
-                <Card key={item.id} item={item} />
+                <Card key={item.id} item={item} clientName={clientName} />
               ))}
             </div>
           )}
@@ -442,7 +442,7 @@ export default function App() {
    CARD
 ================================= */
 
-function Card({ item }) {
+function Card({ item, clientName = "" }) {
   const thumbOk = isUrl(item.thumb);
   const logoOk = isUrl(item.vendorLogo);
 
@@ -466,7 +466,7 @@ function Card({ item }) {
             }}
           />
         ) : null}
-        {item.mb2Exclusive ? <span className="mb2Badge">MB2 Exclusive</span> : null}
+        {item.mb2Exclusive ? <span className="mb2Badge">{clientName ? `${clientName} Exclusive` : "Exclusive"}</span> : null}
       </div>
 
       <div className="body">

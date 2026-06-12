@@ -51,7 +51,10 @@ const isInPersonFormat = (f) => {
 export default function EventForm({ mode }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { currentClientId } = useClient();
+  const { currentClientId, currentClient } = useClient();
+  const exclusiveLabel = currentClient?.name
+    ? `${currentClient.name} Exclusive`
+    : "Exclusive";
   const [form, setForm] = useState(BLANK);
   const [original, setOriginal] = useState(BLANK);
   const [loading, setLoading] = useState(mode === "edit");
@@ -220,7 +223,7 @@ export default function EventForm({ mode }) {
         </div>
         <div className="evToolbarRight">
           <Switch
-            label="MB2 Exclusive"
+            label={exclusiveLabel}
             checked={form.mb2_exclusive}
             onChange={(v) => set("mb2_exclusive", v)}
             tone="gold"
@@ -400,7 +403,7 @@ export default function EventForm({ mode }) {
         <aside className="evPreview">
           <div className="evPreviewSticky">
             <div className="evPreviewLabel">Live preview</div>
-            <PreviewCard form={form} />
+            <PreviewCard form={form} exclusiveLabel={exclusiveLabel} />
             <p className="evPreviewHint muted">
               This is what visitors will see on the public catalog. Updates as you type.
             </p>
@@ -719,7 +722,7 @@ function VendorCombobox({ value, onChange }) {
 /* =====================================================================
    LIVE PREVIEW CARD (mirrors the public catalog tile)
 ===================================================================== */
-function PreviewCard({ form }) {
+function PreviewCard({ form, exclusiveLabel = "Exclusive" }) {
   const d = form.event_date ? new Date(form.event_date) : null;
   const thumb = isUrl(form.thumb_url) ? form.thumb_url : "";
   const logo = isUrl(form.vendor_logo_url) ? form.vendor_logo_url : "";
@@ -729,7 +732,7 @@ function PreviewCard({ form }) {
     <article className="previewCard">
       <div className={`previewThumb ${thumb ? "" : "previewThumbEmpty"}`}>
         {thumb && <img src={thumb} alt="" />}
-        {form.mb2_exclusive && <span className="previewMb2Badge">MB2 Exclusive</span>}
+        {form.mb2_exclusive && <span className="previewMb2Badge">{exclusiveLabel}</span>}
         {!form.is_published && <span className="previewDraftBadge">Draft</span>}
       </div>
       <div className="previewBody">

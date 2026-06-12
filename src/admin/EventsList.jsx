@@ -47,8 +47,11 @@ const formatPillClass = (format) => {
 };
 
 export default function EventsList() {
-  const { currentClientId } = useClient();
+  const { currentClientId, currentClient } = useClient();
   const navigate = useNavigate();
+  const exclusiveLabel = currentClient?.name
+    ? `${currentClient.name} Exclusive`
+    : "Exclusive";
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -243,7 +246,7 @@ export default function EventsList() {
             <div className="elColDate">Date</div>
             <div className="elColVendor">Vendor</div>
             <div className="elColFormat">Format</div>
-            <div className="elColStar" title="MB2 Exclusive">★</div>
+            <div className="elColStar" title={exclusiveLabel}>{exclusiveLabel}</div>
             <div className="elColPublish">Publish</div>
             <div className="elColActions" />
           </div>
@@ -292,8 +295,8 @@ export default function EventsList() {
                     type="button"
                     className={`mb2Star ${r.mb2_exclusive ? "mb2StarOn" : ""}`}
                     onClick={() => toggleMb2(r)}
-                    title={r.mb2_exclusive ? "Remove MB2 Exclusive flag" : "Mark as MB2 Exclusive"}
-                    aria-label="Toggle MB2 Exclusive"
+                    title={r.mb2_exclusive ? `Remove ${exclusiveLabel} flag` : `Mark as ${exclusiveLabel}`}
+                    aria-label={`Toggle ${exclusiveLabel}`}
                   >★</button>
                 </div>
 
