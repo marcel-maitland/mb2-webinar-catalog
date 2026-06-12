@@ -240,6 +240,125 @@
 .tinyThumbEmpty { background:#f3f4f6; }
 
 /* =================================================================
+   Client modal tabs + Team panel
+================================================================= */
+.clientModalWide { max-width: 560px; }
+.clientModalTabs {
+  display: flex;
+  gap: 6px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  background: #fafbfc;
+}
+.clientModalTab {
+  background: none;
+  border: none;
+  padding: 12px 14px 14px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+  letter-spacing: 0.02em;
+}
+.clientModalTab:hover { color: var(--text); }
+.clientModalTab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.teamPanel { padding-top: 6px; }
+.teamIntro {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.teamIntro strong { color: var(--text); }
+
+.teamInviteRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.teamInviteRow input {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  background: #fff;
+  transition: border-color .12s, box-shadow .12s;
+}
+.teamInviteRow input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(249,115,22,.18);
+}
+
+.teamNotice {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.teamNoticeOk {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+.teamNoticeErr {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+.teamHint {
+  font-size: 11px;
+  margin: 6px 0 18px;
+  line-height: 1.5;
+}
+
+.teamList {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.teamListHeader {
+  padding: 10px 14px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  color: var(--muted);
+  background: #fafbfc;
+  border-bottom: 1px solid var(--border);
+}
+.teamRow {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.teamRow:last-child { border-bottom: none; }
+.teamRowAvatar {
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+}
+.teamRowAvatar .vdrLetter { width: 36px; height: 36px; font-size: 16px; border-radius: 10px; }
+.teamRowMeta { min-width: 0; }
+.teamRowEmail {
+  font-weight: 600; font-size: 14px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.teamRowSub { font-size: 12px; margin-top: 2px; }
+
+/* =================================================================
    Import page — elevated UI
 ================================================================= */
 .impPage { display: flex; flex-direction: column; gap: 22px; padding-bottom: 100px; }
@@ -1109,7 +1228,7 @@
 .elTableHead,
 .elRow {
   display: grid;
-  grid-template-columns: minmax(260px, 1.8fr) 110px minmax(160px, 1fr) 110px 50px 70px 70px;
+  grid-template-columns: minmax(260px, 1.8fr) 110px minmax(160px, 1fr) 110px 50px 70px 116px;
   gap: 14px;
   align-items: center;
 }
@@ -1246,7 +1365,7 @@
 
 @media (max-width: 1100px) {
   .elTableHead, .elRow {
-    grid-template-columns: minmax(220px, 1.6fr) 100px 130px 90px 40px 60px 60px;
+    grid-template-columns: minmax(220px, 1.6fr) 100px 130px 90px 40px 60px 110px;
   }
 }
 @media (max-width: 860px) {

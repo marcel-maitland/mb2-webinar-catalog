@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { useClient } from "./AdminApp.jsx";
 
@@ -48,11 +48,20 @@ const formatPillClass = (format) => {
 
 export default function EventsList() {
   const { currentClientId } = useClient();
+  const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState("all");
+  // Hide past events by default. Persist the user's pick across visits.
+  const [filter, setFilter] = useState(
+    () => localStorage.getItem("eventsListFilter") || "upcoming"
+  );
+
+  // Persist filter changes so the choice is remembered
+  useEffect(() => {
+    localStorage.setItem("eventsListFilter", filter);
+  }, [filter]);
 
   const load = async () => {
     if (!currentClientId) return;
@@ -101,6 +110,24 @@ export default function EventsList() {
     const { error } = await supabase.from("events").delete().eq("id", row.id);
     if (error) return alert("Failed: " + error.message);
     setRows((prev) => prev.filter((r) => r.id !== row.id));
+  };
+
+  const duplicate = async (row) => {
+    // Strip server-managed fields so we can re-insert a clean copy
+    const { id, created_at, updated_at, created_by, ...rest } = row;
+    const copy = {
+      ...rest,
+      title: `${row.title} (copy)`,
+      is_published: false,  // safer default — the duplicate is a draft until you publish
+    };
+    const { data, error } = await supabase
+      .from("events")
+      .insert(copy)
+      .select()
+      .single();
+    if (error) return alert("Duplicate failed: " + error.message);
+    // Drop straight into the edit form so the user can tweak the date
+    navigate(`/admin/events/${data.id}`);
   };
 
   // Counts that drive both the stats hero and the filter pill badges
@@ -288,6 +315,18 @@ export default function EventsList() {
                       <path d="M4 20h4l10-10-4-4L4 16v4z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </Link>
+                  <button
+                    type="button"
+                    className="elIconBtn"
+                    onClick={() => duplicate(r)}
+                    title="Duplicate (creates a draft copy you can edit)"
+                    aria-label="Duplicate event"
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                      <rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+                      <path d="M5 15V6a2 2 0 0 1 2-2h9" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
                   <button
                     type="button"
                     className="elIconBtn elIconBtnDanger"

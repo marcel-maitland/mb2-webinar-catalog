@@ -233,10 +233,11 @@ function Stat({ label, value, tone }) {
 }
 
 /* ============================================================
-   Add / edit modal
+   Add / edit modal — now with a Team tab for managing access
 ============================================================ */
 function ClientModal({ mode = "add", client, onClose, onSaved }) {
   const isEdit = mode === "edit" && client;
+  const [tab, setTab] = useState("details"); // 'details' | 'team'
   const [name, setName] = useState(isEdit ? client.name : "");
   const [slug, setSlug] = useState(isEdit ? client.slug : "");
   const [logoUrl, setLogoUrl] = useState(isEdit ? (client.logo_url || "") : "");
@@ -303,71 +304,210 @@ function ClientModal({ mode = "add", client, onClose, onSaved }) {
 
   return (
     <div className="modalBackdrop" onClick={onClose}>
-      <div className="modal vdrModal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal vdrModal clientModalWide" onClick={(e) => e.stopPropagation()}>
         <div className="modalHeader">
           <h3>{isEdit ? "Edit client" : "Add client"}</h3>
           <button className="modalClose" onClick={onClose} aria-label="Close">×</button>
         </div>
-        <form onSubmit={save} className="modalBody">
-          <div className="vdrModalLogo">
-            {logoUrl
-              ? <img src={logoUrl} alt="" />
-              : <LetterAvatar name={name || "?"} large />}
+
+        {isEdit && (
+          <div className="clientModalTabs">
             <button
               type="button"
-              className="vdrModalLogoBtn"
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-            >
-              {uploading ? "Uploading…" : (logoUrl ? "Replace logo" : "Upload logo")}
-            </button>
-            {logoUrl && (
-              <button type="button" className="vdrModalLogoRemove"
-                      onClick={() => setLogoUrl("")}>Remove</button>
-            )}
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              style={{ display: "none" }}
-              onChange={(e) => uploadLogo(e.target.files?.[0])}
-            />
+              className={`clientModalTab ${tab === "details" ? "active" : ""}`}
+              onClick={() => setTab("details")}
+            >Details</button>
+            <button
+              type="button"
+              className={`clientModalTab ${tab === "team" ? "active" : ""}`}
+              onClick={() => setTab("team")}
+            >Team</button>
           </div>
+        )}
 
-          <label className="field">
-            <span>Client name *</span>
-            <input
-              autoFocus={!isEdit}
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. MB2 Dental"
-            />
-          </label>
+        {tab === "details" ? (
+          <form onSubmit={save} className="modalBody">
+            <div className="vdrModalLogo">
+              {logoUrl
+                ? <img src={logoUrl} alt="" />
+                : <LetterAvatar name={name || "?"} large />}
+              <button
+                type="button"
+                className="vdrModalLogoBtn"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? "Uploading…" : (logoUrl ? "Replace logo" : "Upload logo")}
+              </button>
+              {logoUrl && (
+                <button type="button" className="vdrModalLogoRemove"
+                        onClick={() => setLogoUrl("")}>Remove</button>
+              )}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={(e) => uploadLogo(e.target.files?.[0])}
+              />
+            </div>
 
-          <label className="field">
-            <span>Slug *</span>
-            <input
-              required
-              value={slug}
-              onChange={(e) => { setSlug(e.target.value); setSlugTouched(true); }}
-              placeholder="mb2"
-              spellCheck={false}
-            />
-            <span className="muted" style={{ fontSize: 11, marginTop: 4 }}>
-              URL: <code>/c/{slug || "..."}</code>
-            </span>
-          </label>
+            <label className="field">
+              <span>Client name *</span>
+              <input
+                autoFocus={!isEdit}
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. MB2 Dental"
+              />
+            </label>
 
-          {error && <p className="errMsg">{error}</p>}
+            <label className="field">
+              <span>Slug *</span>
+              <input
+                required
+                value={slug}
+                onChange={(e) => { setSlug(e.target.value); setSlugTouched(true); }}
+                placeholder="mb2"
+                spellCheck={false}
+              />
+              <span className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+                URL: <code>/c/{slug || "..."}</code>
+              </span>
+            </label>
 
-          <div className="formActions">
-            <button type="button" className="ghostBtn" onClick={onClose}>Cancel</button>
-            <button type="submit" className="primaryBtn" disabled={saving}>
-              {saving ? "Saving…" : (isEdit ? "Save changes" : "Add client")}
-            </button>
-          </div>
-        </form>
+            {error && <p className="errMsg">{error}</p>}
+
+            <div className="formActions">
+              <button type="button" className="ghostBtn" onClick={onClose}>Cancel</button>
+              <button type="submit" className="primaryBtn" disabled={saving}>
+                {saving ? "Saving…" : (isEdit ? "Save changes" : "Add client")}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <TeamPanel client={client} onClose={onClose} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   Team panel — grant + revoke access by email
+============================================================ */
+function TeamPanel({ client, onClose }) {
+  const [team, setTeam] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [email, setEmail] = useState("");
+  const [granting, setGranting] = useState(false);
+  const [info, setInfo] = useState("");
+  const [error, setError] = useState("");
+
+  const load = async () => {
+    setLoading(true);
+    setError("");
+    const { data, error } = await supabase
+      .rpc("list_client_team", { p_client_id: client.id });
+    if (error) setError(error.message);
+    else setTeam(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, [client.id]);
+
+  const grant = async (e) => {
+    e.preventDefault();
+    setError(""); setInfo("");
+    if (!email.trim()) return;
+    setGranting(true);
+    try {
+      const { data, error } = await supabase
+        .rpc("grant_client_access", { p_email: email.trim(), p_client_id: client.id });
+      if (error) throw error;
+      if (data?.ok === false) {
+        setError(data.message || "Could not grant access.");
+      } else {
+        setInfo(`Granted access to ${email.trim()}.`);
+        setEmail("");
+        await load();
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGranting(false);
+    }
+  };
+
+  const revoke = async (userId, theirEmail) => {
+    if (!confirm(`Remove ${theirEmail} from ${client.name}?`)) return;
+    const { error } = await supabase
+      .rpc("revoke_client_access", { p_user_id: userId, p_client_id: client.id });
+    if (error) return alert("Failed: " + error.message);
+    await load();
+  };
+
+  return (
+    <div className="modalBody teamPanel">
+      <p className="muted teamIntro">
+        Anyone listed here can sign in to <strong>/admin</strong> and manage <strong>{client.name}</strong>'s
+        events and vendors. They'll only ever see this client.
+      </p>
+
+      <form onSubmit={grant} className="teamInviteRow">
+        <input
+          type="email"
+          placeholder="teammate@client.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <button type="submit" className="primaryBtn" disabled={granting}>
+          {granting ? "Granting…" : "Grant access"}
+        </button>
+      </form>
+
+      {info && <p className="teamNotice teamNoticeOk">{info}</p>}
+      {error && <p className="teamNotice teamNoticeErr">{error}</p>}
+      <p className="muted teamHint">
+        The person must visit <strong>/admin</strong> and sign in with a magic link <em>once</em> before
+        you can grant access — that's how they get a Supabase auth account.
+      </p>
+
+      <div className="teamList">
+        <div className="teamListHeader">Current team ({team.length})</div>
+        {loading ? (
+          <p className="muted" style={{ padding: 16 }}>Loading…</p>
+        ) : team.length === 0 ? (
+          <p className="muted" style={{ padding: 16 }}>Nobody has access yet.</p>
+        ) : (
+          team.map((m) => (
+            <div key={m.user_id} className="teamRow">
+              <div className="teamRowAvatar">
+                <LetterAvatar name={m.email} />
+              </div>
+              <div className="teamRowMeta">
+                <div className="teamRowEmail">{m.email}</div>
+                <div className="teamRowSub muted">
+                  {m.is_super_admin
+                    ? "Super admin (sees all clients)"
+                    : `Joined ${new Date(m.joined_at).toLocaleDateString()}`}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="ghostBtn danger"
+                onClick={() => revoke(m.user_id, m.email)}
+                disabled={m.is_super_admin}
+                title={m.is_super_admin ? "Super admins can't be revoked from a single client" : "Remove from this client"}
+              >Remove</button>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="formActions" style={{ marginTop: 18 }}>
+        <button type="button" className="ghostBtn" onClick={onClose}>Done</button>
       </div>
     </div>
   );

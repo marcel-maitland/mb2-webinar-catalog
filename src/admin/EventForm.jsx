@@ -156,6 +156,42 @@ export default function EventForm({ mode }) {
     navigate("/admin");
   };
 
+  const duplicate = async () => {
+    if (mode !== "edit") return;
+    if (dirty) {
+      if (!confirm("You have unsaved changes. Duplicate based on the saved version anyway?")) return;
+    }
+    const payload = {
+      title: `${form.title} (copy)`,
+      description: form.description || null,
+      event_date: form.event_date ? new Date(form.event_date).toISOString() : null,
+      category: form.category || null,
+      ce_hours: form.ce_hours === "" || form.ce_hours == null ? null : Number(form.ce_hours),
+      cost: form.cost || null,
+      vendor: form.vendor || null,
+      vendor_logo_url: form.vendor_logo_url || null,
+      thumb_url: form.thumb_url || null,
+      format: form.format || null,
+      roles: form.roles || [],
+      location: form.location || null,
+      in_person_registration_url: form.in_person_registration_url || null,
+      session1_label: form.session1_label || null,
+      session1_url: form.session1_url || null,
+      session2_label: form.session2_label || null,
+      session2_url: form.session2_url || null,
+      mb2_exclusive: !!form.mb2_exclusive,
+      is_published: false,         // safer default
+      client_id: currentClientId,
+    };
+    const { data, error } = await supabase
+      .from("events")
+      .insert(payload)
+      .select()
+      .single();
+    if (error) return alert("Duplicate failed: " + error.message);
+    navigate(`/admin/events/${data.id}`);
+  };
+
   if (loading) {
     return <div className="formLoading"><div className="spinner" /> Loading event…</div>;
   }
@@ -195,6 +231,15 @@ export default function EventForm({ mode }) {
             onChange={(v) => set("is_published", v)}
             tone="accent"
           />
+          {mode === "edit" && (
+            <button type="button" className="ghostBtn" onClick={duplicate} title="Create a draft copy of this event">
+              <svg viewBox="0 0 24 24" width="14" height="14" style={{ marginRight: 6, verticalAlign: "-2px" }} aria-hidden="true">
+                <rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+                <path d="M5 15V6a2 2 0 0 1 2-2h9" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Duplicate
+            </button>
+          )}
           <button type="button" className="ghostBtn" onClick={() => navigate("/admin")}>Cancel</button>
           <button type="button" className="primaryBtn" onClick={save} disabled={saving || !dirty}>
             {saving ? "Saving…" : mode === "new" ? "Create event" : "Save changes"}

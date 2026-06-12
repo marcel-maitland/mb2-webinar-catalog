@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import { supabase } from "./lib/supabase.js";
 
 /**
- * Webinar Catalog — App.jsx (Supabase edition)
- * Same app serves both catalogs:
- *   Full catalog: https://chipper-donut-1b3638.netlify.app/
- *   Exclusive:    https://chipper-donut-1b3638.netlify.app/?exclusive=1
+ * Public catalog — multi-tenant.
+ *   /                — default client (MB2). Keeps existing TI iframe embeds working.
+ *   /?exclusive=1    — MB2 Exclusive page.
+ *   /c/:slug         — any client's catalog.
+ *   /c/:slug?exclusive=1 — that client's exclusive view.
  *
- * Data now comes from Supabase (table: public.events, RLS filters to is_published = true).
- * The JSONP loader from the Google Sheets version has been removed.
+ * If no slug is in the URL, we fall back to slug "mb2" so the original embeds keep serving MB2.
  */
+const DEFAULT_SLUG = "mb2";
 
 const isExclusiveMode =
   typeof window !== "undefined" &&
@@ -102,6 +104,13 @@ function ClockIcon() {
 ================================= */
 
 export default function App() {
+  const { slug: routeSlug } = useParams();
+  const effectiveSlug = (routeSlug || DEFAULT_SLUG).toLowerCase();
+
+  const [client, setClient] = useState(null);     // { id, name, slug, logo_url } | null
+  const [clientLoading, setClientLoading] = useState(true);
+  const [clientError, setClientError] = useState("");
+
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -114,23 +123,40 @@ export default function App() {
   const [rolesSelected, setRolesSelected] = useState(new Set());
   const [mb2ExclusiveOnly, setMb2ExclusiveOnly] = useState(isExclusiveMode);
 
+  // 1. Resolve the client by slug
   useEffect(() => {
+    let cancelled = false;
+    setClientLoading(true);
+    setClientError("");
+    (async () => {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, name, slug, logo_url")
+        .eq("slug", effectiveSlug)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) { setClientError(error.message); setClient(null); }
+      else setClient(data || null);
+      setClientLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [effectiveSlug]);
+
+  // 2. Load events for that client
+  useEffect(() => {
+    if (!client?.id) return;
     let cancelled = false;
 
     async function load() {
       setLoading(true);
       setLoadError("");
-
       try {
-        // RLS on the events table only returns is_published = true
-        // for anonymous visitors, so we don't need to repeat the filter here —
-        // but we add it explicitly for clarity.
         const { data, error } = await supabase
           .from("events")
           .select("*")
           .eq("is_published", true)
+          .eq("client_id", client.id)
           .order("event_date", { ascending: true });
-
         if (error) throw error;
         if (!cancelled) setRows((data || []).map(fromDb));
       } catch (e) {
@@ -145,10 +171,8 @@ export default function App() {
     }
 
     load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    return () => { cancelled = true; };
+  }, [client?.id]);
 
   const categories = useMemo(
     () => uniq(rows.map((r) => r.category)).sort((a, b) => a.localeCompare(b)),
@@ -226,16 +250,50 @@ export default function App() {
       });
   }, [rows, query, catSelected, vendorSelected, ceSelected, formatSelected, rolesSelected, mb2ExclusiveOnly]);
 
+  // Hard 404 if the slug doesn't resolve
+  if (!clientLoading && !client) {
+    return (
+      <div className="page">
+        <header className="header">
+          <div className="headerLeft">
+            <h1>Catalog not found</h1>
+            <p>{clientError || `No catalog exists at "${effectiveSlug}".`}</p>
+          </div>
+        </header>
+      </div>
+    );
+  }
+
+  const clientName = client?.name || "";
+  const title = isExclusiveMode
+    ? `Upcoming ${clientName} Exclusive Events`.trim()
+    : "Upcoming Events";
+
   return (
     <div className="page">
       <header className="header">
         <div className="headerLeft">
           <div className="titleRow">
-            <h1>{isExclusiveMode ? "Upcoming MB2 Exclusive Events" : "Upcoming Events"}</h1>
+            {client?.logo_url && (
+              <img
+                className="clientHeaderLogo"
+                src={client.logo_url}
+                alt={`${clientName} logo`}
+                style={{
+                  height: 44,
+                  width: "auto",
+                  maxWidth: 140,
+                  objectFit: "contain",
+                  marginRight: 14,
+                  verticalAlign: "middle"
+                }}
+              />
+            )}
+            <h1>{title}</h1>
           </div>
           <p>
             {isExclusiveMode
-              ? "Browse upcoming MB2 Exclusive events, register instantly, and filter by category, vendor, CE hours, format, or role."
+              ? `Browse upcoming ${clientName} Exclusive events, register instantly, and filter by category, vendor, CE hours, format, or role.`
               : "Browse upcoming events, register instantly, and filter by category, vendor, CE hours, format, or role."}
           </p>
         </div>
