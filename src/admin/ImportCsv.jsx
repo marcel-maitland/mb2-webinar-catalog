@@ -1,8 +1,11 @@
 import { useState } from "react";
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { csvRowToEvent } from "../lib/normalize-csv.js";
+
+const isXlsxName = (name) => /\.(xlsx|xlsm|xls)$/i.test(name || "");
 
 export default function ImportCsv() {
   const navigate = useNavigate();
@@ -11,11 +14,43 @@ export default function ImportCsv() {
   const [importing, setImporting] = useState(false);
   const [doneCount, setDoneCount] = useState(0);
 
+  const onParsed = (rows) => {
+    // Drop fully-empty rows that some spreadsheets leave around
+    const cleaned = (rows || []).filter((r) =>
+      Object.values(r).some((v) => String(v ?? "").trim() !== "")
+    );
+    setParsed(cleaned.map((raw) => ({ raw, ready: csvRowToEvent(raw) })));
+  };
+
   const handleFile = (file) => {
     if (!file) return;
     setError("");
     setParsed([]);
     setDoneCount(0);
+
+    if (isXlsxName(file.name)) {
+      // XLSX path — read as array buffer, take first sheet
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const wb = XLSX.read(data, { type: "array" });
+          const sheetName = wb.SheetNames[0];
+          if (!sheetName) throw new Error("Workbook has no sheets.");
+          const sheet = wb.Sheets[sheetName];
+          // raw:false formats numbers/dates as text, matching how PapaParse sees CSVs
+          const rows = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false });
+          onParsed(rows);
+        } catch (err) {
+          setError(err.message || "Failed to read Excel file.");
+        }
+      };
+      reader.onerror = () => setError("Could not read file.");
+      reader.readAsArrayBuffer(file);
+      return;
+    }
+
+    // CSV path
     Papa.parse(file, {
       header: true,
       skipEmptyLines: "greedy",
@@ -23,10 +58,7 @@ export default function ImportCsv() {
         if (res.errors?.length) {
           console.warn("CSV parse warnings:", res.errors);
         }
-        const rows = (res.data || []).filter((r) =>
-          Object.values(r).some((v) => String(v ?? "").trim() !== "")
-        );
-        setParsed(rows.map((raw) => ({ raw, ready: csvRowToEvent(raw) })));
+        onParsed(res.data);
       },
       error: (err) => setError(err.message),
     });
@@ -59,13 +91,14 @@ export default function ImportCsv() {
   return (
     <section>
       <div className="rowBetween">
-        <h2>Import events from CSV</h2>
+        <h2>Import events</h2>
       </div>
 
       <div className="adminCard">
         <p>
-          Export your Google Sheet as <strong>File → Download → Comma Separated Values (.csv)</strong>{" "}
-          and drop it below. We'll match column headers automatically — extra columns are ignored.
+          Drop a <strong>CSV</strong> or <strong>Excel (.xlsx)</strong> file below. We read the first
+          sheet, match column headers automatically, and ignore extras. If you're starting from a Google
+          Sheet, <strong>File → Download → Comma Separated Values</strong> (or Microsoft Excel) both work.
         </p>
         <p className="muted">
           Every imported event starts as a <strong>draft</strong> (not published) so you can review before
@@ -75,10 +108,10 @@ export default function ImportCsv() {
         <label className="dropZone">
           <input
             type="file"
-            accept=".csv,text/csv"
+            accept=".csv,text/csv,.xlsx,.xlsm,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
             onChange={(e) => handleFile(e.target.files?.[0])}
           />
-          <span>Click to choose a CSV file</span>
+          <span>Click to choose a CSV or Excel file</span>
         </label>
 
         {error && <p className="errMsg">{error}</p>}

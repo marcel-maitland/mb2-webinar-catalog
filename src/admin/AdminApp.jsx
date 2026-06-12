@@ -74,7 +74,7 @@ function Nav({ email }) {
       </div>
       <nav className="adminNavLinks">
         <NavLink to="/admin" end>Events</NavLink>
-        <NavLink to="/admin/import">Import CSV</NavLink>
+        <NavLink to="/admin/import">Import</NavLink>
         <a href="/" target="_blank" rel="noopener">View catalog ↗</a>
       </nav>
       <div className="adminUser">
