@@ -977,12 +977,13 @@ function PreviewCard({ form, exclusiveLabel = "Exclusive" }) {
           </div>
         )}
         {(() => {
+          const trim = (v) => (typeof v === "string" ? v.trim() : "");
           const links = [];
           if (isUrl(form.session1_url)) {
-            links.push({ url: form.session1_url, label: safe(form.session1_label) || "Session 1" });
+            links.push({ url: form.session1_url, label: trim(form.session1_label) || "Session 1" });
           }
           if (isUrl(form.session2_url)) {
-            links.push({ url: form.session2_url, label: safe(form.session2_label) || "Session 2" });
+            links.push({ url: form.session2_url, label: trim(form.session2_label) || "Session 2" });
           }
           if (isUrl(form.in_person_registration_url)) {
             links.push({ url: form.in_person_registration_url, label: "In-person registration" });
