@@ -105,6 +105,21 @@
 .tinyThumb { width: 56px; height: 40px; border-radius:8px; object-fit: cover; background:#f3f4f6; display:block; }
 .tinyThumbEmpty { background:#f3f4f6; }
 
+/* MB2 exclusive clickable star */
+.mb2Star {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+  padding: 4px;
+  color: #e5e7eb;       /* faint grey for not-MB2 */
+  transition: color .12s ease, transform .12s ease;
+}
+.mb2Star:hover { color: #f59e0b; transform: scale(1.15); }
+.mb2StarOn { color: #f59e0b; }   /* gold when MB2 */
+.mb2StarOn:hover { color: #f97316; }
+
 /* Switch */
 .switch { position:relative; display:inline-block; width:42px; height:24px; }
 .switch input { opacity:0; width:0; height:0; }

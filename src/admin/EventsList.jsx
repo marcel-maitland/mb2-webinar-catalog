@@ -38,6 +38,21 @@ export default function EventsList() {
     }
   };
 
+  const toggleMb2 = async (row) => {
+    const next = !row.mb2_exclusive;
+    // optimistic
+    setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, mb2_exclusive: next } : r)));
+    const { error } = await supabase
+      .from("events")
+      .update({ mb2_exclusive: next })
+      .eq("id", row.id);
+    if (error) {
+      // revert
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, mb2_exclusive: !next } : r)));
+      alert("Failed: " + error.message);
+    }
+  };
+
   const remove = async (row) => {
     if (!confirm(`Delete "${row.title}"? This cannot be undone.`)) return;
     const { error } = await supabase.from("events").delete().eq("id", row.id);
@@ -116,7 +131,17 @@ export default function EventsList() {
                   <td>{r.event_date ? new Date(r.event_date).toLocaleDateString() : "—"}</td>
                   <td>{r.vendor || "—"}</td>
                   <td>{r.format || "—"}</td>
-                  <td>{r.mb2_exclusive ? "★" : ""}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className={`mb2Star ${r.mb2_exclusive ? "mb2StarOn" : ""}`}
+                      onClick={() => toggleMb2(r)}
+                      title={r.mb2_exclusive ? "Click to remove MB2 Exclusive flag" : "Click to mark as MB2 Exclusive"}
+                      aria-label="Toggle MB2 Exclusive"
+                    >
+                      ★
+                    </button>
+                  </td>
                   <td>
                     <label className="switch">
                       <input
