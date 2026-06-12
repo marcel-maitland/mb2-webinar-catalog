@@ -105,6 +105,78 @@
 .tinyThumb { width: 56px; height: 40px; border-radius:8px; object-fit: cover; background:#f3f4f6; display:block; }
 .tinyThumbEmpty { background:#f3f4f6; }
 
+/* Modal */
+.modalBackdrop {
+  position: fixed; inset: 0;
+  background: rgba(17,24,39,.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+.modal {
+  background: #fff;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 92vh;
+  overflow: auto;
+  box-shadow: 0 20px 50px rgba(17,24,39,.25);
+  display: flex; flex-direction: column;
+}
+.modalHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.modalHeader h3 { margin: 0; }
+.modalClose {
+  background: none; border: none; cursor: pointer;
+  font-size: 22px; line-height: 1; color: var(--muted);
+  padding: 4px 8px;
+}
+.modalClose:hover { color: var(--text); }
+.modalBody { padding: 18px 20px 22px; }
+
+/* Vendor "Add new" pinned item + hint under combobox */
+.vendorComboAdd {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+  padding-bottom: 8px !important;
+  font-weight: 600;
+  color: var(--accent);
+}
+.vendorComboLogoAddIcon {
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent);
+  font-size: 22px;
+  font-weight: 700;
+  background: var(--accent-soft);
+  border-color: rgba(249,115,22,.4);
+}
+.vendorComboEmpty { padding: 6px 10px; cursor: default; }
+.vendorComboHint { margin-top: 6px; font-size: 12px; }
+.vendorComboHint a { color: var(--accent); }
+
+/* Vendors page row controls */
+.vendorLogoCell { width: 72px; height: 50px; }
+.vendorRowInput {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-weight: 600;
+}
+.vendorRowSubControls {
+  margin-top: 6px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.vendorRowSubControls .urlInput { flex: 1; min-width: 180px; }
+.vendorRowActions { display: flex; gap: 8px; justify-content: flex-end; }
+
 /* Vendor combobox */
 .vendorCombo { position: relative; }
 .vendorCombo input {

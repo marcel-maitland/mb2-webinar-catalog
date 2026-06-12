@@ -1,46 +1,30 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
+import { AddVendorModal } from "./Vendors.jsx";
 
 /**
- * Type-ahead vendor picker.
- * - Suggests vendors already used by other events (with their logos).
- * - Selecting one auto-fills the logo URL.
- * - Typing a name that doesn't match just saves as a new vendor when
- *   the form is submitted — no separate "create vendor" step needed.
+ * Type-ahead vendor picker, sourced from the public.vendors table.
+ * - Search through every saved vendor (with logo thumbnails).
+ * - Pinned "+ Add new vendor" entry opens a modal that saves to vendors
+ *   immediately and uses the new vendor on the current event.
+ * - Picking a vendor auto-fills the event's vendor name and logo URL.
  */
-function VendorCombobox({ value, logoUrl, onChange }) {
-  const [vendors, setVendors] = useState([]); // [{ name, logo }]
+function VendorCombobox({ value, onChange }) {
+  const [vendors, setVendors] = useState([]); // [{ id, name, logo_url }]
   const [open, setOpen] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
   const wrapRef = useRef(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from("events")
-        .select("vendor, vendor_logo_url, updated_at")
-        .not("vendor", "is", null)
-        .neq("vendor", "")
-        .order("updated_at", { ascending: false });
-      if (cancelled || error) return;
-      // Dedupe by case-insensitive vendor name, keeping the most recent logo.
-      const seen = new Map();
-      for (const row of data || []) {
-        const name = (row.vendor || "").trim();
-        if (!name) continue;
-        const key = name.toLowerCase();
-        if (!seen.has(key)) {
-          seen.set(key, { name, logo: (row.vendor_logo_url || "").trim() });
-        } else if (!seen.get(key).logo && row.vendor_logo_url) {
-          // Fill in a logo if the most recent row didn't have one
-          seen.get(key).logo = row.vendor_logo_url.trim();
-        }
-      }
-      setVendors([...seen.values()].sort((a, b) => a.name.localeCompare(b.name)));
-    })();
-    return () => { cancelled = true; };
-  }, []);
+  const loadVendors = async () => {
+    const { data, error } = await supabase
+      .from("vendors")
+      .select("id, name, logo_url")
+      .order("name");
+    if (!error) setVendors(data || []);
+  };
+
+  useEffect(() => { loadVendors(); }, []);
 
   // Close when clicking outside
   useEffect(() => {
@@ -58,9 +42,7 @@ function VendorCombobox({ value, logoUrl, onChange }) {
   }, [vendors, value]);
 
   const select = (v) => {
-    // Auto-fill the logo when picking an existing vendor;
-    // leave the existing logo alone if the selected vendor has no logo on file.
-    onChange(v.name, v.logo || undefined);
+    onChange(v.name, v.logo_url || "");
     setOpen(false);
   };
 
@@ -71,26 +53,48 @@ function VendorCombobox({ value, logoUrl, onChange }) {
         value={value ?? ""}
         onChange={(e) => { onChange(e.target.value, undefined); setOpen(true); }}
         onFocus={() => setOpen(true)}
-        placeholder="Type to search or add a new vendor"
+        placeholder="Type to search vendors"
         autoComplete="off"
       />
-      {open && filtered.length > 0 && (
+      {open && (
         <ul className="vendorComboList" role="listbox">
-          {filtered.slice(0, 30).map((v) => (
+          <li
+            className="vendorComboAdd"
+            onMouseDown={(e) => { e.preventDefault(); setOpen(false); setShowAdd(true); }}
+          >
+            <span className="vendorComboLogo vendorComboLogoAddIcon">+</span>
+            <span className="vendorComboName">Add new vendor…</span>
+          </li>
+          {filtered.length === 0 && (
+            <li className="vendorComboEmpty muted">No matches — add a new vendor above.</li>
+          )}
+          {filtered.map((v) => (
             <li
-              key={v.name}
+              key={v.id}
               role="option"
               onMouseDown={(e) => { e.preventDefault(); select(v); }}
               className={value && v.name.toLowerCase() === value.toLowerCase() ? "active" : ""}
             >
-              {v.logo
-                ? <img src={v.logo} alt="" className="vendorComboLogo" />
+              {v.logo_url
+                ? <img src={v.logo_url} alt="" className="vendorComboLogo" />
                 : <span className="vendorComboLogo vendorComboLogoEmpty" />
               }
               <span className="vendorComboName">{v.name}</span>
             </li>
           ))}
         </ul>
+      )}
+
+      {showAdd && (
+        <AddVendorModal
+          initialName={value || ""}
+          onClose={() => setShowAdd(false)}
+          onCreated={async (v) => {
+            await loadVendors();
+            onChange(v.name, v.logo_url || "");
+            setShowAdd(false);
+          }}
+        />
       )}
     </div>
   );
@@ -136,8 +140,7 @@ export default function EventForm({ mode }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const thumbInput = useRef(null);
-  const logoInput = useRef(null);
-  const [uploading, setUploading] = useState({ thumb: false, logo: false });
+  const [uploading, setUploading] = useState({ thumb: false });
 
   useEffect(() => {
     if (mode !== "edit") return;
@@ -175,7 +178,6 @@ export default function EventForm({ mode }) {
       const { data: pub } = supabase.storage.from("event-images").getPublicUrl(path);
       const url = pub.publicUrl;
       if (kind === "thumb") set("thumb_url", url);
-      else set("vendor_logo_url", url);
     } catch (e) {
       alert("Upload failed: " + e.message);
     } finally {
@@ -272,13 +274,15 @@ export default function EventForm({ mode }) {
             <span>Presenter / Vendor</span>
             <VendorCombobox
               value={form.vendor ?? ""}
-              logoUrl={form.vendor_logo_url ?? ""}
               onChange={(name, logo) => {
                 set("vendor", name);
-                // Only override the logo when an existing vendor with a logo was picked
-                if (logo) set("vendor_logo_url", logo);
+                // Only override the stored logo when a vendor with a logo was picked
+                if (logo !== undefined) set("vendor_logo_url", logo);
               }}
             />
+            <p className="vendorComboHint muted">
+              Add or edit vendor logos on the <a href="/admin/vendors">Vendors</a> page.
+            </p>
           </div>
           <label className="field">
             <span>Roles (comma-separated)</span>
@@ -295,73 +299,40 @@ export default function EventForm({ mode }) {
           <textarea rows={5} value={form.description ?? ""} onChange={(e) => set("description", e.target.value)} />
         </label>
 
-        <div className="grid2">
-          <div className="field">
-            <span>Course thumbnail</span>
-            <div className="uploadRow">
-              {form.thumb_url ? (
-                <img className="previewImg" src={form.thumb_url} alt="" />
-              ) : (
-                <div className="previewImg previewImgEmpty">No image</div>
+        <div className="field">
+          <span>Course thumbnail</span>
+          <div className="uploadRow">
+            {form.thumb_url ? (
+              <img className="previewImg" src={form.thumb_url} alt="" />
+            ) : (
+              <div className="previewImg previewImgEmpty">No image</div>
+            )}
+            <div className="uploadControls">
+              <input
+                ref={thumbInput}
+                type="file" accept="image/*" style={{ display: "none" }}
+                onChange={(e) => uploadImage(e.target.files?.[0], "thumb")}
+              />
+              <button type="button" className="ghostBtn"
+                      disabled={uploading.thumb}
+                      onClick={() => thumbInput.current?.click()}>
+                {uploading.thumb ? "Uploading…" : "Upload image"}
+              </button>
+              {form.thumb_url && (
+                <button type="button" className="ghostBtn danger"
+                        onClick={() => set("thumb_url", "")}>Remove</button>
               )}
-              <div className="uploadControls">
-                <input
-                  ref={thumbInput}
-                  type="file" accept="image/*" style={{ display: "none" }}
-                  onChange={(e) => uploadImage(e.target.files?.[0], "thumb")}
-                />
-                <button type="button" className="ghostBtn"
-                        disabled={uploading.thumb}
-                        onClick={() => thumbInput.current?.click()}>
-                  {uploading.thumb ? "Uploading…" : "Upload image"}
-                </button>
-                {form.thumb_url && (
-                  <button type="button" className="ghostBtn danger"
-                          onClick={() => set("thumb_url", "")}>Remove</button>
-                )}
-                <input
-                  className="urlInput"
-                  placeholder="…or paste an image URL"
-                  value={form.thumb_url ?? ""}
-                  onChange={(e) => set("thumb_url", e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="field">
-            <span>Vendor logo</span>
-            <div className="uploadRow">
-              {form.vendor_logo_url ? (
-                <img className="previewImg" src={form.vendor_logo_url} alt="" />
-              ) : (
-                <div className="previewImg previewImgEmpty">No logo</div>
-              )}
-              <div className="uploadControls">
-                <input
-                  ref={logoInput}
-                  type="file" accept="image/*" style={{ display: "none" }}
-                  onChange={(e) => uploadImage(e.target.files?.[0], "logo")}
-                />
-                <button type="button" className="ghostBtn"
-                        disabled={uploading.logo}
-                        onClick={() => logoInput.current?.click()}>
-                  {uploading.logo ? "Uploading…" : "Upload logo"}
-                </button>
-                {form.vendor_logo_url && (
-                  <button type="button" className="ghostBtn danger"
-                          onClick={() => set("vendor_logo_url", "")}>Remove</button>
-                )}
-                <input
-                  className="urlInput"
-                  placeholder="…or paste a logo URL"
-                  value={form.vendor_logo_url ?? ""}
-                  onChange={(e) => set("vendor_logo_url", e.target.value)}
-                />
-              </div>
+              <input
+                className="urlInput"
+                placeholder="…or paste an image URL"
+                value={form.thumb_url ?? ""}
+                onChange={(e) => set("thumb_url", e.target.value)}
+              />
             </div>
           </div>
         </div>
+
+        {/* Vendor logos are managed on the Vendors page now. */}
 
         <h3>Online registration sessions</h3>
         <div className="grid2">

@@ -5,6 +5,7 @@ import Login from "./Login.jsx";
 import EventsList from "./EventsList.jsx";
 import EventForm from "./EventForm.jsx";
 import ImportCsv from "./ImportCsv.jsx";
+import Vendors from "./Vendors.jsx";
 import "./admin.css";
 
 export default function AdminApp() {
@@ -53,6 +54,7 @@ export default function AdminApp() {
           <Route index element={<EventsList />} />
           <Route path="events/new" element={<EventForm mode="new" />} />
           <Route path="events/:id" element={<EventForm mode="edit" />} />
+          <Route path="vendors" element={<Vendors />} />
           <Route path="import" element={<ImportCsv />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
@@ -74,6 +76,7 @@ function Nav({ email }) {
       </div>
       <nav className="adminNavLinks">
         <NavLink to="/admin" end>Events</NavLink>
+        <NavLink to="/admin/vendors">Vendors</NavLink>
         <NavLink to="/admin/import">Import</NavLink>
         <a href="/" target="_blank" rel="noopener">View catalog ↗</a>
       </nav>
