@@ -208,7 +208,76 @@ export default function EventsList() {
       </header>
 
       {/* ============================== TOOLBAR ============================== */}
-      <div className="elToolbar">
+      <div className="elToolbar elToolbarStacked">
+        {/* Row 1 — Exclusive toggle on top */}
+        <div className="elToolbarRowExclusive">
+          <button
+            type="button"
+            className={`elExclusiveToggle ${exclusiveOnly ? "active" : ""}`}
+            aria-pressed={exclusiveOnly}
+            onClick={() => setExclusiveOnly((v) => !v)}
+            title="Show only events flagged as exclusive"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+              <path d="M12 2l2.9 6 6.6.6-5 4.5 1.5 6.4L12 16.8 5.9 19.5 7.5 13.1 2.5 8.6l6.6-.6L12 2z" fill="currentColor"/>
+            </svg>
+            Only {exclusiveLabel}
+            <span className="elFilterCount">{counts.mb2}</span>
+          </button>
+        </div>
+
+        {/* Row 2 — Time | Status with a divider in the middle */}
+        <div className="elToolbarRowFilters">
+          <div className="elFilterGroup" role="group" aria-label="Time">
+            <span className="elFilterGroupLabel">Time</span>
+            <div className="elFilterPills" role="tablist">
+              {TIME_FILTERS.map((f) => {
+                const n = f.id === "all" ? counts.all
+                        : f.id === "upcoming" ? counts.upcoming
+                        : counts.past;
+                return (
+                  <button
+                    key={f.id}
+                    role="tab"
+                    aria-selected={timeFilter === f.id}
+                    className={`elFilterPill ${timeFilter === f.id ? "active" : ""}`}
+                    onClick={() => setTimeFilter(f.id)}
+                  >
+                    {f.label}
+                    <span className="elFilterCount">{n}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <span className="elFilterDivider" aria-hidden="true" />
+
+          <div className="elFilterGroup" role="group" aria-label="Status">
+            <span className="elFilterGroupLabel">Status</span>
+            <div className="elFilterPills" role="tablist">
+              {STATUS_FILTERS.map((f) => {
+                const n = f.id === "all" ? counts.all
+                        : f.id === "published" ? counts.published
+                        : counts.drafts;
+                return (
+                  <button
+                    key={f.id}
+                    role="tab"
+                    aria-selected={statusFilter === f.id}
+                    className={`elFilterPill ${statusFilter === f.id ? "active" : ""}`}
+                    onClick={() => setStatusFilter(f.id)}
+                  >
+                    {f.label}
+                    <span className="elFilterCount">{n}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Row 3 — Search bar at the bottom */}
         <div className="elSearch">
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
             <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" fill="none"/>
@@ -224,66 +293,6 @@ export default function EventsList() {
             <button className="elSearchClear" onClick={() => setQuery("")} aria-label="Clear search">×</button>
           )}
         </div>
-
-        <div className="elFilterGroup" role="group" aria-label="Time">
-          <span className="elFilterGroupLabel">Time</span>
-          <div className="elFilterPills" role="tablist">
-            {TIME_FILTERS.map((f) => {
-              const n = f.id === "all" ? counts.all
-                      : f.id === "upcoming" ? counts.upcoming
-                      : counts.past;
-              return (
-                <button
-                  key={f.id}
-                  role="tab"
-                  aria-selected={timeFilter === f.id}
-                  className={`elFilterPill ${timeFilter === f.id ? "active" : ""}`}
-                  onClick={() => setTimeFilter(f.id)}
-                >
-                  {f.label}
-                  <span className="elFilterCount">{n}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="elFilterGroup" role="group" aria-label="Status">
-          <span className="elFilterGroupLabel">Status</span>
-          <div className="elFilterPills" role="tablist">
-            {STATUS_FILTERS.map((f) => {
-              const n = f.id === "all" ? counts.all
-                      : f.id === "published" ? counts.published
-                      : counts.drafts;
-              return (
-                <button
-                  key={f.id}
-                  role="tab"
-                  aria-selected={statusFilter === f.id}
-                  className={`elFilterPill ${statusFilter === f.id ? "active" : ""}`}
-                  onClick={() => setStatusFilter(f.id)}
-                >
-                  {f.label}
-                  <span className="elFilterCount">{n}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          className={`elExclusiveToggle ${exclusiveOnly ? "active" : ""}`}
-          aria-pressed={exclusiveOnly}
-          onClick={() => setExclusiveOnly((v) => !v)}
-          title="Show only events flagged as exclusive"
-        >
-          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-            <path d="M12 2l2.9 6 6.6.6-5 4.5 1.5 6.4L12 16.8 5.9 19.5 7.5 13.1 2.5 8.6l6.6-.6L12 2z" fill="currentColor"/>
-          </svg>
-          Only {exclusiveLabel}
-          <span className="elFilterCount">{counts.mb2}</span>
-        </button>
       </div>
 
       {/* ============================== TABLE ============================== */}

@@ -480,14 +480,11 @@ function CatalogElevatedStyles() {
       .cardElevated { transition: transform .15s ease, box-shadow .15s ease; }
       .cardElevated:hover { transform: translateY(-3px); box-shadow: 0 20px 40px rgba(17,24,39,.10); }
 
-      /* Subtle gradient so the date tile is always legible on the thumbnail */
+      /* Thumb stays a positioning context for the calendar tile.
+         The gradient overlay was removed — the white tile has its own shadow
+         and is readable on any image without a backdrop. */
       .thumb { position: relative; }
-      .thumbGradient {
-        position: absolute; inset: 0;
-        background: linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,0.45) 100%);
-        pointer-events: none;
-        border-radius: inherit;
-      }
+      .thumbGradient { display: none; }
 
       /* THE STAR: calendar tear-off date tile */
       .calBlock {

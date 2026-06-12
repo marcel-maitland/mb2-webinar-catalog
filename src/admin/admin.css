@@ -1148,6 +1148,35 @@
   gap: 14px;
   flex-wrap: wrap;
 }
+
+/* Stacked variant: 3 rows — Exclusive on top, Filters in the middle, Search at the bottom */
+.elToolbarStacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+.elToolbarRowExclusive {
+  display: flex;
+  align-items: center;
+}
+.elToolbarRowFilters {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+/* Vertical divider between the Time and Status filter groups */
+.elFilterDivider {
+  width: 1px;
+  height: 28px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+@media (max-width: 720px) {
+  /* When wrapping, the vertical line looks orphaned — hide it on narrow viewports */
+  .elFilterDivider { display: none; }
+}
 .elSearch {
   flex: 1; min-width: 260px;
   position: relative;
