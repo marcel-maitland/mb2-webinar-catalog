@@ -2088,7 +2088,19 @@
   flex-shrink: 0;
 }
 .vendorComboLogoEmpty { background: #f3f4f6; }
-.vendorComboName { font-size: 14px; color: var(--text); }
+.vendorComboName { font-size: 14px; color: var(--text); flex: 1; min-width: 0; }
+
+/* Count badge for category / role suggestions */
+.vendorComboCount {
+  margin-left: auto;
+  background: #f3f4f6;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
 
 /* MB2 exclusive clickable star */
 .mb2Star {

@@ -63,6 +63,42 @@ export default function EventForm({ mode }) {
   const [uploading, setUploading] = useState(false);
   const thumbInput = useRef(null);
 
+  // Autocomplete suggestions pulled from this client's existing events
+  const [categorySuggestions, setCategorySuggestions] = useState([]);
+  const [roleSuggestions, setRoleSuggestions] = useState([]);
+
+  useEffect(() => {
+    if (!currentClientId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("events")
+        .select("category, roles")
+        .eq("client_id", currentClientId);
+      if (cancelled || !data) return;
+
+      const catCounts = {};
+      const roleCounts = {};
+      for (const r of data) {
+        const c = (r.category || "").trim();
+        if (c) catCounts[c] = (catCounts[c] || 0) + 1;
+        if (Array.isArray(r.roles)) {
+          for (const role of r.roles) {
+            const t = (role || "").trim();
+            if (t) roleCounts[t] = (roleCounts[t] || 0) + 1;
+          }
+        }
+      }
+      const toSorted = (counts) =>
+        Object.entries(counts)
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+      setCategorySuggestions(toSorted(catCounts));
+      setRoleSuggestions(toSorted(roleCounts));
+    })();
+    return () => { cancelled = true; };
+  }, [currentClientId]);
+
   useEffect(() => {
     if (mode !== "edit") { setOriginal(BLANK); return; }
     let cancelled = false;
@@ -295,10 +331,10 @@ export default function EventForm({ mode }) {
             </Field>
 
             <Field label="Category">
-              <input
+              <CategoryCombobox
                 value={form.category ?? ""}
-                onChange={(e) => set("category", e.target.value)}
-                placeholder="Surgical, Orthodontics, Prevention…"
+                onChange={(v) => set("category", v)}
+                suggestions={categorySuggestions}
               />
             </Field>
           </Section>
@@ -317,10 +353,11 @@ export default function EventForm({ mode }) {
               </p>
             </Field>
 
-            <Field label="Roles" hint="Press Enter or comma to add. Click a chip to remove.">
+            <Field label="Roles" hint="Pick from the dropdown or type a new role. Click a chip to remove.">
               <ChipInput
                 value={form.roles}
                 onChange={(next) => set("roles", next)}
+                suggestions={roleSuggestions}
                 placeholder="Dentist"
               />
             </Field>
@@ -497,8 +534,19 @@ function CostInput({ value, onChange }) {
   );
 }
 
-function ChipInput({ value, onChange, placeholder }) {
+function ChipInput({ value, onChange, placeholder, suggestions = [] }) {
   const [draft, setDraft] = useState("");
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
   const commit = (raw) => {
     const next = raw
       .split(",")
@@ -510,31 +558,140 @@ function ChipInput({ value, onChange, placeholder }) {
     setDraft("");
   };
   const remove = (i) => onChange(value.filter((_, idx) => idx !== i));
+  const addOne = (name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    if (value.some((v) => v.toLowerCase() === trimmed.toLowerCase())) return;
+    onChange([...value, trimmed]);
+    setDraft("");
+  };
+
+  // Filter suggestions: exclude already-selected, match draft if any
+  const filtered = useMemo(() => {
+    const used = new Set(value.map((v) => v.toLowerCase()));
+    const q = draft.trim().toLowerCase();
+    return suggestions
+      .filter((s) => !used.has(s.name.toLowerCase()))
+      .filter((s) => !q || s.name.toLowerCase().includes(q));
+  }, [suggestions, value, draft]);
+
+  const hasDraftMatch =
+    !!draft.trim() &&
+    !suggestions.some((s) => s.name.toLowerCase() === draft.trim().toLowerCase());
 
   return (
-    <div className="evChipInput">
-      {value.map((tag, i) => (
-        <span key={i} className="evChip" onClick={() => remove(i)} title="Remove">
-          {tag}
-          <span className="evChipX">×</span>
-        </span>
-      ))}
+    <div className="vendorCombo" ref={wrapRef}>
+      <div className="evChipInput">
+        {value.map((tag, i) => (
+          <span key={i} className="evChip" onClick={() => remove(i)} title="Remove">
+            {tag}
+            <span className="evChipX">×</span>
+          </span>
+        ))}
+        <input
+          value={draft}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v.endsWith(",")) commit(v.slice(0, -1));
+            else { setDraft(v); setOpen(true); }
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); commit(draft); }
+            if (e.key === "Backspace" && !draft && value.length) {
+              onChange(value.slice(0, -1));
+            }
+          }}
+          placeholder={value.length === 0 ? placeholder : ""}
+        />
+      </div>
+      {open && (filtered.length > 0 || hasDraftMatch) && (
+        <ul className="vendorComboList" role="listbox">
+          {hasDraftMatch && (
+            <li
+              className="vendorComboAdd"
+              onMouseDown={(e) => { e.preventDefault(); addOne(draft); }}
+            >
+              <span className="vendorComboLogo vendorComboLogoAddIcon">+</span>
+              <span className="vendorComboName">Add "{draft.trim()}"</span>
+            </li>
+          )}
+          {filtered.slice(0, 30).map((s) => (
+            <li
+              key={s.name}
+              role="option"
+              onMouseDown={(e) => { e.preventDefault(); addOne(s.name); }}
+            >
+              <span className="vendorComboName">{s.name}</span>
+              <span className="vendorComboCount">{s.count}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/* Single-select combobox for the Category field — same vibe as VendorCombobox */
+function CategoryCombobox({ value, onChange, suggestions = [] }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = (value || "").trim().toLowerCase();
+    if (!q) return suggestions;
+    return suggestions.filter((c) => c.name.toLowerCase().includes(q));
+  }, [suggestions, value]);
+
+  const isNew =
+    !!(value || "").trim() &&
+    !suggestions.some((c) => c.name.toLowerCase() === (value || "").trim().toLowerCase());
+
+  return (
+    <div className="vendorCombo" ref={wrapRef}>
       <input
-        value={draft}
-        onChange={(e) => {
-          const v = e.target.value;
-          if (v.endsWith(",")) commit(v.slice(0, -1));
-          else setDraft(v);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") { e.preventDefault(); commit(draft); }
-          if (e.key === "Backspace" && !draft && value.length) {
-            onChange(value.slice(0, -1));
-          }
-        }}
-        onBlur={() => draft && commit(draft)}
-        placeholder={value.length === 0 ? placeholder : ""}
+        type="text"
+        value={value || ""}
+        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        placeholder="Surgical, Orthodontics, Prevention…"
+        autoComplete="off"
       />
+      {open && (
+        <ul className="vendorComboList" role="listbox">
+          {isNew && (
+            <li
+              className="vendorComboAdd"
+              onMouseDown={(e) => { e.preventDefault(); setOpen(false); }}
+            >
+              <span className="vendorComboLogo vendorComboLogoAddIcon">+</span>
+              <span className="vendorComboName">Use "{value.trim()}" as a new category</span>
+            </li>
+          )}
+          {filtered.length === 0 && !isNew && (
+            <li className="vendorComboEmpty muted">No categories yet — type to create one.</li>
+          )}
+          {filtered.map((c) => (
+            <li
+              key={c.name}
+              role="option"
+              onMouseDown={(e) => { e.preventDefault(); onChange(c.name); setOpen(false); }}
+              className={value && c.name.toLowerCase() === value.toLowerCase() ? "active" : ""}
+            >
+              <span className="vendorComboName">{c.name}</span>
+              <span className="vendorComboCount">{c.count}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
