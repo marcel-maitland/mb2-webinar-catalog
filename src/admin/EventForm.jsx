@@ -790,7 +790,9 @@ function VendorCombobox({ value, onChange }) {
   const [vendors, setVendors] = useState([]);
   const [open, setOpen] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [editing, setEditing] = useState(false);    // when true, render input instead of chip
   const wrapRef = useRef(null);
+  const inputRef = useRef(null);
 
   const loadVendors = async () => {
     if (!currentClientId) return;
@@ -806,11 +808,24 @@ function VendorCombobox({ value, onChange }) {
 
   useEffect(() => {
     const onDoc = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setOpen(false);
+        // Drop out of edit mode on outside click; chip reappears if value matches a known vendor
+        setEditing(false);
+      }
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
+
+  // Currently-selected vendor object (when the value matches a known vendor)
+  const selectedVendor = useMemo(() => {
+    const v = (value || "").trim().toLowerCase();
+    if (!v) return null;
+    return vendors.find((x) => x.name.toLowerCase() === v) || null;
+  }, [vendors, value]);
+
+  const showChip = !!selectedVendor && !editing;
 
   const filtered = useMemo(() => {
     const q = (value || "").trim().toLowerCase();
@@ -821,18 +836,58 @@ function VendorCombobox({ value, onChange }) {
   const select = (v) => {
     onChange(v.name, v.logo_url || "");
     setOpen(false);
+    setEditing(false);
+  };
+
+  const clearVendor = () => {
+    onChange("", "");
+    setEditing(true);
+    setOpen(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const startChange = () => {
+    setEditing(true);
+    setOpen(true);
+    setTimeout(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }, 0);
   };
 
   return (
     <div className="vendorCombo" ref={wrapRef}>
-      <input
-        type="text"
-        value={value ?? ""}
-        onChange={(e) => { onChange(e.target.value, undefined); setOpen(true); }}
-        onFocus={() => setOpen(true)}
-        placeholder="Type to search vendors"
-        autoComplete="off"
-      />
+      {showChip ? (
+        <div className="vendorChip">
+          {selectedVendor.logo_url
+            ? <img src={selectedVendor.logo_url} alt="" className="vendorChipLogo" />
+            : <span className="vendorChipLogoPh">{selectedVendor.name.charAt(0).toUpperCase()}</span>}
+          <span className="vendorChipName">{selectedVendor.name}</span>
+          <div className="vendorChipActions">
+            <button type="button" className="vendorChipChange" onClick={startChange}>
+              Change
+            </button>
+            <button
+              type="button"
+              className="vendorChipClear"
+              onClick={clearVendor}
+              title="Remove vendor"
+              aria-label="Remove vendor"
+            >×</button>
+          </div>
+        </div>
+      ) : (
+        <input
+          ref={inputRef}
+          type="text"
+          value={value ?? ""}
+          onChange={(e) => { onChange(e.target.value, undefined); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Type to search vendors"
+          autoComplete="off"
+        />
+      )}
+
       {open && (
         <ul className="vendorComboList" role="listbox">
           <li
@@ -868,6 +923,7 @@ function VendorCombobox({ value, onChange }) {
           onCreated={async (v) => {
             await loadVendors();
             onChange(v.name, v.logo_url || "");
+            setEditing(false);
             setShowAdd(false);
           }}
         />

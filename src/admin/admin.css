@@ -2043,6 +2043,89 @@
 .vendorRowSubControls .urlInput { flex: 1; min-width: 180px; }
 .vendorRowActions { display: flex; gap: 8px; justify-content: flex-end; }
 
+/* Selected vendor chip — when a known vendor is already chosen */
+.vendorChip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px 8px 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fff, #fafbfc);
+  box-shadow: 0 1px 2px rgba(17,24,39,.04);
+  min-height: 48px;
+}
+.vendorChipLogo {
+  width: 40px; height: 40px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  flex-shrink: 0;
+}
+.vendorChipLogoPh {
+  width: 40px; height: 40px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid rgba(249,115,22,.3);
+  font-weight: 800;
+  font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.vendorChipName {
+  flex: 1; min-width: 0;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vendorChipActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.vendorChipChange {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: all .12s ease;
+}
+.vendorChipChange:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.vendorChipClear {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  width: 28px; height: 28px;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .12s ease;
+}
+.vendorChipClear:hover {
+  color: var(--danger);
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
 /* Vendor combobox */
 .vendorCombo { position: relative; }
 .vendorCombo input {
