@@ -1,6 +1,100 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
+
+/**
+ * Type-ahead vendor picker.
+ * - Suggests vendors already used by other events (with their logos).
+ * - Selecting one auto-fills the logo URL.
+ * - Typing a name that doesn't match just saves as a new vendor when
+ *   the form is submitted — no separate "create vendor" step needed.
+ */
+function VendorCombobox({ value, logoUrl, onChange }) {
+  const [vendors, setVendors] = useState([]); // [{ name, logo }]
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("events")
+        .select("vendor, vendor_logo_url, updated_at")
+        .not("vendor", "is", null)
+        .neq("vendor", "")
+        .order("updated_at", { ascending: false });
+      if (cancelled || error) return;
+      // Dedupe by case-insensitive vendor name, keeping the most recent logo.
+      const seen = new Map();
+      for (const row of data || []) {
+        const name = (row.vendor || "").trim();
+        if (!name) continue;
+        const key = name.toLowerCase();
+        if (!seen.has(key)) {
+          seen.set(key, { name, logo: (row.vendor_logo_url || "").trim() });
+        } else if (!seen.get(key).logo && row.vendor_logo_url) {
+          // Fill in a logo if the most recent row didn't have one
+          seen.get(key).logo = row.vendor_logo_url.trim();
+        }
+      }
+      setVendors([...seen.values()].sort((a, b) => a.name.localeCompare(b.name)));
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Close when clicking outside
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = (value || "").trim().toLowerCase();
+    if (!q) return vendors;
+    return vendors.filter((v) => v.name.toLowerCase().includes(q));
+  }, [vendors, value]);
+
+  const select = (v) => {
+    // Auto-fill the logo when picking an existing vendor;
+    // leave the existing logo alone if the selected vendor has no logo on file.
+    onChange(v.name, v.logo || undefined);
+    setOpen(false);
+  };
+
+  return (
+    <div className="vendorCombo" ref={wrapRef}>
+      <input
+        type="text"
+        value={value ?? ""}
+        onChange={(e) => { onChange(e.target.value, undefined); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        placeholder="Type to search or add a new vendor"
+        autoComplete="off"
+      />
+      {open && filtered.length > 0 && (
+        <ul className="vendorComboList" role="listbox">
+          {filtered.slice(0, 30).map((v) => (
+            <li
+              key={v.name}
+              role="option"
+              onMouseDown={(e) => { e.preventDefault(); select(v); }}
+              className={value && v.name.toLowerCase() === value.toLowerCase() ? "active" : ""}
+            >
+              {v.logo
+                ? <img src={v.logo} alt="" className="vendorComboLogo" />
+                : <span className="vendorComboLogo vendorComboLogoEmpty" />
+              }
+              <span className="vendorComboName">{v.name}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 const BLANK = {
   title: "",
@@ -174,10 +268,18 @@ export default function EventForm({ mode }) {
             />
           </label>
 
-          <label className="field">
+          <div className="field">
             <span>Presenter / Vendor</span>
-            <input value={form.vendor ?? ""} onChange={(e) => set("vendor", e.target.value)} />
-          </label>
+            <VendorCombobox
+              value={form.vendor ?? ""}
+              logoUrl={form.vendor_logo_url ?? ""}
+              onChange={(name, logo) => {
+                set("vendor", name);
+                // Only override the logo when an existing vendor with a logo was picked
+                if (logo) set("vendor_logo_url", logo);
+              }}
+            />
+          </div>
           <label className="field">
             <span>Roles (comma-separated)</span>
             <input

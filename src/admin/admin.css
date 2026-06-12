@@ -105,6 +105,53 @@
 .tinyThumb { width: 56px; height: 40px; border-radius:8px; object-fit: cover; background:#f3f4f6; display:block; }
 .tinyThumbEmpty { background:#f3f4f6; }
 
+/* Vendor combobox */
+.vendorCombo { position: relative; }
+.vendorCombo input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  background: #fff;
+}
+.vendorComboList {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  z-index: 50;
+}
+.vendorComboList li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.vendorComboList li:hover,
+.vendorComboList li.active { background: var(--accent-soft); }
+.vendorComboLogo {
+  width: 32px;
+  height: 24px;
+  border-radius: 4px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.vendorComboLogoEmpty { background: #f3f4f6; }
+.vendorComboName { font-size: 14px; color: var(--text); }
+
 /* MB2 exclusive clickable star */
 .mb2Star {
   background: none;
