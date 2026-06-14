@@ -42,11 +42,22 @@ const isInPerson = (format) => {
 
 /* ---------- shape Supabase row -> what the cards expect ---------- */
 function fromDb(row) {
+  const d = row.event_date ? new Date(row.event_date) : null;
+
+  // If event_date has a non-midnight time and session1_label is empty,
+  // fall back to displaying the event_date's time on session 1.
+  // (Midnight is the "no time set" default from imports, so we skip those.)
+  const dateTimeString = (() => {
+    if (!d || isNaN(d.getTime())) return "";
+    if (d.getHours() === 0 && d.getMinutes() === 0) return "";
+    return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  })();
+
   return {
     id: row.id,
     title: safe(row.title) || "Untitled Event",
     description: safe(row.description),
-    date: row.event_date ? new Date(row.event_date) : null,
+    date: d,
     category: safe(row.category),
     ce: typeof row.ce_hours === "number" ? row.ce_hours : null,
     cost: safe(row.cost),
@@ -59,7 +70,7 @@ function fromDb(row) {
     location: safe(row.location),
     inPersonRegistrationLink: safe(row.in_person_registration_url),
     sessions: [
-      { label: safe(row.session1_label), url: safe(row.session1_url) },
+      { label: safe(row.session1_label) || dateTimeString, url: safe(row.session1_url) },
       { label: safe(row.session2_label), url: safe(row.session2_url) },
     ].filter((s) => s.label || s.url),
   };
