@@ -1791,7 +1791,8 @@
   overflow: hidden;
   cursor: pointer;
   transition: border-color .12s ease, background .12s ease;
-  aspect-ratio: 16 / 9;
+  /* Match the public catalog thumbnail size (~780×340, ≈ 23:10). */
+  aspect-ratio: 780 / 340;
   background: #fafafa;
 }
 .evThumbZone:hover, .evThumbZone.drag {
