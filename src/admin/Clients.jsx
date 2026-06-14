@@ -144,8 +144,6 @@ export default function Clients() {
               eventCount={eventCounts[c.id] || 0}
               adminCount={adminCounts[c.id] || 0}
               onOpen={() => setModal({ mode: "edit", client: c })}
-              onOpenTeam={() => setModal({ mode: "edit", client: c, openTab: "team" })}
-              onDelete={() => remove(c)}
             />
           ))}
         </div>
@@ -156,7 +154,9 @@ export default function Clients() {
           mode={modal.mode}
           client={modal.client}
           openTab={modal.openTab}
+          eventCount={modal.client ? (eventCounts[modal.client.id] || 0) : 0}
           onClose={() => setModal(null)}
+          onDelete={() => { if (modal.client) { remove(modal.client); setModal(null); } }}
           onSaved={(c) => {
             if (modal.mode === "add") {
               setRows((prev) => [...prev, c].sort((a, b) => a.name.localeCompare(b.name)));
@@ -176,7 +176,7 @@ export default function Clients() {
 }
 
 /* ============================================================ */
-function ClientTile({ client, eventCount, adminCount, onOpen, onOpenTeam, onDelete }) {
+function ClientTile({ client, eventCount, adminCount, onOpen }) {
   const hasLogo = !!(client.logo_url && client.logo_url.trim());
   return (
     <article
@@ -185,18 +185,6 @@ function ClientTile({ client, eventCount, adminCount, onOpen, onOpenTeam, onDele
       onClick={onOpen}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
     >
-      <button
-        type="button"
-        className="vdrTileDel"
-        onClick={(e) => { e.stopPropagation(); onDelete(); }}
-        title="Delete client"
-        aria-label={`Delete ${client.name}`}
-      >
-        <svg viewBox="0 0 24 24" width="14" height="14">
-          <path d="M6 7h12M9 7V4h6v3m-7 0v13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      </button>
-
       <div className="vdrTileLogo">
         {hasLogo
           ? <img src={client.logo_url} alt={`${client.name} logo`} />
@@ -221,21 +209,7 @@ function ClientTile({ client, eventCount, adminCount, onOpen, onOpenTeam, onDele
         </div>
       </div>
 
-      {/* Quick-action: "Team" button reveals on hover, opens modal straight to Team tab */}
-      <button
-        type="button"
-        className="clientTileTeamBtn"
-        onClick={(e) => { e.stopPropagation(); onOpenTeam(); }}
-        title="Manage team for this client"
-      >
-        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-          <circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" strokeWidth="2"/>
-          <path d="M3 20c0-3 3-5 6-5s6 2 6 5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          <circle cx="16" cy="9" r="2.5" fill="none" stroke="currentColor" strokeWidth="2"/>
-          <path d="M14 20c0-2 1.5-3.5 3.5-3.5s3.5 1.5 3.5 3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-        </svg>
-        Manage team
-      </button>
+      <div className="vdrTileHoverHint">Click to edit</div>
     </article>
   );
 }
@@ -271,7 +245,7 @@ function Stat({ label, value, tone }) {
 /* ============================================================
    Add / edit modal — now with a Team tab for managing access
 ============================================================ */
-function ClientModal({ mode = "add", client, openTab, onClose, onSaved }) {
+function ClientModal({ mode = "add", client, openTab, eventCount = 0, onClose, onSaved, onDelete }) {
   const isEdit = mode === "edit" && client;
   const [tab, setTab] = useState(openTab || "details"); // 'details' | 'team'
   const [name, setName] = useState(isEdit ? client.name : "");
@@ -428,11 +402,29 @@ function ClientModal({ mode = "add", client, openTab, onClose, onSaved }) {
 
             {error && <p className="errMsg">{error}</p>}
 
-            <div className="formActions">
-              <button type="button" className="ghostBtn" onClick={onClose}>Cancel</button>
-              <button type="submit" className="primaryBtn" disabled={saving}>
-                {saving ? "Saving…" : (isEdit ? "Save changes" : "Add client")}
-              </button>
+            <div className="formActions clientFormActions">
+              {isEdit && onDelete && (
+                <button
+                  type="button"
+                  className="ghostBtn danger clientDeleteBtn"
+                  onClick={onDelete}
+                  title={eventCount > 0
+                    ? `Can't delete — ${eventCount} event${eventCount === 1 ? "" : "s"} still attached`
+                    : "Permanently delete this client"}
+                  disabled={eventCount > 0}
+                >
+                  <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style={{ marginRight: 6, verticalAlign: "-2px" }}>
+                    <path d="M6 7h12M9 7V4h6v3m-7 0v13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Delete client
+                </button>
+              )}
+              <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                <button type="button" className="ghostBtn" onClick={onClose}>Cancel</button>
+                <button type="submit" className="primaryBtn" disabled={saving}>
+                  {saving ? "Saving…" : (isEdit ? "Save changes" : "Add client")}
+                </button>
+              </div>
             </div>
           </form>
         ) : (
@@ -448,19 +440,24 @@ function ClientModal({ mode = "add", client, openTab, onClose, onSaved }) {
 ============================================================ */
 function TeamPanel({ client, onClose }) {
   const [team, setTeam] = useState([]);
+  const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [granting, setGranting] = useState(false);
   const [info, setInfo] = useState("");
   const [error, setError] = useState("");
+  const [justCopied, setJustCopied] = useState(null);
 
   const load = async () => {
     setLoading(true);
     setError("");
-    const { data, error } = await supabase
-      .rpc("list_client_team", { p_client_id: client.id });
-    if (error) setError(error.message);
-    else setTeam(data || []);
+    const [tRes, pRes] = await Promise.all([
+      supabase.rpc("list_client_team", { p_client_id: client.id }),
+      supabase.rpc("list_client_pending", { p_client_id: client.id }),
+    ]);
+    if (tRes.error) setError(tRes.error.message);
+    else setTeam(tRes.data || []);
+    if (!pRes.error) setPending(pRes.data || []);
     setLoading(false);
   };
 
@@ -477,8 +474,12 @@ function TeamPanel({ client, onClose }) {
       if (error) throw error;
       if (data?.ok === false) {
         setError(data.message || "Could not grant access.");
-      } else {
-        setInfo(`Granted access to ${email.trim()}.`);
+      } else if (data?.mode === "granted") {
+        setInfo(`✓ Granted access to ${data.email}. They can sign in to /admin now.`);
+        setEmail("");
+        await load();
+      } else if (data?.mode === "pending") {
+        setInfo(`✓ Invite saved for ${data.email}. Copy the link below and share it with them.`);
         setEmail("");
         await load();
       }
@@ -497,11 +498,31 @@ function TeamPanel({ client, onClose }) {
     await load();
   };
 
+  const revokePending = async (inviteId, theirEmail) => {
+    if (!confirm(`Cancel pending invite for ${theirEmail}?`)) return;
+    const { error } = await supabase.rpc("revoke_pending_invite", { p_invite_id: inviteId });
+    if (error) return alert("Failed: " + error.message);
+    await load();
+  };
+
+  const inviteLink = (theirEmail) =>
+    `${window.location.origin}/admin?email=${encodeURIComponent(theirEmail)}`;
+
+  const copyLink = async (theirEmail) => {
+    try {
+      await navigator.clipboard.writeText(inviteLink(theirEmail));
+      setJustCopied(theirEmail);
+      setTimeout(() => setJustCopied(null), 1800);
+    } catch {
+      alert("Couldn't copy. Link: " + inviteLink(theirEmail));
+    }
+  };
+
   return (
     <div className="modalBody teamPanel">
       <p className="muted teamIntro">
-        Anyone listed here can sign in to <strong>/admin</strong> and manage <strong>{client.name}</strong>'s
-        events and vendors. They'll only ever see this client.
+        Anyone listed here can sign in to <strong>/admin</strong> and manage{" "}
+        <strong>{client.name}</strong>'s events and vendors. They'll only ever see this client.
       </p>
 
       <form onSubmit={grant} className="teamInviteRow">
@@ -519,16 +540,57 @@ function TeamPanel({ client, onClose }) {
       {info && <p className="teamNotice teamNoticeOk">{info}</p>}
       {error && <p className="teamNotice teamNoticeErr">{error}</p>}
       <p className="muted teamHint">
-        The person must visit <strong>/admin</strong> and sign in with a magic link <em>once</em> before
-        you can grant access — that's how they get a Supabase auth account.
+        If the person has never signed in before, we'll create a <strong>pending invite</strong> and
+        give you a shareable link below. As soon as they click it and sign in, they're added to your team automatically.
       </p>
 
+      {/* Pending invites */}
+      {pending.length > 0 && (
+        <div className="teamList" style={{ marginBottom: 14, borderColor: "#fde68a", background: "#fffbeb" }}>
+          <div className="teamListHeader">Pending invites ({pending.length})</div>
+          {pending.map((inv) => (
+            <div key={inv.id} className="teamRow">
+              <div className="teamRowAvatar">
+                <LetterAvatar name={inv.email} />
+              </div>
+              <div className="teamRowMeta">
+                <div className="teamRowEmail">{inv.email}</div>
+                <div className="teamRowSub muted">
+                  Invited {new Date(inv.created_at).toLocaleDateString()} · waiting for first sign-in
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  type="button"
+                  className={`primaryBtn ${justCopied === inv.email ? "evCopied" : ""}`}
+                  onClick={() => copyLink(inv.email)}
+                  style={{ padding: "6px 12px", fontSize: 13 }}
+                  title="Copy the sign-in link to share with them"
+                >
+                  {justCopied === inv.email ? "✓ Copied" : "Copy link"}
+                </button>
+                <button
+                  type="button"
+                  className="ghostBtn danger"
+                  onClick={() => revokePending(inv.id, inv.email)}
+                  style={{ padding: "6px 10px", fontSize: 13 }}
+                  title="Cancel this invite"
+                >Cancel</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Active team */}
       <div className="teamList">
         <div className="teamListHeader">Current team ({team.length})</div>
         {loading ? (
           <p className="muted" style={{ padding: 16 }}>Loading…</p>
         ) : team.length === 0 ? (
-          <p className="muted" style={{ padding: 16 }}>Nobody has access yet.</p>
+          <p className="muted" style={{ padding: 16 }}>
+            Nobody is in yet — invite someone above.
+          </p>
         ) : (
           team.map((m) => (
             <div key={m.user_id} className="teamRow">

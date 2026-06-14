@@ -56,6 +56,9 @@ export default function AdminApp() {
     async function check() {
       if (!sessionUserId) { setIsAdmin(false); return; }
       setCheckingAdmin(true);
+      // Claim any pending invites for this user's email first — quick no-op
+      // if there are none, otherwise promotes them to admin of those clients.
+      await supabase.rpc("claim_pending_invites_for_me");
       const { data } = await supabase
         .from("admins")
         .select("user_id")
