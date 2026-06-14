@@ -318,7 +318,7 @@ export default function EventsList() {
             <div className="elColDate">Date</div>
             <div className="elColVendor">Vendor</div>
             <div className="elColFormat">Format</div>
-            <div className="elColStar" title={exclusiveLabel}>{exclusiveLabel}</div>
+            <div className="elColStar" title={exclusiveLabel}>Exclusive</div>
             <div className="elColPublish">Publish</div>
             <div className="elColActions" />
           </div>
