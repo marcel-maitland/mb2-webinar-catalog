@@ -614,7 +614,7 @@ function Card({ item, clientName = "" }) {
           </div>
         ) : null}
 
-        {inPerson && (item.date || timeLabel || safe(item.location) || inPersonRegOk) ? (
+        {inPerson && (item.date || safe(item.location) || inPersonRegOk) ? (
           <div className="inPersonBox">
             <div className="inPersonBoxGrid">
               {item.date ? (
@@ -624,17 +624,7 @@ function Card({ item, clientName = "" }) {
                 </div>
               ) : null}
 
-              {timeLabel ? (
-                <div className="inPersonRow">
-                  <span className="inPersonKey">
-                    <span className="inPersonIcon" aria-hidden="true">
-                      <ClockIcon />
-                    </span>
-                    Time
-                  </span>
-                  <span className="inPersonVal">{timeLabel}</span>
-                </div>
-              ) : null}
+              {/* Time row removed — the bottom Register row already shows it. */}
 
               {safe(item.location) ? (
                 <div className="inPersonRow">
