@@ -568,7 +568,7 @@ function Card({ item, clientName = "" }) {
         ) : null}
         {/* Gradient overlay so the calendar block reads on any image */}
         <span className="thumbGradient" aria-hidden="true" />
-        {item.mb2Exclusive ? <span className="mb2Badge">{clientName ? `${clientName} Exclusive` : "Exclusive"}</span> : null}
+        {item.mb2Exclusive ? <span className="mb2Badge">Exclusive</span> : null}
         {/* Date sticker — the headline visual change */}
         <CalendarBlock date={item.date} />
       </div>

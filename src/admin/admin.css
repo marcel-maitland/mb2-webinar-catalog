@@ -1949,7 +1949,8 @@
 }
 .previewThumb {
   position: relative;
-  aspect-ratio: 16 / 9;
+  /* Match the public catalog: thumbnails are ~780 × 340 (≈ 23:10). */
+  aspect-ratio: 780 / 340;
   background: #f3f4f6;
   display: flex; align-items: center; justify-content: center;
   color: var(--muted);

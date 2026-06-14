@@ -975,7 +975,7 @@ function PreviewCard({ form, exclusiveLabel = "Exclusive" }) {
     <article className="previewCard">
       <div className={`previewThumb ${thumb ? "" : "previewThumbEmpty"}`}>
         {thumb && <img src={thumb} alt="" />}
-        {form.mb2_exclusive && <span className="previewMb2Badge">{exclusiveLabel}</span>}
+        {form.mb2_exclusive && <span className="previewMb2Badge">Exclusive</span>}
         {!form.is_published && <span className="previewDraftBadge">Draft</span>}
       </div>
       <div className="previewBody">
