@@ -450,7 +450,7 @@ export default function EventForm({ mode }) {
                   type="number" step="0.25" min="0"
                   value={form.ce_hours ?? ""}
                   onChange={(e) => set("ce_hours", e.target.value)}
-                  placeholder="0"
+                  placeholder=""
                 />
               </Field>
               <Field label="Cost">
@@ -660,7 +660,7 @@ function CostInput({ value, onChange }) {
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="475"
+        placeholder=""
       />
       <button
         type="button"
