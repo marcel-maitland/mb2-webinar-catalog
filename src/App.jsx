@@ -43,14 +43,27 @@ const isInPerson = (format) => {
 /* ---------- shape Supabase row -> what the cards expect ---------- */
 function fromDb(row) {
   const d = row.event_date ? new Date(row.event_date) : null;
+  const tz = row.event_timezone || "America/Chicago";
 
-  // If event_date has a non-midnight time and session1_label is empty,
-  // fall back to displaying the event_date's time on session 1.
-  // (Midnight is the "no time set" default from imports, so we skip those.)
+  // If event_date has a non-midnight time IN ITS STORED TIMEZONE and
+  // session1_label is empty, fall back to displaying the event_date's time
+  // — formatted in that timezone with the short zone abbreviation appended.
   const dateTimeString = (() => {
     if (!d || isNaN(d.getTime())) return "";
-    if (d.getHours() === 0 && d.getMinutes() === 0) return "";
-    return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    // Read hour/minute in the stored timezone to check for "midnight" (no time set)
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hour: "2-digit", minute: "2-digit", hour12: false,
+    }).formatToParts(d);
+    const h = parts.find((p) => p.type === "hour")?.value;
+    const m = parts.find((p) => p.type === "minute")?.value;
+    if (h === "00" && m === "00") return "";
+    return d.toLocaleTimeString("en-US", {
+      timeZone: tz,
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    });
   })();
 
   return {

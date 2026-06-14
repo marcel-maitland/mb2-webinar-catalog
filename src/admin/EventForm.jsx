@@ -9,6 +9,7 @@ const BLANK = {
   description: "",
   event_date_part: "",   // yyyy-MM-dd for <input type="date">
   event_time_part: "",   // HH:mm    for <input type="time">  (optional)
+  event_timezone: "America/Chicago",  // IANA timezone for the entered time
   category: "",
   ce_hours: "",
   cost: "",
@@ -31,23 +32,73 @@ const FORMATS = ["Webinar", "In-Person", "Hybrid", "Online"];
 
 const pad = (n) => String(n).padStart(2, "0");
 
-const splitTimestamp = (iso) => {
+// US timezones — IANA names plus short labels for display
+const US_TIMEZONES = [
+  { id: "America/New_York",    label: "Eastern (ET)" },
+  { id: "America/Chicago",     label: "Central (CT)" },
+  { id: "America/Denver",      label: "Mountain (MT)" },
+  { id: "America/Phoenix",     label: "Arizona (no DST)" },
+  { id: "America/Los_Angeles", label: "Pacific (PT)" },
+  { id: "America/Anchorage",   label: "Alaska (AKT)" },
+  { id: "Pacific/Honolulu",    label: "Hawaii (HT)" },
+];
+
+// What GMT offset does ianaTz have on/around the given local date+time?
+// Returns string like "-05:00" or "+05:30". Handles DST transitions.
+const gmtOffsetForZone = (datePart, timePart, ianaTz) => {
+  // Sample any moment "near" the target; we just need the offset that the
+  // tz has on that day. Using the entered date+time as a UTC sample is fine.
+  const sample = new Date(`${datePart}T${timePart || "00:00"}:00Z`);
+  if (isNaN(sample.getTime())) return "+00:00";
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: ianaTz,
+    timeZoneName: "longOffset",
+  }).formatToParts(sample);
+  const off = parts.find((p) => p.type === "timeZoneName")?.value || "";
+  // off looks like "GMT-05:00" or "GMT" (== UTC). Normalize.
+  if (off === "GMT") return "+00:00";
+  return off.replace("GMT", "");
+};
+
+// Given Date + Time inputs in ianaTz, produce the correct UTC ISO timestamp.
+const combineDateTime = (datePart, timePart, ianaTz) => {
+  if (!datePart) return null;
+  const t = timePart || "00:00";
+  if (!ianaTz) {
+    // Fall back to browser local
+    const d = new Date(`${datePart}T${t}`);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  const offset = gmtOffsetForZone(datePart, t, ianaTz);
+  const d = new Date(`${datePart}T${t}:00${offset}`);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+};
+
+// Given a UTC ISO timestamp + ianaTz, split into date + time parts as they
+// would read locally in that tz.
+const splitTimestamp = (iso, ianaTz) => {
   if (!iso) return { date: "", time: "" };
   const d = new Date(iso);
   if (isNaN(d.getTime())) return { date: "", time: "" };
+  if (!ianaTz) {
+    return {
+      date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+      time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+    };
+  }
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: ianaTz,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const get = (type) => parts.find((p) => p.type === type)?.value || "";
+  let hour = get("hour");
+  if (hour === "24") hour = "00"; // Intl quirk in some browsers
   return {
-    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    time: `${hour}:${get("minute")}`,
   };
-};
-
-const combineDateTime = (datePart, timePart) => {
-  if (!datePart) return null;
-  // If no time was provided, default to midnight so we still have a valid ISO.
-  // The catalog uses end-of-day for "is this event past?" so midnight is fine.
-  const t = timePart || "00:00";
-  const d = new Date(`${datePart}T${t}`);
-  return isNaN(d.getTime()) ? null : d.toISOString();
 };
 
 const formatDate = (d) =>
@@ -123,15 +174,16 @@ export default function EventForm({ mode }) {
       if (cancelled) return;
       if (error) setError(error.message);
       else if (data) {
-        const { date, time } = splitTimestamp(data.event_date);
+        const tz = data.event_timezone || "America/Chicago";
+        const { date, time } = splitTimestamp(data.event_date, tz);
         const next = {
           ...BLANK,
           ...data,
           event_date_part: date,
           event_time_part: time,
+          event_timezone: tz,
           roles: Array.isArray(data.roles) ? data.roles : [],
         };
-        // Don't carry the original timestamptz column into the form state — we recompute on save
         delete next.event_date;
         setForm(next);
         setOriginal(next);
@@ -199,7 +251,8 @@ export default function EventForm({ mode }) {
     const payload = {
       ...rest,
       ce_hours: form.ce_hours === "" || form.ce_hours == null ? null : Number(form.ce_hours),
-      event_date: combineDateTime(event_date_part, event_time_part),
+      event_date: combineDateTime(event_date_part, event_time_part, form.event_timezone),
+      event_timezone: form.event_timezone || "America/Chicago",
       roles: form.roles,
       client_id: currentClientId,
     };
@@ -216,12 +269,14 @@ export default function EventForm({ mode }) {
         if (error) throw error;
         // Stay on page. Sync `original` so the form is no longer dirty,
         // and pop a transient "Saved" badge.
-        const { date, time } = splitTimestamp(data.event_date);
+        const tz = data.event_timezone || "America/Chicago";
+        const { date, time } = splitTimestamp(data.event_date, tz);
         const next = {
           ...BLANK,
           ...data,
           event_date_part: date,
           event_time_part: time,
+          event_timezone: tz,
           roles: Array.isArray(data.roles) ? data.roles : [],
         };
         delete next.event_date;
@@ -253,7 +308,8 @@ export default function EventForm({ mode }) {
     const payload = {
       title: `${form.title} (copy)`,
       description: form.description || null,
-      event_date: combineDateTime(form.event_date_part, form.event_time_part),
+      event_date: combineDateTime(form.event_date_part, form.event_time_part, form.event_timezone),
+      event_timezone: form.event_timezone || "America/Chicago",
       category: form.category || null,
       ce_hours: form.ce_hours === "" || form.ce_hours == null ? null : Number(form.ce_hours),
       cost: form.cost || null,
@@ -353,7 +409,7 @@ export default function EventForm({ mode }) {
               />
             </Field>
 
-            <div className="row4">
+            <div className="row5">
               <Field label="Date">
                 <input
                   type="date"
@@ -372,6 +428,17 @@ export default function EventForm({ mode }) {
                   onChange={(e) => set("event_time_part", e.target.value)}
                   disabled={!form.event_date_part}
                 />
+              </Field>
+              <Field label="Timezone">
+                <select
+                  value={form.event_timezone || "America/Chicago"}
+                  onChange={(e) => set("event_timezone", e.target.value)}
+                  disabled={!form.event_date_part}
+                >
+                  {US_TIMEZONES.map((tz) => (
+                    <option key={tz.id} value={tz.id}>{tz.label}</option>
+                  ))}
+                </select>
               </Field>
               <Field label="CE credits">
                 <input

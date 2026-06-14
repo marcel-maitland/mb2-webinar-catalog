@@ -1767,6 +1767,22 @@
 @media (max-width: 1024px) { .row4 { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 540px)  { .row4 { grid-template-columns: 1fr; } }
 
+/* Date / Time / Timezone / CE / Cost row */
+.row5 {
+  display: grid;
+  grid-template-columns: 1.1fr 0.85fr 1.2fr 0.85fr 1.05fr;
+  gap: 12px;
+}
+@media (max-width: 1280px) {
+  .row5 { grid-template-columns: 1fr 1fr 1fr; }
+}
+@media (max-width: 720px) {
+  .row5 { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 480px) {
+  .row5 { grid-template-columns: 1fr; }
+}
+
 .evField input:disabled {
   background: #f9fafb;
   color: var(--muted);
