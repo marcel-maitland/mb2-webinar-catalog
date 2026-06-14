@@ -1767,6 +1767,17 @@
 .row2 { display: grid; grid-template-columns: 1fr 1.2fr; gap: 16px; max-width: 520px; }
 @media (max-width: 480px) { .row2 { grid-template-columns: 1fr; } }
 
+/* Category | Roles paired row (full width, equal columns) */
+.rowCatRoles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 720px) {
+  .rowCatRoles { grid-template-columns: 1fr; }
+}
+
 .evField input:disabled {
   background: #f9fafb;
   color: var(--muted);

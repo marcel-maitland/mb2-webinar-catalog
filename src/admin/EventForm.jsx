@@ -458,6 +458,7 @@ export default function EventForm({ mode }) {
               </Field>
             </div>
 
+            {/* Format on its own row — pills want room to breathe */}
             <Field label="Format">
               <PillSelector
                 options={FORMATS}
@@ -466,16 +467,27 @@ export default function EventForm({ mode }) {
               />
             </Field>
 
-            <Field label="Category">
-              <CategoryCombobox
-                value={form.category ?? ""}
-                onChange={(v) => set("category", v)}
-                suggestions={categorySuggestions}
-              />
-            </Field>
+            {/* Category + Roles paired below */}
+            <div className="rowCatRoles">
+              <Field label="Category">
+                <CategoryCombobox
+                  value={form.category ?? ""}
+                  onChange={(v) => set("category", v)}
+                  suggestions={categorySuggestions}
+                />
+              </Field>
+              <Field label="Roles" hint="Pick or type. Click a chip to remove.">
+                <ChipInput
+                  value={form.roles}
+                  onChange={(next) => set("roles", next)}
+                  suggestions={roleSuggestions}
+                  placeholder="Dentist"
+                />
+              </Field>
+            </div>
           </Section>
 
-          <Section title="Presenter" subtitle="Who's teaching and who this is for.">
+          <Section title="Presenter" subtitle="Who's teaching this event.">
             <Field label="Presenter / Vendor">
               <VendorCombobox
                 value={form.vendor ?? ""}
@@ -487,15 +499,6 @@ export default function EventForm({ mode }) {
               <p className="evHint">
                 Manage vendors and logos on the <Link to="/admin/vendors">Vendors page</Link>.
               </p>
-            </Field>
-
-            <Field label="Roles" hint="Pick from the dropdown or type a new role. Click a chip to remove.">
-              <ChipInput
-                value={form.roles}
-                onChange={(next) => set("roles", next)}
-                suggestions={roleSuggestions}
-                placeholder="Dentist"
-              />
             </Field>
           </Section>
 
