@@ -644,6 +644,39 @@
 .impMini-accent .impMiniVal { color: var(--accent); }
 .impMini-gold { background: #fffbeb; border-color: #fde68a; }
 .impMini-gold .impMiniVal { color: #b45309; }
+.impMini-amber { background: #fffbeb; border-color: #fcd34d; }
+.impMini-amber .impMiniVal { color: #b45309; }
+
+/* Skip duplicates toggle */
+.impSkipToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f3f4f6;
+}
+.impSkipToggle input { margin: 0; cursor: pointer; }
+.impSkipToggle:hover { background: #e5e7eb; }
+
+/* Status pills in the preview table */
+.impStatusPill {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+.impStatusNew { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+.impStatusDup { background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; }
+
+.impPreviewTable tr.impRowSkipped td { opacity: 0.5; }
 
 .impPickAgainBtn {
   background: none;

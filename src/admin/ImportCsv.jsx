@@ -9,23 +9,60 @@ import { useClient } from "./AdminApp.jsx";
 const isXlsxName = (name) => /\.(xlsx|xlsm|xls)$/i.test(name || "");
 const FORMAT_BADGES = ["CSV", "XLSX", "XLS"];
 
+// Build a fingerprint that's stable across re-imports: lower-cased title +
+// calendar date (year-month-day). Two events on the same day with the same
+// title are considered the same event; same title on different dates is not.
+const eventFingerprint = (title, dateIso) => {
+  const t = (title || "").trim().toLowerCase();
+  let dStr = "";
+  if (dateIso) {
+    const d = new Date(dateIso);
+    if (!isNaN(d.getTime())) {
+      dStr = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+    }
+  }
+  return `${t}|${dStr}`;
+};
+
 export default function ImportCsv() {
   const navigate = useNavigate();
   const { currentClientId, currentClient } = useClient();
-  const [parsed, setParsed] = useState([]);
+  const [parsed, setParsed] = useState([]);  // [{ raw, ready, status: 'new'|'duplicate' }]
   const [chosenFile, setChosenFile] = useState(null);
   const [error, setError] = useState("");
   const [importing, setImporting] = useState(false);
   const [doneCount, setDoneCount] = useState(0);
   const [drag, setDrag] = useState(false);
   const [showColumnRef, setShowColumnRef] = useState(false);
+  const [skipDupes, setSkipDupes] = useState(true);
   const fileRef = useRef(null);
 
-  const onParsed = (rows) => {
+  // Tag each parsed row "new" or "duplicate" by comparing against the
+  // current client's existing events.
+  const annotateRows = async (rows) => {
+    if (!currentClientId || rows.length === 0) return rows.map((r) => ({ ...r, status: "new" }));
+    const { data } = await supabase
+      .from("events")
+      .select("title, event_date")
+      .eq("client_id", currentClientId);
+    const existing = new Set(
+      (data || []).map((e) => eventFingerprint(e.title, e.event_date))
+    );
+    return rows.map((r) => ({
+      ...r,
+      status: existing.has(eventFingerprint(r.ready.title, r.ready.event_date))
+        ? "duplicate"
+        : "new",
+    }));
+  };
+
+  const onParsed = async (rows) => {
     const cleaned = (rows || []).filter((r) =>
       Object.values(r).some((v) => String(v ?? "").trim() !== "")
     );
-    setParsed(cleaned.map((raw) => ({ raw, ready: csvRowToEvent(raw) })));
+    const initial = cleaned.map((raw) => ({ raw, ready: csvRowToEvent(raw) }));
+    const annotated = await annotateRows(initial);
+    setParsed(annotated);
   };
 
   const handleFile = (file) => {
@@ -97,22 +134,27 @@ export default function ImportCsv() {
     setDoneCount(0);
   };
 
+  const toImport = parsed.filter((p) => !skipDupes || p.status !== "duplicate");
+
   const runImport = async () => {
-    if (parsed.length === 0) return;
-    if (!confirm(`Import ${parsed.length} events as DRAFTS? You can publish them after review.`)) return;
+    if (toImport.length === 0) return;
+    const msg = skipDupes && dupeCount > 0
+      ? `Import ${toImport.length} new events as DRAFTS? ${dupeCount} duplicate${dupeCount === 1 ? "" : "s"} will be skipped.`
+      : `Import ${toImport.length} events as DRAFTS? You can publish them after review.`;
+    if (!confirm(msg)) return;
     setImporting(true);
     setDoneCount(0);
     const batchSize = 50;
     try {
-      for (let i = 0; i < parsed.length; i += batchSize) {
-        const slice = parsed
+      for (let i = 0; i < toImport.length; i += batchSize) {
+        const slice = toImport
           .slice(i, i + batchSize)
           .map((p) => ({ ...p.ready, client_id: currentClientId }));
         const { error } = await supabase.from("events").insert(slice);
         if (error) throw error;
         setDoneCount(i + slice.length);
       }
-      alert(`Imported ${parsed.length} events as drafts. Review them on the Events page.`);
+      alert(`Imported ${toImport.length} events as drafts. Review them on the Events page.`);
       navigate("/admin");
     } catch (e) {
       setError(e.message);
@@ -124,6 +166,8 @@ export default function ImportCsv() {
   const mb2Count = parsed.filter((p) => p.ready.mb2_exclusive).length;
   const withDate = parsed.filter((p) => p.ready.event_date).length;
   const withVendor = parsed.filter((p) => (p.ready.vendor || "").trim()).length;
+  const dupeCount = parsed.filter((p) => p.status === "duplicate").length;
+  const newCount = parsed.filter((p) => p.status === "new").length;
 
   return (
     <section className="impPage">
@@ -259,9 +303,9 @@ export default function ImportCsv() {
               </div>
             </div>
             <div className="impFileStats">
-              <Mini label="Will import" value={parsed.length} tone="accent" />
+              <Mini label="New" value={newCount} tone="accent" />
+              <Mini label="Duplicate" value={dupeCount} tone="amber" />
               <Mini label="With dates" value={withDate} tone="neutral" />
-              <Mini label="With vendor" value={withVendor} tone="neutral" />
               <Mini label="MB2 Exclusive" value={mb2Count} tone="gold" />
             </div>
             <button type="button" className="impPickAgainBtn" onClick={reset}>
@@ -272,12 +316,25 @@ export default function ImportCsv() {
           <div className="impPreviewCard">
             <div className="impPreviewHead">
               <h2>Preview</h2>
-              <span className="muted">Showing first {Math.min(50, parsed.length)} of {parsed.length} rows</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                {dupeCount > 0 && (
+                  <label className="impSkipToggle" title="Skip events that already exist in this client (matched by title + date)">
+                    <input
+                      type="checkbox"
+                      checked={skipDupes}
+                      onChange={(e) => setSkipDupes(e.target.checked)}
+                    />
+                    <span>Skip duplicates</span>
+                  </label>
+                )}
+                <span className="muted">Showing first {Math.min(50, parsed.length)} of {parsed.length} rows</span>
+              </div>
             </div>
             <div className="tableWrap impPreviewTable">
               <table className="adminTable">
                 <thead>
                   <tr>
+                    <th>Status</th>
                     <th>Title</th>
                     <th>Date</th>
                     <th>Vendor</th>
@@ -288,7 +345,12 @@ export default function ImportCsv() {
                 </thead>
                 <tbody>
                   {parsed.slice(0, 50).map((p, i) => (
-                    <tr key={i}>
+                    <tr key={i} className={p.status === "duplicate" && skipDupes ? "impRowSkipped" : ""}>
+                      <td>
+                        {p.status === "duplicate"
+                          ? <span className="impStatusPill impStatusDup">Duplicate</span>
+                          : <span className="impStatusPill impStatusNew">New</span>}
+                      </td>
                       <td className="impPrevTitle">{p.ready.title}</td>
                       <td>{p.ready.event_date ? new Date(p.ready.event_date).toLocaleDateString() : <span className="muted">—</span>}</td>
                       <td>{p.ready.vendor || <span className="muted">—</span>}</td>
@@ -306,14 +368,24 @@ export default function ImportCsv() {
 
           <div className="impStickyBar">
             <div className="impStickyLeft">
-              <strong>{parsed.length}</strong> events will be imported as drafts
+              <strong>{toImport.length}</strong> events will be imported as drafts
+              {skipDupes && dupeCount > 0 && (
+                <span className="muted" style={{ marginLeft: 8 }}>
+                  ({dupeCount} duplicate{dupeCount === 1 ? "" : "s"} skipped)
+                </span>
+              )}
             </div>
             <div className="impStickyRight">
               <button type="button" className="ghostBtn" onClick={reset} disabled={importing}>Clear</button>
-              <button type="button" className="primaryBtn impImportBtn" onClick={runImport} disabled={importing}>
+              <button
+                type="button"
+                className="primaryBtn impImportBtn"
+                onClick={runImport}
+                disabled={importing || toImport.length === 0}
+              >
                 {importing
-                  ? <>Importing <strong>{doneCount}</strong> / {parsed.length}…</>
-                  : <>Import {parsed.length} events</>}
+                  ? <>Importing <strong>{doneCount}</strong> / {toImport.length}…</>
+                  : <>Import {toImport.length} {toImport.length === 1 ? "event" : "events"}</>}
               </button>
             </div>
           </div>
