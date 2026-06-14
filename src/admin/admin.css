@@ -1650,6 +1650,8 @@
 .evField input:not([type]),
 .evField input[type="number"],
 .evField input[type="datetime-local"],
+.evField input[type="date"],
+.evField input[type="time"],
 .evField input[type="email"],
 .evField select {
   width: 100%;
@@ -1659,6 +1661,56 @@
   font: inherit;
   background: #fff;
   transition: border-color .12s, box-shadow .12s;
+  color: var(--text);
+}
+
+/* Date / Time inputs: align the native calendar/clock affordances inside
+   the same chrome as our other fields. Webkit shows the icon by default;
+   the picker still works when the user clicks anywhere in the field. */
+.evField input[type="date"],
+.evField input[type="time"] {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+.evField input[type="date"]::-webkit-calendar-picker-indicator,
+.evField input[type="time"]::-webkit-calendar-picker-indicator {
+  opacity: 0.55;
+  cursor: pointer;
+  transition: opacity .12s ease;
+  filter: invert(34%) sepia(89%) saturate(2800%) hue-rotate(355deg) brightness(101%) contrast(101%);
+}
+.evField input[type="date"]:hover::-webkit-calendar-picker-indicator,
+.evField input[type="time"]:hover::-webkit-calendar-picker-indicator {
+  opacity: 1;
+}
+.evField input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.evField input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+.evField input[type="date"]::-webkit-datetime-edit-text,
+.evField input[type="time"]::-webkit-datetime-edit-text {
+  color: var(--muted);
+  padding: 0 2px;
+}
+.evField input[type="date"]::-webkit-datetime-edit-month-field,
+.evField input[type="date"]::-webkit-datetime-edit-day-field,
+.evField input[type="date"]::-webkit-datetime-edit-year-field,
+.evField input[type="time"]::-webkit-datetime-edit-hour-field,
+.evField input[type="time"]::-webkit-datetime-edit-minute-field,
+.evField input[type="time"]::-webkit-datetime-edit-ampm-field {
+  color: var(--text);
+  padding: 0 2px;
+  border-radius: 4px;
+}
+.evField input[type="date"]::-webkit-datetime-edit-month-field:focus,
+.evField input[type="date"]::-webkit-datetime-edit-day-field:focus,
+.evField input[type="date"]::-webkit-datetime-edit-year-field:focus,
+.evField input[type="time"]::-webkit-datetime-edit-hour-field:focus,
+.evField input[type="time"]::-webkit-datetime-edit-minute-field:focus,
+.evField input[type="time"]::-webkit-datetime-edit-ampm-field:focus {
+  background: var(--accent-soft);
+  color: var(--accent);
+  outline: none;
 }
 .evField input:focus,
 .evField select:focus,
