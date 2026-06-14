@@ -7,7 +7,8 @@ import { useClient } from "./AdminApp.jsx";
 const BLANK = {
   title: "",
   description: "",
-  event_date: "",
+  event_date_part: "",   // yyyy-MM-dd for <input type="date">
+  event_time_part: "",   // HH:mm    for <input type="time">  (optional)
   category: "",
   ce_hours: "",
   cost: "",
@@ -28,12 +29,25 @@ const BLANK = {
 
 const FORMATS = ["Webinar", "In-Person", "Hybrid", "Online"];
 
-const toLocalInput = (iso) => {
-  if (!iso) return "";
+const pad = (n) => String(n).padStart(2, "0");
+
+const splitTimestamp = (iso) => {
+  if (!iso) return { date: "", time: "" };
   const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  if (isNaN(d.getTime())) return { date: "", time: "" };
+  return {
+    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+  };
+};
+
+const combineDateTime = (datePart, timePart) => {
+  if (!datePart) return null;
+  // If no time was provided, default to midnight so we still have a valid ISO.
+  // The catalog uses end-of-day for "is this event past?" so midnight is fine.
+  const t = timePart || "00:00";
+  const d = new Date(`${datePart}T${t}`);
+  return isNaN(d.getTime()) ? null : d.toISOString();
 };
 
 const formatDate = (d) =>
@@ -109,12 +123,16 @@ export default function EventForm({ mode }) {
       if (cancelled) return;
       if (error) setError(error.message);
       else if (data) {
+        const { date, time } = splitTimestamp(data.event_date);
         const next = {
           ...BLANK,
           ...data,
-          event_date: toLocalInput(data.event_date),
+          event_date_part: date,
+          event_time_part: time,
           roles: Array.isArray(data.roles) ? data.roles : [],
         };
+        // Don't carry the original timestamptz column into the form state — we recompute on save
+        delete next.event_date;
         setForm(next);
         setOriginal(next);
       }
@@ -177,10 +195,11 @@ export default function EventForm({ mode }) {
     if (!form.title.trim()) { setError("Event title is required."); return; }
     setSaving(true);
     setError("");
+    const { event_date_part, event_time_part, ...rest } = form;
     const payload = {
-      ...form,
+      ...rest,
       ce_hours: form.ce_hours === "" || form.ce_hours == null ? null : Number(form.ce_hours),
-      event_date: form.event_date ? new Date(form.event_date).toISOString() : null,
+      event_date: combineDateTime(event_date_part, event_time_part),
       roles: form.roles,
       client_id: currentClientId,
     };
@@ -197,12 +216,15 @@ export default function EventForm({ mode }) {
         if (error) throw error;
         // Stay on page. Sync `original` so the form is no longer dirty,
         // and pop a transient "Saved" badge.
+        const { date, time } = splitTimestamp(data.event_date);
         const next = {
           ...BLANK,
           ...data,
-          event_date: toLocalInput(data.event_date),
+          event_date_part: date,
+          event_time_part: time,
           roles: Array.isArray(data.roles) ? data.roles : [],
         };
+        delete next.event_date;
         setForm(next);
         setOriginal(next);
         setJustSaved(true);
@@ -231,7 +253,7 @@ export default function EventForm({ mode }) {
     const payload = {
       title: `${form.title} (copy)`,
       description: form.description || null,
-      event_date: form.event_date ? new Date(form.event_date).toISOString() : null,
+      event_date: combineDateTime(form.event_date_part, form.event_time_part),
       category: form.category || null,
       ce_hours: form.ce_hours === "" || form.ce_hours == null ? null : Number(form.ce_hours),
       cost: form.cost || null,
@@ -331,12 +353,24 @@ export default function EventForm({ mode }) {
               />
             </Field>
 
-            <div className="row3">
-              <Field label="Date & time">
+            <div className="row4">
+              <Field label="Date">
                 <input
-                  type="datetime-local"
-                  value={form.event_date}
-                  onChange={(e) => set("event_date", e.target.value)}
+                  type="date"
+                  value={form.event_date_part ?? ""}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    set("event_date_part", next);
+                    if (!next) set("event_time_part", ""); // clear time if date is cleared
+                  }}
+                />
+              </Field>
+              <Field label="Time" hint={form.event_date_part ? "Optional" : "Set a date first"}>
+                <input
+                  type="time"
+                  value={form.event_time_part ?? ""}
+                  onChange={(e) => set("event_time_part", e.target.value)}
+                  disabled={!form.event_date_part}
                 />
               </Field>
               <Field label="CE credits">
@@ -966,7 +1000,9 @@ function VendorCombobox({ value, onChange }) {
    LIVE PREVIEW CARD (mirrors the public catalog tile)
 ===================================================================== */
 function PreviewCard({ form, exclusiveLabel = "Exclusive" }) {
-  const d = form.event_date ? new Date(form.event_date) : null;
+  // Reconstruct a Date from the split parts for preview purposes
+  const dIso = combineDateTime(form.event_date_part, form.event_time_part);
+  const d = dIso ? new Date(dIso) : null;
   const thumb = isUrl(form.thumb_url) ? form.thumb_url : "";
   const logo = isUrl(form.vendor_logo_url) ? form.vendor_logo_url : "";
   const inPerson = isInPersonFormat(form.format);

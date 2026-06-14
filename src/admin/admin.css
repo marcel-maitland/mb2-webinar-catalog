@@ -1677,6 +1677,17 @@
 .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
 @media (max-width: 720px) { .row3 { grid-template-columns: 1fr; } }
 
+/* Date / Time / CE / Cost row */
+.row4 { display: grid; grid-template-columns: 1.1fr 0.9fr 0.9fr 1.1fr; gap: 14px; }
+@media (max-width: 1024px) { .row4 { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 540px)  { .row4 { grid-template-columns: 1fr; } }
+
+.evField input:disabled {
+  background: #f9fafb;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
 /* --- format pills --- */
 .evPills { display: flex; gap: 8px; flex-wrap: wrap; }
 .evPill {
