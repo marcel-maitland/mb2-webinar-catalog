@@ -252,38 +252,36 @@
 .clientTileSeparator { opacity: 0.5; }
 .clientTileMetric { font-weight: 600; color: var(--text); }
 
+/* Give the tile footer breathing room so the Manage team button doesn't crowd the count chip */
+.vdrTile .vdrTileFoot { padding-right: 80px; min-height: 64px; }
+
 .clientTileTeamBtn {
   position: absolute;
-  bottom: 10px;
-  right: 10px;
+  bottom: 12px;
+  right: 12px;
   z-index: 2;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  background: rgba(255,255,255,0.95);
-  border: 1px solid var(--border);
+  gap: 5px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(249,115,22,.35);
   border-radius: 999px;
-  padding: 4px 10px 4px 8px;
+  padding: 5px 12px 5px 10px;
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  color: var(--muted);
+  color: var(--accent);
   cursor: pointer;
   letter-spacing: 0.02em;
-  opacity: 0;
-  transform: translateY(4px);
-  transition: opacity .15s, transform .15s, color .12s, border-color .12s, background .12s;
-  backdrop-filter: blur(4px);
-}
-.vdrTile:hover .clientTileTeamBtn,
-.vdrTile:focus-within .clientTileTeamBtn {
-  opacity: 1;
-  transform: translateY(0);
+  transition: color .12s, border-color .12s, background .12s, transform .12s, box-shadow .12s;
+  box-shadow: 0 2px 6px rgba(249,115,22,.18);
 }
 .clientTileTeamBtn:hover {
-  color: var(--accent);
+  background: var(--accent);
   border-color: var(--accent);
-  background: var(--accent-soft);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(249,115,22,.4);
 }
 
 /* =================================================================
