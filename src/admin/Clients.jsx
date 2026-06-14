@@ -11,10 +11,11 @@ export default function Clients() {
   const { isSuperAdmin, reload: reloadClientContext } = useClient();
   const [rows, setRows] = useState([]);
   const [eventCounts, setEventCounts] = useState({});
+  const [adminCounts, setAdminCounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
-  const [modal, setModal] = useState(null); // { mode: 'add' } | { mode: 'edit', client }
+  const [modal, setModal] = useState(null); // { mode: 'add' } | { mode: 'edit', client, openTab?: 'team' }
 
   const load = async () => {
     setLoading(true); setError("");
@@ -31,6 +32,17 @@ export default function Clients() {
       if (r.client_id) counts[r.client_id] = (counts[r.client_id] || 0) + 1;
     }
     setEventCounts(counts);
+
+    // Admin counts per client (RLS lets super admin see all)
+    const { data: caRows } = await supabase
+      .from("client_admins")
+      .select("client_id");
+    const aCounts = {};
+    for (const r of caRows || []) {
+      if (r.client_id) aCounts[r.client_id] = (aCounts[r.client_id] || 0) + 1;
+    }
+    setAdminCounts(aCounts);
+
     setLoading(false);
   };
 
@@ -130,7 +142,9 @@ export default function Clients() {
               key={c.id}
               client={c}
               eventCount={eventCounts[c.id] || 0}
+              adminCount={adminCounts[c.id] || 0}
               onOpen={() => setModal({ mode: "edit", client: c })}
+              onOpenTeam={() => setModal({ mode: "edit", client: c, openTab: "team" })}
               onDelete={() => remove(c)}
             />
           ))}
@@ -141,6 +155,7 @@ export default function Clients() {
         <ClientModal
           mode={modal.mode}
           client={modal.client}
+          openTab={modal.openTab}
           onClose={() => setModal(null)}
           onSaved={(c) => {
             if (modal.mode === "add") {
@@ -161,7 +176,7 @@ export default function Clients() {
 }
 
 /* ============================================================ */
-function ClientTile({ client, eventCount, onOpen, onDelete }) {
+function ClientTile({ client, eventCount, adminCount, onOpen, onOpenTeam, onDelete }) {
   const hasLogo = !!(client.logo_url && client.logo_url.trim());
   return (
     <article
@@ -192,14 +207,35 @@ function ClientTile({ client, eventCount, onOpen, onDelete }) {
       <div className="vdrTileFoot">
         <div style={{ minWidth: 0, flex: 1 }}>
           <h3 className="vdrTileName" title={client.name}>{client.name}</h3>
-          <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>/c/{client.slug}</div>
+          <div className="clientTileMeta">
+            <span className="muted">/c/{client.slug}</span>
+            <span className="clientTileSeparator">·</span>
+            <span className="clientTileMetric">
+              {eventCount} {eventCount === 1 ? "event" : "events"}
+            </span>
+            <span className="clientTileSeparator">·</span>
+            <span className="clientTileMetric">
+              {adminCount} {adminCount === 1 ? "admin" : "admins"}
+            </span>
+          </div>
         </div>
-        <span className={`vdrTileChip ${eventCount > 0 ? "" : "vdrTileChipMuted"}`}>
-          {eventCount} {eventCount === 1 ? "event" : "events"}
-        </span>
       </div>
 
-      <div className="vdrTileHoverHint">Click to edit</div>
+      {/* Quick-action: "Team" button reveals on hover, opens modal straight to Team tab */}
+      <button
+        type="button"
+        className="clientTileTeamBtn"
+        onClick={(e) => { e.stopPropagation(); onOpenTeam(); }}
+        title="Manage team for this client"
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+          <circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" strokeWidth="2"/>
+          <path d="M3 20c0-3 3-5 6-5s6 2 6 5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          <circle cx="16" cy="9" r="2.5" fill="none" stroke="currentColor" strokeWidth="2"/>
+          <path d="M14 20c0-2 1.5-3.5 3.5-3.5s3.5 1.5 3.5 3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+        Manage team
+      </button>
     </article>
   );
 }
@@ -235,9 +271,9 @@ function Stat({ label, value, tone }) {
 /* ============================================================
    Add / edit modal — now with a Team tab for managing access
 ============================================================ */
-function ClientModal({ mode = "add", client, onClose, onSaved }) {
+function ClientModal({ mode = "add", client, openTab, onClose, onSaved }) {
   const isEdit = mode === "edit" && client;
-  const [tab, setTab] = useState("details"); // 'details' | 'team'
+  const [tab, setTab] = useState(openTab || "details"); // 'details' | 'team'
   const [name, setName] = useState(isEdit ? client.name : "");
   const [slug, setSlug] = useState(isEdit ? client.slug : "");
   const [logoUrl, setLogoUrl] = useState(isEdit ? (client.logo_url || "") : "");
@@ -316,12 +352,25 @@ function ClientModal({ mode = "add", client, onClose, onSaved }) {
               type="button"
               className={`clientModalTab ${tab === "details" ? "active" : ""}`}
               onClick={() => setTab("details")}
-            >Details</button>
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style={{ marginRight: 6, verticalAlign: "-2px" }}>
+                <path d="M12 20.5c2-1.5 6-3.5 6-9V6l-6-2.5L6 6v5.5c0 5.5 4 7.5 6 9z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+              </svg>
+              Details
+            </button>
             <button
               type="button"
               className={`clientModalTab ${tab === "team" ? "active" : ""}`}
               onClick={() => setTab("team")}
-            >Team</button>
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style={{ marginRight: 6, verticalAlign: "-2px" }}>
+                <circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" strokeWidth="2"/>
+                <path d="M3 20c0-3 3-5 6-5s6 2 6 5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <circle cx="16" cy="9" r="2.5" fill="none" stroke="currentColor" strokeWidth="2"/>
+                <path d="M14 20c0-2 1.5-3.5 3.5-3.5s3.5 1.5 3.5 3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              Team
+            </button>
           </div>
         )}
 

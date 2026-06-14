@@ -239,6 +239,53 @@
 .tinyThumb { width: 56px; height: 40px; border-radius:8px; object-fit: cover; background:#f3f4f6; display:block; }
 .tinyThumbEmpty { background:#f3f4f6; }
 
+/* Client tile metadata strip + Manage team quick action */
+.clientTileMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.clientTileSeparator { opacity: 0.5; }
+.clientTileMetric { font-weight: 600; color: var(--text); }
+
+.clientTileTeamBtn {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px 4px 8px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .15s, transform .15s, color .12s, border-color .12s, background .12s;
+  backdrop-filter: blur(4px);
+}
+.vdrTile:hover .clientTileTeamBtn,
+.vdrTile:focus-within .clientTileTeamBtn {
+  opacity: 1;
+  transform: translateY(0);
+}
+.clientTileTeamBtn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
 /* =================================================================
    Client modal tabs + Team panel
 ================================================================= */
