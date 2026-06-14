@@ -409,7 +409,8 @@ export default function EventForm({ mode }) {
               />
             </Field>
 
-            <div className="row5">
+            {/* When — scheduling info on its own row */}
+            <div className="row3">
               <Field label="Date">
                 <input
                   type="date"
@@ -440,6 +441,10 @@ export default function EventForm({ mode }) {
                   ))}
                 </select>
               </Field>
+            </div>
+
+            {/* Details — pricing + accreditation on a second, looser row */}
+            <div className="row2">
               <Field label="CE credits">
                 <input
                   type="number" step="0.25" min="0"

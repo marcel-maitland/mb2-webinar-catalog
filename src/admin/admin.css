@@ -1759,29 +1759,13 @@
   letter-spacing: -0.01em;
 }
 
-.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+/* When row — Date | Time | Timezone */
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 16px; }
 @media (max-width: 720px) { .row3 { grid-template-columns: 1fr; } }
 
-/* Date / Time / CE / Cost row */
-.row4 { display: grid; grid-template-columns: 1.1fr 0.9fr 0.9fr 1.1fr; gap: 14px; }
-@media (max-width: 1024px) { .row4 { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 540px)  { .row4 { grid-template-columns: 1fr; } }
-
-/* Date / Time / Timezone / CE / Cost row */
-.row5 {
-  display: grid;
-  grid-template-columns: 1.1fr 0.85fr 1.2fr 0.85fr 1.05fr;
-  gap: 12px;
-}
-@media (max-width: 1280px) {
-  .row5 { grid-template-columns: 1fr 1fr 1fr; }
-}
-@media (max-width: 720px) {
-  .row5 { grid-template-columns: 1fr 1fr; }
-}
-@media (max-width: 480px) {
-  .row5 { grid-template-columns: 1fr; }
-}
+/* Details row — CE credits | Cost */
+.row2 { display: grid; grid-template-columns: 1fr 1.2fr; gap: 16px; max-width: 520px; }
+@media (max-width: 480px) { .row2 { grid-template-columns: 1fr; } }
 
 .evField input:disabled {
   background: #f9fafb;
