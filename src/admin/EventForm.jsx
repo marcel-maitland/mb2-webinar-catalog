@@ -476,12 +476,13 @@ export default function EventForm({ mode }) {
                   suggestions={categorySuggestions}
                 />
               </Field>
-              <Field label="Roles" hint="Pick or type. Click a chip to remove.">
+              <Field label="Roles" hint="Pick from the dropdown or type a new role.">
                 <ChipInput
                   value={form.roles}
                   onChange={(next) => set("roles", next)}
                   suggestions={roleSuggestions}
-                  placeholder="Dentist"
+                  placeholder=""
+                  createLabel="role"
                 />
               </Field>
             </div>
@@ -673,7 +674,7 @@ function CostInput({ value, onChange }) {
   );
 }
 
-function ChipInput({ value, onChange, placeholder, suggestions = [] }) {
+function ChipInput({ value, onChange, placeholder, suggestions = [], createLabel = "item" }) {
   const [draft, setDraft] = useState("");
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
@@ -752,7 +753,7 @@ function ChipInput({ value, onChange, placeholder, suggestions = [] }) {
               onMouseDown={(e) => { e.preventDefault(); addOne(draft); }}
             >
               <span className="vendorComboLogo vendorComboLogoAddIcon">+</span>
-              <span className="vendorComboName">Add "{draft.trim()}"</span>
+              <span className="vendorComboName">Create new {createLabel}: <strong>{draft.trim()}</strong></span>
             </li>
           )}
           {filtered.slice(0, 30).map((s) => (
