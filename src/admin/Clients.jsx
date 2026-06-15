@@ -506,7 +506,7 @@ function TeamPanel({ client, onClose }) {
   };
 
   const inviteLink = (theirEmail) =>
-    `${window.location.origin}/admin?email=${encodeURIComponent(theirEmail)}`;
+    `${window.location.origin}/?email=${encodeURIComponent(theirEmail)}`;
 
   const copyLink = async (theirEmail) => {
     try {
