@@ -193,6 +193,15 @@
 .ghostBtn.danger { color: var(--danger); border-color: #fecaca; }
 .ghostBtn.danger:hover { background:#fef2f2; }
 
+/* Inline text-button used on the login code-entry screen */
+.linkBtn {
+  background: transparent; border: none; padding: 0; margin: 0;
+  color: var(--accent); cursor: pointer; font: inherit;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.linkBtn:hover:not(:disabled) { color: #0f5e58; }
+.linkBtn:disabled { color: #94a3b8; cursor: default; text-decoration: none; }
+
 /* Forms */
 .adminForm h3 { margin-top: 28px; }
 .field { display:flex; flex-direction:column; gap:6px; margin-bottom: 14px; }
