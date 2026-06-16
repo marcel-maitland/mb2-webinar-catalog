@@ -183,30 +183,11 @@ export const handler = async (event) => {
   try {
     console.log("[portal-link] lookup for email:", email);
 
-    // Two-step lookup so we don't rely on Supabase auto-join (foreign-key
-    // resolution) which has been flaky in our schema.
-
-    // Step 1 — search client_admins for an active member.
     let clientId = null;
     let source = null;
 
+    // Step 1 — pending_invites HAS an email column, check it first.
     {
-      const { data, error } = await supabase
-        .from("client_admins")
-        .select("client_id")
-        .ilike("email", email)
-        .limit(1)
-        .maybeSingle();
-      if (error) console.error("[portal-link] client_admins err:", error);
-      else console.log("[portal-link] client_admins row:", data);
-      if (data?.client_id) {
-        clientId = data.client_id;
-        source = "client_admins";
-      }
-    }
-
-    // Step 2 — fall back to pending_invites if no active membership.
-    if (!clientId) {
       const { data, error } = await supabase
         .from("pending_invites")
         .select("client_id")
@@ -219,6 +200,37 @@ export const handler = async (event) => {
         clientId = data.client_id;
         source = "pending_invites";
       }
+    }
+
+    // Step 2 — for active members the email lives in the admins table, and
+    // client_admins is joined by user_id.
+    if (!clientId) {
+      const { data: aRow, error: aErr } = await supabase
+        .from("admins")
+        .select("user_id, is_super_admin")
+        .ilike("email", email)
+        .limit(1)
+        .maybeSingle();
+      if (aErr) console.error("[portal-link] admins err:", aErr);
+      else console.log("[portal-link] admins row:", aRow);
+
+      if (aRow?.user_id && !aRow.is_super_admin) {
+        // Look up which client(s) they're on.
+        const { data: caRow, error: caErr } = await supabase
+          .from("client_admins")
+          .select("client_id")
+          .eq("user_id", aRow.user_id)
+          .limit(1)
+          .maybeSingle();
+        if (caErr) console.error("[portal-link] client_admins err:", caErr);
+        else console.log("[portal-link] client_admins row:", caRow);
+        if (caRow?.client_id) {
+          clientId = caRow.client_id;
+          source = "client_admins";
+        }
+      }
+      // Note: super admins are intentionally NOT sent a per-client portal
+      // link via this flow. They use their existing super admin session.
     }
 
     // Step 3 — load the client row.
