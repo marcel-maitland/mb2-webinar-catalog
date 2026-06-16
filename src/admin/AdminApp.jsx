@@ -298,9 +298,13 @@ function Nav({ email }) {
       </nav>
 
       <div className="adminUser">
-        {isSuperAdmin && <span className="superBadge" title="You can see and manage every client">SUPER</span>}
-        <span className="muted">{email}</span>
-        <button className="ghostBtn" onClick={signOut}>Sign out</button>
+        {isSuperAdmin && (
+          <>
+            <span className="superBadge" title="You can see and manage every client">SUPER</span>
+            <span className="muted">{email}</span>
+            <button className="ghostBtn" onClick={signOut}>Sign out</button>
+          </>
+        )}
       </div>
     </header>
   );

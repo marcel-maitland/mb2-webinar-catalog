@@ -34,45 +34,111 @@ const json = (statusCode, body) => ({
 
 // Inline branded HTML for the email body.
 const renderEmail = ({ clientName, portalUrl }) => `<!DOCTYPE html>
-<html><head><meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Your ${clientName} Dentlogics dashboard</title>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <meta name="color-scheme" content="light" />
+  <meta name="supported-color-schemes" content="light" />
+  <title>Your ${clientName} Dentlogics dashboard</title>
+  <style>
+    @media only screen and (max-width:600px) {
+      .container { width:100% !important; padding:16px !important; }
+      .card { padding:28px 24px !important; }
+      .h1 { font-size:22px !important; }
+      .btn-link { display:block !important; }
+    }
+  </style>
 </head>
-<body style="margin:0; padding:0; background:#F4F6F8; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#0F172A;">
-<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#F4F6F8;">
-  <tr><td align="center" style="padding:32px 16px;">
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" style="width:560px; max-width:560px;">
-      <tr><td align="center" style="padding:0 0 24px 0; font-size:20px; font-weight:700; letter-spacing:-0.4px; color:#0F172A;">Dentlogics</td></tr>
-      <tr><td style="background:#FFFFFF; border-radius:14px; padding:40px; box-shadow:0 1px 3px rgba(15,23,42,0.04),0 1px 2px rgba(15,23,42,0.06);">
-        <h1 style="font-size:24px; font-weight:700; line-height:1.25; color:#0F172A; margin:0 0 12px 0;">Your ${clientName} dashboard</h1>
-        <p style="font-size:15px; line-height:1.6; color:#475569; margin:0 0 24px 0;">
-          Click the button below to open your ${clientName} admin dashboard. Bookmark this email so you can return any time — your link works on any device.
-        </p>
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="left">
-          <tr><td align="center" bgcolor="#0F766E" style="border-radius:10px;">
-            <a href="${portalUrl}" target="_blank" style="display:inline-block; padding:14px 28px; font-size:15px; font-weight:600; color:#FFFFFF; text-decoration:none; border-radius:10px;">Open ${clientName} dashboard →</a>
-          </td></tr>
-        </table>
-        <div style="height:28px; line-height:28px; font-size:28px;">&nbsp;</div>
-        <p style="font-size:13px; line-height:1.6; color:#64748B; margin:0 0 6px 0;">Or copy and paste this URL into your browser:</p>
-        <p style="font-size:13px; line-height:1.6; color:#0F766E; word-break:break-all; margin:0;">
-          <a href="${portalUrl}" target="_blank" style="color:#0F766E; text-decoration:underline;">${portalUrl}</a>
-        </p>
-        <div style="height:24px; line-height:24px; font-size:24px;">&nbsp;</div>
-        <div style="border-top:1px solid #E2E8F0; height:1px; font-size:1px;">&nbsp;</div>
-        <div style="height:20px; line-height:20px; font-size:20px;">&nbsp;</div>
-        <p style="font-size:13px; line-height:1.6; color:#64748B; margin:0;">
-          <strong style="color:#475569;">Keep this URL private.</strong> Anyone with the link can open your ${clientName} dashboard. Don't forward it to people who shouldn't have access. If you ever need a new link, contact support@dentlogics.com.
-        </p>
-      </td></tr>
-      <tr><td align="center" style="padding:24px 8px 0 8px; font-size:12px; line-height:1.6; color:#94A3B8;">
-        Questions? Email <a href="mailto:support@dentlogics.com" style="color:#0F766E; text-decoration:none;">support@dentlogics.com</a><br /><br />
-        &copy; Dentlogics &middot; Continuing dental education
-      </td></tr>
-    </table>
-  </td></tr>
-</table>
-</body></html>`;
+<body style="margin:0; padding:0; background:#F4F6F8; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; -webkit-font-smoothing:antialiased; color:#0F172A;">
+
+  <!-- Preheader (preview text in inbox list, hidden in body) -->
+  <div style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:#F4F6F8;">
+    Your ${clientName} dashboard link is ready. Click to open, bookmark for later.
+  </div>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#F4F6F8;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" class="container" style="width:560px; max-width:560px;">
+
+        <!-- Brand wordmark -->
+        <tr><td align="center" style="padding:0 0 28px 0;">
+          <div style="font-size:22px; font-weight:700; letter-spacing:-0.6px; color:#0F172A;">Dentlogics</div>
+        </td></tr>
+
+        <!-- Main card -->
+        <tr><td class="card" style="background:#FFFFFF; border-radius:16px; padding:44px 40px; box-shadow:0 1px 3px rgba(15,23,42,0.04),0 1px 2px rgba(15,23,42,0.06);">
+
+          <!-- Eyebrow + title -->
+          <div style="font-size:12px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#0F766E; margin:0 0 10px 0;">Your dashboard is ready</div>
+          <h1 class="h1" style="font-size:26px; font-weight:700; line-height:1.2; color:#0F172A; margin:0 0 16px 0;">${clientName}</h1>
+
+          <p style="font-size:15px; line-height:1.65; color:#475569; margin:0 0 28px 0;">
+            Click below to open your dashboard. <strong style="color:#334155;">Bookmark this email</strong> so you can return any time — your link works on any device, any time, no sign-in needed.
+          </p>
+
+          <!-- CTA button (own row, full-width on mobile) -->
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr><td>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr><td bgcolor="#0F766E" style="border-radius:10px; box-shadow:0 1px 2px rgba(15,118,110,0.25);">
+                  <a class="btn-link" href="${portalUrl}" target="_blank" style="display:inline-block; padding:14px 30px; font-size:15px; font-weight:600; color:#FFFFFF; text-decoration:none; border-radius:10px; mso-padding-alt:0;">
+                    Open ${clientName} dashboard&nbsp;&rarr;
+                  </a>
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+
+          <!-- Spacer -->
+          <div style="height:32px; line-height:32px; font-size:32px;">&nbsp;</div>
+
+          <!-- URL fallback in a soft chip-style box -->
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr><td style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:14px 16px;">
+              <div style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:#94A3B8; margin:0 0 6px 0;">Or copy this URL</div>
+              <div style="font-family:ui-monospace,'SF Mono',Menlo,Monaco,Consolas,monospace; font-size:12px; line-height:1.5; color:#475569; word-break:break-all;">
+                <a href="${portalUrl}" target="_blank" style="color:#0F766E; text-decoration:none;">${portalUrl}</a>
+              </div>
+            </td></tr>
+          </table>
+
+          <!-- Divider -->
+          <div style="height:28px; line-height:28px; font-size:28px;">&nbsp;</div>
+          <div style="border-top:1px solid #E2E8F0; height:1px; font-size:1px; line-height:1px;">&nbsp;</div>
+          <div style="height:20px; line-height:20px; font-size:20px;">&nbsp;</div>
+
+          <!-- Security callout -->
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+              <td valign="top" width="32" style="padding-top:2px;">
+                <div style="width:24px; height:24px; border-radius:50%; background:#FEF3C7; text-align:center; line-height:24px; font-size:13px;">&#128274;</div>
+              </td>
+              <td style="padding-left:10px;">
+                <div style="font-size:13px; font-weight:600; color:#475569; margin:0 0 4px 0;">Keep this URL private</div>
+                <div style="font-size:13px; line-height:1.6; color:#64748B;">
+                  Anyone with the link can open your ${clientName} dashboard. Don't forward it to people who shouldn't have access. Need a new link? Email <a href="mailto:support@dentlogics.com" style="color:#0F766E; text-decoration:underline;">support@dentlogics.com</a>.
+                </div>
+              </td>
+            </tr>
+          </table>
+
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td align="center" style="padding:28px 8px 0 8px; font-size:12px; line-height:1.6; color:#94A3B8;">
+          Questions? Email <a href="mailto:support@dentlogics.com" style="color:#0F766E; text-decoration:none;">support@dentlogics.com</a>
+          <br /><br />
+          &copy; Dentlogics &middot; Continuing dental education
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+
+</body>
+</html>`;
 
 const sendEmail = async ({ to, subject, html }) => {
   const res = await fetch("https://api.resend.com/emails", {
