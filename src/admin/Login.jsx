@@ -56,12 +56,12 @@ export default function Login() {
         {sent ? (
           <>
             <p>
-              ✓ If <strong>{email}</strong> is on an approved client list, we just emailed your
-              dashboard link. Check your inbox (and spam folder).
+              ✓ If <strong>{email}</strong> is an approved user, you'll receive an email shortly
+              with a secure link to your dashboard. Check your inbox (and spam folder).
             </p>
             <p className="muted" style={{ fontSize: 13, marginTop: 14 }}>
-              The link opens your dashboard directly — no password, no code. Bookmark it from
-              your email so you can return any time.
+              The link opens your dashboard directly. Bookmark it from your email so you can
+              return any time.
             </p>
             <p className="muted" style={{ fontSize: 13, marginTop: 14 }}>
               Wrong email?{" "}
