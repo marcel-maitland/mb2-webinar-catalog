@@ -86,11 +86,11 @@ export const handler = async (event) => {
       kind = "client";
 
       // 3) Ensure portal user exists for this client.
-      if (!client.portal_user_id) {
-        const portalEmail = `portal-${client.slug}@portal.dentlogics.com`;
+      //    Run this every visit so a broken first-visit state self-heals.
+      const portalEmail = `portal-${client.slug}@portal.dentlogics.com`;
+      let portalUserId = client.portal_user_id;
 
-        // Create the auth user (idempotent: if it already exists in auth.users
-        // we look it up by email below).
+      if (!portalUserId) {
         const createRes = await supabase.auth.admin.createUser({
           email: portalEmail,
           email_confirm: true,
@@ -100,10 +100,9 @@ export const handler = async (event) => {
             client_name: client.name,
           },
         });
+        portalUserId = createRes.data?.user?.id;
 
-        let portalUserId = createRes.data?.user?.id;
-
-        // If createUser failed because the user already exists, look them up.
+        // If create failed (already exists), find the existing user.
         if (!portalUserId) {
           const { data: listed } = await supabase.auth.admin.listUsers();
           const existing = (listed?.users || []).find(
@@ -111,40 +110,69 @@ export const handler = async (event) => {
           );
           portalUserId = existing?.id;
         }
-        if (!portalUserId) {
-          throw new Error("Could not provision portal user");
-        }
+        if (!portalUserId) throw new Error("Could not provision portal user");
+      }
 
-        // Add to admins (so AdminApp's isAdmin check passes).
-        await supabase.from("admins").upsert(
-          { user_id: portalUserId, email: portalEmail, is_super_admin: false },
-          { onConflict: "user_id" }
-        );
+      // 3a) Always ensure admins row exists. Insert-if-not-exists pattern,
+      //     using maybeSingle + insert because not all schemas have a unique
+      //     constraint on user_id that upsert can rely on.
+      const { data: existingAdmin } = await supabase
+        .from("admins")
+        .select("user_id")
+        .eq("user_id", portalUserId)
+        .maybeSingle();
+      if (!existingAdmin) {
+        const { error: insErr } = await supabase
+          .from("admins")
+          .insert({
+            user_id: portalUserId,
+            email: portalEmail,
+            is_super_admin: false,
+          });
+        if (insErr) console.error("admins insert failed:", insErr);
+      }
 
-        // Add to client_admins (so RLS sees them as member of this client).
-        await supabase.from("client_admins").upsert(
-          {
+      // 3b) Always ensure client_admins row exists for this client.
+      const { data: existingMembership } = await supabase
+        .from("client_admins")
+        .select("user_id")
+        .eq("user_id", portalUserId)
+        .eq("client_id", client.id)
+        .maybeSingle();
+      if (!existingMembership) {
+        const { error: caErr } = await supabase
+          .from("client_admins")
+          .insert({
             user_id: portalUserId,
             client_id: client.id,
             email: portalEmail,
-          },
-          { onConflict: "user_id,client_id" }
-        );
+          });
+        if (caErr) {
+          // Retry without the email column in case the schema doesn't have it.
+          const { error: caErr2 } = await supabase
+            .from("client_admins")
+            .insert({
+              user_id: portalUserId,
+              client_id: client.id,
+            });
+          if (caErr2) {
+            console.error("client_admins insert failed:", caErr2);
+            throw new Error(
+              "Could not grant portal user access to client: " + caErr2.message
+            );
+          }
+        }
+      }
 
-        // Save back to clients row.
+      // 3c) Save portal_user_id back if it was missing.
+      if (!client.portal_user_id) {
         await supabase
           .from("clients")
           .update({ portal_user_id: portalUserId })
           .eq("id", client.id);
-
-        userEmail = portalEmail;
-      } else {
-        // Get email for existing portal user
-        const { data: existing, error: getErr } =
-          await supabase.auth.admin.getUserById(client.portal_user_id);
-        if (getErr) throw getErr;
-        userEmail = existing.user.email;
       }
+
+      userEmail = portalEmail;
 
       await supabase
         .from("clients")

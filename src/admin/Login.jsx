@@ -1,130 +1,51 @@
-import { useEffect, useRef, useState } from "react";
-import { supabase } from "../lib/supabase.js";
+import { useEffect, useState } from "react";
 import "./admin.css";
 
 /**
- * Two-step OTP code flow.
+ * Public landing page.
  *
- *   Step "email" — collect email, run pre-auth gate, call signInWithOtp
- *   Step "code"  — collect the 6-digit code from inbox, call verifyOtp
+ * User enters email → we look it up server-side → if it's on a client's
+ * approved list, we email them their portal URL. The URL itself is the
+ * credential — they bookmark it from the email, can revisit any time.
  *
- * Why a code instead of a clickable link:
- *   - Corporate email security scanners (Outlook Safe Links, antivirus,
- *     etc.) preload URLs to scan them, which consumes the single-use magic
- *     link before the user ever clicks it. A 6-digit code can't be "used
- *     up" by a scanner — only a human typing it on the page validates.
- *   - The Supabase email actually contains both a link and a code; the code
- *     just makes the auth bulletproof.
+ * We always show the same "check your inbox" message regardless of whether
+ * the email was actually found, so attackers can't enumerate approved emails.
  */
 export default function Login() {
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [step, setStep] = useState("email"); // "email" | "code"
   const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
-  const [info, setInfo] = useState("");
-  const [invited, setInvited] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(0);
-  const codeInputRef = useRef(null);
 
-  // Pre-fill email from ?email=… so invite links land with the right address.
+  // Pre-fill email from ?email=… if present (legacy invite links).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const pre = params.get("email");
     if (pre && /\S+@\S+\.\S+/.test(pre)) {
       setEmail(pre);
-      setInvited(true);
     }
   }, []);
 
-  // Cooldown timer for "Resend code" button.
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const t = setTimeout(() => setResendCooldown((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [resendCooldown]);
-
-  // When we move to the code step, focus the input.
-  useEffect(() => {
-    if (step === "code") {
-      // Slight delay so the input is mounted before focusing.
-      setTimeout(() => codeInputRef.current?.focus(), 50);
-    }
-  }, [step]);
-
-  const sendCode = async () => {
-    setError("");
-    setInfo("");
-    setBusy(true);
-    try {
-      // Pre-auth gate: only invited emails get a code.
-      const { data: hasAccess, error: checkErr } = await supabase.rpc(
-        "email_has_admin_access",
-        { p_email: email }
-      );
-      if (checkErr) throw checkErr;
-      if (!hasAccess) {
-        setError(
-          "This email doesn't have admin access. Double-check the spelling, or contact support@dentlogics.com if you think you should have access."
-        );
-        return;
-      }
-
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          // Same email still includes the clickable link as a fallback, in
-          // case the user is on a setup where the link does work for them.
-          emailRedirectTo: `${window.location.origin}/`,
-        },
-      });
-      if (error) throw error;
-
-      setStep("code");
-      setResendCooldown(30);
-      setInfo(`Code sent to ${email}.`);
-    } catch (err) {
-      setError(err.message || "Could not send code.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const verifyCode = async () => {
+  const submit = async (e) => {
+    e.preventDefault();
     setError("");
     setBusy(true);
     try {
-      const clean = code.replace(/\s/g, "").trim();
-      if (!/^\d{6}$/.test(clean)) {
-        setError("Enter the 6-digit code from your email.");
-        return;
-      }
-      const { error } = await supabase.auth.verifyOtp({
-        email,
-        token: clean,
-        type: "email",
+      const res = await fetch("/.netlify/functions/request-portal-link", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email }),
       });
-      if (error) throw error;
-      // Success — AdminApp will detect the session and re-render the dashboard.
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload?.error || "Something went wrong. Try again.");
+      }
+      setSent(true);
     } catch (err) {
-      setError(err.message || "Invalid code. Try again or request a new one.");
+      setError(err.message);
     } finally {
       setBusy(false);
     }
-  };
-
-  const resend = async () => {
-    if (resendCooldown > 0) return;
-    setCode("");
-    await sendCode();
-  };
-
-  const startOver = () => {
-    setStep("email");
-    setCode("");
-    setError("");
-    setInfo("");
-    setResendCooldown(0);
   };
 
   return (
@@ -132,24 +53,35 @@ export default function Login() {
       <div className="adminCard" style={{ maxWidth: 440, margin: "80px auto" }}>
         <h2>Sign in to Dentlogics</h2>
 
-        {step === "email" && (
+        {sent ? (
           <>
-            {invited ? (
-              <p className="muted">
-                You've been invited. Confirm your email below and we'll send you a 6-digit code.
-              </p>
-            ) : (
-              <p className="muted">
-                Enter your email and we'll send you a 6-digit code. No password required.
-              </p>
-            )}
+            <p>
+              ✓ If <strong>{email}</strong> is on an approved client list, we just emailed your
+              dashboard link. Check your inbox (and spam folder).
+            </p>
+            <p className="muted" style={{ fontSize: 13, marginTop: 14 }}>
+              The link opens your dashboard directly — no password, no code. Bookmark it from
+              your email so you can return any time.
+            </p>
+            <p className="muted" style={{ fontSize: 13, marginTop: 14 }}>
+              Wrong email?{" "}
+              <button
+                type="button"
+                className="linkBtn"
+                onClick={() => { setSent(false); setEmail(""); }}
+              >
+                Try a different one
+              </button>
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="muted">
+              Enter your email and we'll send you your dashboard link. No password, no code —
+              the link works on any device and any time.
+            </p>
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!busy) sendCode();
-              }}
-            >
+            <form onSubmit={submit}>
               <label className="field">
                 <span>Email</span>
                 <input
@@ -159,91 +91,18 @@ export default function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@dentlogics.com"
                   autoComplete="email"
-                  autoFocus={!invited}
+                  autoFocus
                 />
               </label>
               {error && <p className="errMsg">{error}</p>}
               <button className="primaryBtn" type="submit" disabled={busy}>
-                {busy ? "Sending…" : "Send code"}
+                {busy ? "Sending…" : "Email me my link"}
               </button>
             </form>
-          </>
-        )}
-
-        {step === "code" && (
-          <>
-            <p className="muted">
-              We sent a 6-digit code to <strong>{email}</strong>. It expires in 1 hour.
-            </p>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!busy) verifyCode();
-              }}
-            >
-              <label className="field">
-                <span>6-digit code</span>
-                <input
-                  ref={codeInputRef}
-                  type="text"
-                  inputMode="numeric"
-                  pattern="\d{6}"
-                  maxLength={6}
-                  required
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                  placeholder="123456"
-                  autoComplete="one-time-code"
-                  style={{
-                    fontSize: 24,
-                    letterSpacing: 6,
-                    textAlign: "center",
-                    fontFamily:
-                      "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                  }}
-                />
-              </label>
-
-              {error && <p className="errMsg">{error}</p>}
-              {info && !error && <p className="muted" style={{ marginTop: -8 }}>{info}</p>}
-
-              <button className="primaryBtn" type="submit" disabled={busy || code.length !== 6}>
-                {busy ? "Verifying…" : "Verify code"}
-              </button>
-            </form>
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginTop: 16,
-                fontSize: 13,
-              }}
-            >
-              <button
-                type="button"
-                className="linkBtn"
-                onClick={startOver}
-                disabled={busy}
-              >
-                ← Wrong email?
-              </button>
-              <button
-                type="button"
-                className="linkBtn"
-                onClick={resend}
-                disabled={busy || resendCooldown > 0}
-              >
-                {resendCooldown > 0
-                  ? `Resend in ${resendCooldown}s`
-                  : "Resend code"}
-              </button>
-            </div>
 
             <p className="muted" style={{ marginTop: 18, fontSize: 12 }}>
-              Can't find the email? Check spam. Sender is{" "}
-              <code>support@dentlogics.com</code>.
+              Don't have access yet? Email{" "}
+              <a href="mailto:support@dentlogics.com">support@dentlogics.com</a>.
             </p>
           </>
         )}

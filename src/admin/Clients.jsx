@@ -247,7 +247,7 @@ function Stat({ label, value, tone }) {
 ============================================================ */
 function ClientModal({ mode = "add", client, openTab, eventCount = 0, onClose, onSaved, onDelete }) {
   const isEdit = mode === "edit" && client;
-  const [tab, setTab] = useState(openTab || "details"); // 'details' | 'team'
+  const [tab, setTab] = useState(openTab || "details"); // 'details' | 'team' | 'portal'
   const [name, setName] = useState(isEdit ? client.name : "");
   const [slug, setSlug] = useState(isEdit ? client.slug : "");
   const [logoUrl, setLogoUrl] = useState(isEdit ? (client.logo_url || "") : "");
@@ -338,6 +338,19 @@ function ClientModal({ mode = "add", client, openTab, eventCount = 0, onClose, o
               onClick={() => setTab("team")}
             >
               <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style={{ marginRight: 6, verticalAlign: "-2px" }}>
+                <circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" strokeWidth="2"/>
+                <path d="M3 20c0-3 3-5 6-5s6 2 6 5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <circle cx="16" cy="9" r="2.5" fill="none" stroke="currentColor" strokeWidth="2"/>
+                <path d="M14 20c0-2 1.5-3.5 3.5-3.5s3.5 1.5 3.5 3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              Approved emails
+            </button>
+            <button
+              type="button"
+              className={`clientModalTab ${tab === "portal" ? "active" : ""}`}
+              onClick={() => setTab("portal")}
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style={{ marginRight: 6, verticalAlign: "-2px" }}>
                 <path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 1 0-5.66-5.66l-1.5 1.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 <path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 1 0 5.66 5.66l1.5-1.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -425,8 +438,10 @@ function ClientModal({ mode = "add", client, openTab, eventCount = 0, onClose, o
               </div>
             </div>
           </form>
-        ) : (
+        ) : tab === "portal" ? (
           <PortalPanel client={client} onClose={onClose} />
+        ) : (
+          <TeamPanel client={client} onClose={onClose} />
         )}
       </div>
     </div>

@@ -330,6 +330,37 @@ function ClientLogoPh({ name, small }) {
    "Not an admin yet" landing
 ============================================================ */
 function NoAccess({ email }) {
+  // Portal users land here only if the portal-auth function failed to
+  // grant them client access. Show them a friendly retry/contact message
+  // and DON'T leak the internal service-account email.
+  const isPortalUser =
+    typeof email === "string" && email.endsWith("@portal.dentlogics.com");
+
+  if (isPortalUser) {
+    return (
+      <div className="admin">
+        <div className="adminCard" style={{ maxWidth: 460, margin: "80px auto" }}>
+          <h2>Couldn't open your dashboard</h2>
+          <p className="muted">
+            Something went wrong loading your client portal. Try clicking your
+            portal link again. If it still doesn't work, contact{" "}
+            <a href="mailto:support@dentlogics.com">support@dentlogics.com</a>.
+          </p>
+          <button
+            className="ghostBtn"
+            style={{ marginTop: 14 }}
+            onClick={async () => {
+              await supabase.auth.signOut();
+              window.location.href = "/";
+            }}
+          >
+            Start over
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="admin">
       <div className="adminCard" style={{ maxWidth: 520, margin: "80px auto" }}>
