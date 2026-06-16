@@ -181,31 +181,70 @@ export const handler = async (event) => {
   });
 
   try {
-    // Look up the email across active team members and pending invites.
-    // We pick the first client we find — typically a user belongs to one.
-    let matchedClient = null;
+    console.log("[portal-link] lookup for email:", email);
 
-    const { data: caRow } = await supabase
-      .from("client_admins")
-      .select("client_id, clients ( id, name, portal_token )")
-      .ilike("email", email)
-      .limit(1)
-      .maybeSingle();
-    if (caRow?.clients?.portal_token) matchedClient = caRow.clients;
+    // Two-step lookup so we don't rely on Supabase auto-join (foreign-key
+    // resolution) which has been flaky in our schema.
 
-    if (!matchedClient) {
-      const { data: piRow } = await supabase
-        .from("pending_invites")
-        .select("client_id, clients ( id, name, portal_token )")
+    // Step 1 — search client_admins for an active member.
+    let clientId = null;
+    let source = null;
+
+    {
+      const { data, error } = await supabase
+        .from("client_admins")
+        .select("client_id")
         .ilike("email", email)
         .limit(1)
         .maybeSingle();
-      if (piRow?.clients?.portal_token) matchedClient = piRow.clients;
+      if (error) console.error("[portal-link] client_admins err:", error);
+      else console.log("[portal-link] client_admins row:", data);
+      if (data?.client_id) {
+        clientId = data.client_id;
+        source = "client_admins";
+      }
     }
+
+    // Step 2 — fall back to pending_invites if no active membership.
+    if (!clientId) {
+      const { data, error } = await supabase
+        .from("pending_invites")
+        .select("client_id")
+        .ilike("email", email)
+        .limit(1)
+        .maybeSingle();
+      if (error) console.error("[portal-link] pending_invites err:", error);
+      else console.log("[portal-link] pending_invites row:", data);
+      if (data?.client_id) {
+        clientId = data.client_id;
+        source = "pending_invites";
+      }
+    }
+
+    // Step 3 — load the client row.
+    let matchedClient = null;
+    if (clientId) {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("id, name, portal_token")
+        .eq("id", clientId)
+        .maybeSingle();
+      if (error) console.error("[portal-link] clients err:", error);
+      else console.log("[portal-link] client row:", data);
+      if (data?.portal_token) matchedClient = data;
+    }
+
+    console.log(
+      "[portal-link] resolution:",
+      matchedClient
+        ? { source, client: matchedClient.name, hasToken: true }
+        : { source, matched: false }
+    );
 
     if (matchedClient) {
       const portalUrl = `${SITE_URL}/portal/${matchedClient.portal_token}`;
-      await sendEmail({
+      console.log("[portal-link] sending email to:", email);
+      const result = await sendEmail({
         to: email,
         subject: `Your ${matchedClient.name} Dentlogics dashboard`,
         html: renderEmail({
@@ -213,12 +252,13 @@ export const handler = async (event) => {
           portalUrl,
         }),
       });
+      console.log("[portal-link] sendEmail result:", result);
     }
     // (else: we silently do nothing to avoid leaking which emails are approved)
 
     return json(200, { sent: true });
   } catch (err) {
-    console.error("request-portal-link error:", err);
+    console.error("[portal-link] error:", err);
     // Still return "sent: true" externally so we don't reveal failure to attackers.
     // The real error is in Netlify Functions → Logs.
     return json(200, { sent: true });
