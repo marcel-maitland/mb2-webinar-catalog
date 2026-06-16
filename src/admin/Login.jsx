@@ -51,13 +51,11 @@ export default function Login() {
       {/* LEFT — branded hero */}
       <aside className="signinHero">
         <div className="signinHeroLogo">
-          <span className="signinHeroLogoMark" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2l4 8 8 2-6 6 1 8-7-4-7 4 1-8-6-6 8-2 4-8z"
-                    fill="#fff" />
-            </svg>
-          </span>
-          <span className="signinHeroLogoText">DENTLOGICS</span>
+          <img
+            src="https://d2xsxph8kpxj0f.cloudfront.net/310519663393735071/Kkao7x2cX8cGmxy7TfYdRt/dentlogics-logo_13fff589.png"
+            alt="Dentlogics"
+            className="signinHeroLogoImg"
+          />
         </div>
 
         <div className="signinHeroBody">

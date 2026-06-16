@@ -39,20 +39,16 @@
   gap: 10px;
   margin-bottom: 0;
 }
-.signinHeroLogoMark {
-  width: 40px; height: 40px;
-  background: rgba(255, 255, 255, 0.12);
+.signinHeroLogoImg {
+  height: 40px;
+  width: auto;
+  display: block;
+  /* Logo asset is dark-on-light; nudge it onto a soft frosted chip
+     so it stays legible on the blue gradient hero. */
+  background: rgba(255, 255, 255, 0.95);
+  padding: 6px 14px;
   border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(8px);
-}
-.signinHeroLogoText {
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .signinHeroBody {
