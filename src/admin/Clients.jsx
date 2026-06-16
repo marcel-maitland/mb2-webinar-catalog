@@ -33,13 +33,19 @@ export default function Clients() {
     }
     setEventCounts(counts);
 
-    // Admin counts per client (RLS lets super admin see all)
+    // Admin counts per client (RLS lets super admin see all). We join in
+    // admins.email so we can filter out the system "portal-*" service
+    // accounts from the count — those exist for RLS plumbing but aren't
+    // real teammates.
     const { data: caRows } = await supabase
       .from("client_admins")
-      .select("client_id");
+      .select("client_id, admins ( email )");
     const aCounts = {};
     for (const r of caRows || []) {
-      if (r.client_id) aCounts[r.client_id] = (aCounts[r.client_id] || 0) + 1;
+      if (!r.client_id) continue;
+      const email = r.admins?.email || "";
+      if (email.toLowerCase().endsWith("@portal.dentlogics.com")) continue;
+      aCounts[r.client_id] = (aCounts[r.client_id] || 0) + 1;
     }
     setAdminCounts(aCounts);
 
@@ -613,7 +619,16 @@ function TeamPanel({ client, onClose }) {
       supabase.rpc("list_client_pending", { p_client_id: client.id }),
     ]);
     if (tRes.error) setError(tRes.error.message);
-    else setTeam(tRes.data || []);
+    else {
+      // Hide the system "portal-*@portal.dentlogics.com" service account
+      // — that row exists so RLS can scope portal-link visitors to this
+      // client, but it isn't a real teammate the super admin needs to see.
+      const filtered = (tRes.data || []).filter(
+        (m) => !(typeof m.email === "string" &&
+                 m.email.toLowerCase().endsWith("@portal.dentlogics.com"))
+      );
+      setTeam(filtered);
+    }
     if (!pRes.error) setPending(pRes.data || []);
     setLoading(false);
   };
