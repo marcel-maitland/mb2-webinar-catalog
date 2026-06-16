@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import "./admin.css";
+import "./login.css";
 
 /**
  * Public landing page.
@@ -7,9 +8,6 @@ import "./admin.css";
  * User enters email → we look it up server-side → if it's on a client's
  * approved list, we email them their portal URL. The URL itself is the
  * credential — they bookmark it from the email, can revisit any time.
- *
- * We always show the same "check your inbox" message regardless of whether
- * the email was actually found, so attackers can't enumerate approved emails.
  */
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -49,63 +47,114 @@ export default function Login() {
   };
 
   return (
-    <div className="admin">
-      <div className="adminCard" style={{ maxWidth: 440, margin: "80px auto" }}>
-        <h2>Sign in to Dentlogics</h2>
+    <div className="signinPage">
+      {/* LEFT — branded hero */}
+      <aside className="signinHero">
+        <div className="signinHeroLogo">
+          <span className="signinHeroLogoMark" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2l4 8 8 2-6 6 1 8-7-4-7 4 1-8-6-6 8-2 4-8z"
+                    fill="#fff" />
+            </svg>
+          </span>
+          <span className="signinHeroLogoText">DENTLOGICS</span>
+        </div>
 
-        {sent ? (
-          <>
-            <p>
-              ✓ If <strong>{email}</strong> is an approved user, you'll receive an email shortly
-              with a secure link to your dashboard. Check your inbox (and spam folder).
-            </p>
-            <p className="muted" style={{ fontSize: 13, marginTop: 14 }}>
-              The link opens your dashboard directly. Bookmark it from your email so you can
-              return any time.
-            </p>
-            <p className="muted" style={{ fontSize: 13, marginTop: 14 }}>
-              Wrong email?{" "}
+        <div className="signinHeroBody">
+          <h1 className="signinHeroTitle">
+            Continuing<br />Education Portal
+          </h1>
+          <p className="signinHeroSubtitle">
+            One place for your team to manage CE events, vendors, and your
+            custom-branded catalog. Modern, secure, and built for dental practices.
+          </p>
+
+          <ul className="signinHeroFeatures">
+            <li>Custom-branded catalog for your organization</li>
+            <li>Track CE credits, registrations, and exclusives</li>
+            <li>Bulk CSV / Excel import for large event rosters</li>
+            <li>Bookmark-and-go access — no passwords required</li>
+          </ul>
+        </div>
+
+        <div className="signinHeroFooter">
+          &copy; Dentlogics &middot; Continuing dental education
+        </div>
+      </aside>
+
+      {/* RIGHT — form card */}
+      <main className="signinFormSide">
+        <div className="signinCard">
+          {sent ? (
+            <>
+              <div className="signinEyebrow">CHECK YOUR INBOX</div>
+              <h2 className="signinTitle">Link sent</h2>
+              <p className="signinDesc">
+                If <strong>{email}</strong> is an approved user, you'll receive an
+                email shortly with a secure link to your dashboard. Check your
+                inbox and spam folder.
+              </p>
+              <div className="signinSuccessBox">
+                <div className="signinSuccessIcon">✓</div>
+                <div className="signinSuccessText">
+                  The link opens your dashboard directly. Bookmark it from your
+                  email so you can return any time.
+                </div>
+              </div>
               <button
                 type="button"
-                className="linkBtn"
+                className="signinLinkBtn"
                 onClick={() => { setSent(false); setEmail(""); }}
               >
-                Try a different one
+                ← Use a different email
               </button>
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="muted">
-              Enter your email and we'll send you your dashboard link.
-            </p>
+            </>
+          ) : (
+            <>
+              <div className="signinEyebrow">CLIENT PORTAL</div>
+              <h2 className="signinTitle">Welcome back</h2>
+              <p className="signinDesc">
+                Enter your email and we'll send you your dashboard link.
+              </p>
 
-            <form onSubmit={submit}>
-              <label className="field">
-                <span>Email</span>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@dentlogics.com"
-                  autoComplete="email"
-                  autoFocus
-                />
-              </label>
-              {error && <p className="errMsg">{error}</p>}
-              <button className="primaryBtn" type="submit" disabled={busy}>
-                {busy ? "Sending…" : "Email me my link"}
-              </button>
-            </form>
+              <form onSubmit={submit} noValidate>
+                <div className="signinField">
+                  <label className="signinLabel" htmlFor="signin-email">EMAIL</label>
+                  <div className="signinInputWrap">
+                    <span className="signinInputIcon" aria-hidden="true">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
+                        <path d="M3 7l9 6 9-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </span>
+                    <input
+                      id="signin-email"
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@dentlogics.com"
+                      autoComplete="email"
+                      autoFocus
+                    />
+                  </div>
+                </div>
 
-            <p className="muted" style={{ marginTop: 18, fontSize: 12 }}>
-              Don't have access yet? Email{" "}
-              <a href="mailto:support@dentlogics.com">support@dentlogics.com</a>.
-            </p>
-          </>
-        )}
-      </div>
+                {error && <p className="signinError">{error}</p>}
+
+                <button className="signinBtn" type="submit" disabled={busy}>
+                  {busy ? "Sending…" : "Email me my link →"}
+                </button>
+              </form>
+
+              <p className="signinDisclaimer">
+                Don't have access yet? Email{" "}
+                <a href="mailto:support@dentlogics.com">support@dentlogics.com</a>.
+              </p>
+            </>
+          )}
+        </div>
+      </main>
     </div>
   );
 }
