@@ -62,18 +62,17 @@ export default function Login() {
 
         <div className="signinHeroBody">
           <h1 className="signinHeroTitle">
-            Continuing<br />Education Portal
+            Custom Events<br />Management Portal
           </h1>
           <p className="signinHeroSubtitle">
-            One place for your team to manage CE events, vendors, and your
-            custom-branded catalog. Modern, secure, and built for dental practices.
+            One place for your team to manage every continuing education event,
+            vendor webinar, and live training your practice runs.
           </p>
 
           <ul className="signinHeroFeatures">
-            <li>Custom-branded catalog for your organization</li>
-            <li>Track CE credits, registrations, and exclusives</li>
-            <li>Bulk CSV / Excel import for large event rosters</li>
-            <li>Bookmark-and-go access — no passwords required</li>
+            <li>Custom-branded events catalog</li>
+            <li>Manage vendor webinars</li>
+            <li>Manage live events</li>
           </ul>
         </div>
 
