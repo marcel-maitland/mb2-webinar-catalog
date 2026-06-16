@@ -77,8 +77,7 @@ export default function Login() {
         ) : (
           <>
             <p className="muted">
-              Enter your email and we'll send you your dashboard link. No password, no code —
-              the link works on any device and any time.
+              Enter your email and we'll send you your dashboard link.
             </p>
 
             <form onSubmit={submit}>
