@@ -202,6 +202,57 @@
 .linkBtn:hover:not(:disabled) { color: #0f5e58; }
 .linkBtn:disabled { color: #94a3b8; cursor: default; text-decoration: none; }
 
+/* Portal Link panel (inside the Edit Client modal) */
+.portalPanel { padding-top: 6px; }
+.portalUrlBox {
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 6px 0 12px;
+}
+.portalUrlLabel {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 8px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.portalUrlRow {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.portalUrlInput {
+  flex: 1;
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #CBD5E1;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  color: #0F172A;
+}
+.portalUrlInput:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.portalUrlActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+}
+.portalSecurityBox {
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
 /* Forms */
 .adminForm h3 { margin-top: 28px; }
 .field { display:flex; flex-direction:column; gap:6px; margin-bottom: 14px; }

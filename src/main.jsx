@@ -3,15 +3,17 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import App from "./App.jsx";
 import AdminApp from "./admin/AdminApp.jsx";
+import PortalAuth from "./admin/PortalAuth.jsx";
 import "./App.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BrowserRouter>
       <Routes>
-        {/* Root is the admin login. Once signed in, AdminApp shows the dashboard.
-            Note: the *deeper* admin pages still live under /admin/* (legacy),
-            and any internal nav routes there. */}
+        {/* Portal sign-in: the URL itself is the credential. */}
+        <Route path="/portal/:token" element={<PortalAuth />} />
+
+        {/* Admin dashboard (auth-gated inside AdminApp). */}
         <Route path="/" element={<AdminApp />} />
         <Route path="/admin/*" element={<AdminApp />} />
 

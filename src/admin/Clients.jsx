@@ -21,7 +21,7 @@ export default function Clients() {
     setLoading(true); setError("");
     const { data, error } = await supabase
       .from("clients")
-      .select("id, name, slug, logo_url, updated_at")
+      .select("id, name, slug, logo_url, updated_at, portal_token, portal_last_used_at")
       .order("name");
     if (error) { setError(error.message); setLoading(false); return; }
     setRows(data || []);
@@ -338,12 +338,10 @@ function ClientModal({ mode = "add", client, openTab, eventCount = 0, onClose, o
               onClick={() => setTab("team")}
             >
               <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style={{ marginRight: 6, verticalAlign: "-2px" }}>
-                <circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" strokeWidth="2"/>
-                <path d="M3 20c0-3 3-5 6-5s6 2 6 5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                <circle cx="16" cy="9" r="2.5" fill="none" stroke="currentColor" strokeWidth="2"/>
-                <path d="M14 20c0-2 1.5-3.5 3.5-3.5s3.5 1.5 3.5 3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 1 0-5.66-5.66l-1.5 1.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 1 0 5.66 5.66l1.5-1.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              Team
+              Portal Link
             </button>
           </div>
         )}
@@ -428,7 +426,7 @@ function ClientModal({ mode = "add", client, openTab, eventCount = 0, onClose, o
             </div>
           </form>
         ) : (
-          <TeamPanel client={client} onClose={onClose} />
+          <PortalPanel client={client} onClose={onClose} />
         )}
       </div>
     </div>
@@ -436,7 +434,151 @@ function ClientModal({ mode = "add", client, openTab, eventCount = 0, onClose, o
 }
 
 /* ============================================================
-   Team panel — grant + revoke access by email
+   Portal panel — show + regenerate the client's portal URL
+============================================================ */
+function PortalPanel({ client, onClose }) {
+  const [portalToken, setPortalToken] = useState(client.portal_token || null);
+  const [lastUsedAt, setLastUsedAt] = useState(client.portal_last_used_at || null);
+  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  // Fetch latest token + last-used in case it changed since the list was loaded.
+  useEffect(() => {
+    let cancelled = false;
+    async function refresh() {
+      const { data, error } = await supabase
+        .from("clients")
+        .select("portal_token, portal_last_used_at")
+        .eq("id", client.id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) { setError(error.message); return; }
+      setPortalToken(data?.portal_token || null);
+      setLastUsedAt(data?.portal_last_used_at || null);
+    }
+    refresh();
+    return () => { cancelled = true; };
+  }, [client.id]);
+
+  const portalUrl = portalToken
+    ? `${window.location.origin}/portal/${portalToken}`
+    : null;
+
+  const copy = async () => {
+    if (!portalUrl) return;
+    try {
+      await navigator.clipboard.writeText(portalUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      window.prompt("Copy this URL:", portalUrl);
+    }
+  };
+
+  const regenerate = async () => {
+    if (!window.confirm(
+      `Regenerate the portal URL for ${client.name}?\n\n` +
+      "The current URL will stop working immediately. Anyone using it will need the new URL."
+    )) return;
+    setBusy(true);
+    setError("");
+    try {
+      const { data, error } = await supabase
+        .rpc("regenerate_client_portal_token", { p_client_id: client.id });
+      if (error) throw error;
+      setPortalToken(data);
+      setLastUsedAt(null);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const mailto = portalUrl
+    ? `mailto:?subject=${encodeURIComponent(
+        `Your ${client.name} Dentlogics portal`
+      )}&body=${encodeURIComponent(
+        `Click below to open your ${client.name} admin dashboard. Bookmark it — it works any time.\n\n${portalUrl}\n\nQuestions? support@dentlogics.com`
+      )}`
+    : "#";
+
+  return (
+    <div className="modalBody portalPanel">
+      <p className="muted teamIntro">
+        Anyone with the URL below can open <strong>{client.name}</strong>'s admin dashboard.
+        Share it however works best — email, Slack, text. They can bookmark it and revisit any time.
+      </p>
+
+      <div className="portalUrlBox">
+        <label className="portalUrlLabel">Portal URL</label>
+        <div className="portalUrlRow">
+          <input
+            type="text"
+            readOnly
+            value={portalUrl || "Loading…"}
+            onFocus={(e) => e.target.select()}
+            className="portalUrlInput"
+          />
+          <button
+            type="button"
+            className={`primaryBtn ${copied ? "evCopied" : ""}`}
+            onClick={copy}
+            disabled={!portalUrl}
+            style={{ whiteSpace: "nowrap" }}
+          >
+            {copied ? "✓ Copied" : "Copy URL"}
+          </button>
+        </div>
+        <div className="portalUrlActions">
+          <a
+            className="ghostBtn"
+            href={mailto}
+            target="_blank"
+            rel="noreferrer"
+            style={{ fontSize: 13, padding: "6px 12px" }}
+          >
+            Compose email…
+          </a>
+          <span className="muted" style={{ fontSize: 12 }}>
+            {lastUsedAt
+              ? `Last opened ${new Date(lastUsedAt).toLocaleString()}`
+              : "Not opened yet"}
+          </span>
+        </div>
+      </div>
+
+      {error && <p className="teamNotice teamNoticeErr">{error}</p>}
+
+      <div className="portalSecurityBox">
+        <strong>Heads up:</strong>{" "}
+        <span className="muted" style={{ fontSize: 13 }}>
+          The URL is the credential — anyone with it can access {client.name}. If it leaks
+          (forwarded email, screen-share, etc.), click <strong>Regenerate URL</strong> below.
+          The old URL stops working instantly.
+        </span>
+      </div>
+
+      <div className="formActions" style={{ marginTop: 18 }}>
+        <button
+          type="button"
+          className="ghostBtn danger"
+          onClick={regenerate}
+          disabled={busy}
+        >
+          {busy ? "Regenerating…" : "Regenerate URL"}
+        </button>
+        <div style={{ marginLeft: "auto" }}>
+          <button type="button" className="ghostBtn" onClick={onClose}>Done</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   Team panel — legacy email-grant flow (retained, not currently shown)
 ============================================================ */
 function TeamPanel({ client, onClose }) {
   const [team, setTeam] = useState([]);
