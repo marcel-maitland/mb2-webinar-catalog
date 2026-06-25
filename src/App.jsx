@@ -498,13 +498,13 @@ function CatalogElevatedStyles() {
       /* THE STAR: calendar tear-off date tile */
       .calBlock {
         position: absolute;
-        left: 14px;
-        bottom: 14px;
+        left: 12px;
+        bottom: 8px;
         z-index: 3;
-        width: 64px;
+        width: 54px;
         background: #fff;
-        border-radius: 12px;
-        box-shadow: 0 10px 24px rgba(17,24,39,.20), 0 0 0 1px rgba(17,24,39,.04);
+        border-radius: 10px;
+        box-shadow: 0 8px 18px rgba(17,24,39,.20), 0 0 0 1px rgba(17,24,39,.04);
         overflow: hidden;
         text-align: center;
         font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
@@ -512,25 +512,25 @@ function CatalogElevatedStyles() {
       .calBlockMonth {
         background: #f97316;
         color: #fff;
-        font-size: 11px;
+        font-size: 9px;
         font-weight: 800;
         letter-spacing: 0.12em;
-        padding: 5px 0 4px;
+        padding: 4px 0 3px;
         text-transform: uppercase;
       }
       .calBlockDay {
-        font-size: 28px;
+        font-size: 22px;
         font-weight: 800;
         color: #111827;
         line-height: 1.1;
-        padding: 6px 0 4px;
+        padding: 4px 0 3px;
         letter-spacing: -0.02em;
       }
       .calBlockYear {
-        font-size: 11px;
+        font-size: 9px;
         font-weight: 600;
         color: #6b7280;
-        padding: 0 0 6px;
+        padding: 0 0 4px;
         letter-spacing: 0.04em;
       }
 
