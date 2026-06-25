@@ -167,3 +167,78 @@
   .calBlockDay { font-size: 24px; }
   .cardElevated .body { padding-top: 32px; }
 }
+
+/* ====================================================================
+   Responsive guard-rails — fixes layout breakage at narrow card widths
+   ==================================================================== */
+
+/* Grid: never let cards get narrower than 340px. The auto-fill behavior
+   means 3 columns at 1100px+, 2 columns at 720-1100px, 1 column below.
+   Cards stay legible at every width — the calendar tile, pills, and
+   vendor logo always have room to breathe. */
+.grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)) !important;
+  gap: 24px !important;
+  align-items: stretch !important;
+}
+
+/* The pills + vendor logo row inside each card — flex with proper wrapping.
+   At narrow card widths, pills wrap to a second line cleanly instead of
+   getting pushed around. */
+.cardElevated .topRow {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  flex-wrap: wrap !important;
+}
+.cardElevated .metaRow {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+.cardElevated .vendorLogo {
+  flex-shrink: 0 !important;
+  max-height: 26px !important;
+  max-width: 90px !important;
+  object-fit: contain !important;
+}
+
+/* Card itself: ensure it never overflows its grid cell */
+.cardElevated {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.cardElevated .body {
+  min-width: 0;
+}
+.cardElevated .title {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Calendar tile: shrink slightly on narrower cards so it never dominates
+   the thumbnail. Clamp gives a smooth scale based on viewport width. */
+@media (max-width: 720px) {
+  .calBlock {
+    width: 58px !important;
+  }
+  .calBlockDay {
+    font-size: 24px !important;
+  }
+}
+
+/* Phone — final tightening */
+@media (max-width: 420px) {
+  .grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .calBlock { width: 54px !important; left: 12px !important; }
+  .calBlockDay { font-size: 22px !important; }
+}
