@@ -127,7 +127,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #1dbfc9 0%, #16a8b2 100%);
   color: #fff;
   padding: 6px 12px 6px 11px;
   border-radius: 4px;
@@ -136,7 +136,7 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   box-shadow:
-    0 6px 16px rgba(124, 58, 237, 0.45),
+    0 6px 16px rgba(29, 191, 201, 0.45),
     0 0 0 1px rgba(255, 255, 255, 0.12) inset;
   animation: todayBannerPulse 1.8s ease-in-out infinite;
 }
@@ -152,8 +152,8 @@
   white-space: nowrap;
 }
 @keyframes todayBannerPulse {
-  0%, 100% { box-shadow: 0 6px 16px rgba(124, 58, 237, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.12) inset, 0 0 0 0 rgba(139, 92, 246, 0.5); }
-  50%      { box-shadow: 0 6px 16px rgba(124, 58, 237, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.12) inset, 0 0 0 8px rgba(139, 92, 246, 0); }
+  0%, 100% { box-shadow: 0 6px 16px rgba(29, 191, 201, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.12) inset, 0 0 0 0 rgba(29, 191, 201, 0.5); }
+  50%      { box-shadow: 0 6px 16px rgba(29, 191, 201, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.12) inset, 0 0 0 8px rgba(29, 191, 201, 0); }
 }
 @keyframes todayDotPulse {
   0%, 100% { transform: scale(1);   opacity: 1; }
