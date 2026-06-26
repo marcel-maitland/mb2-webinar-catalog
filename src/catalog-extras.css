@@ -335,3 +335,99 @@
   .calBlock { width: 52px !important; left: 12px !important; }
   .calBlockDay { font-size: 20px !important; }
 }
+
+/* ====================================================================
+   Register button + time row hardening — never break across lines
+   ==================================================================== */
+
+/* The Register link text + arrow are ONE unit. Never wraps. */
+.cardElevated .sessionBtn,
+.cardElevated .inPersonActions .sessionBtn {
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px;
+  padding: 10px 18px !important;
+}
+
+/* Online "session" rows (the bottom Time + Register strip).
+   At desktop widths: time on left, button on right.
+   At narrow widths: stack vertically so the time doesn't wrap and the
+   button gets full width. */
+.cardElevated .session {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex-wrap: nowrap !important;
+}
+.cardElevated .session .sessionLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* In-person box: time + Register button. Same stacking logic. */
+.cardElevated .inPersonBox {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+.cardElevated .inPersonActions {
+  display: flex !important;
+  justify-content: flex-end !important;
+}
+.cardElevated .inPersonActions .sessionBtn {
+  flex-shrink: 0 !important;
+}
+
+/* When cards are tight (3-up below ~1280px desktop), stack the session
+   row vertically so the button always has room — text + arrow stay
+   inline, and the time doesn't wrap to a 2nd line. */
+@media (max-width: 1280px) {
+  .cardElevated .session {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+  .cardElevated .session .sessionLabel {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    font-size: 13px;
+  }
+  .cardElevated .session .sessionBtn {
+    width: 100% !important;
+  }
+  .cardElevated .inPersonActions .sessionBtn {
+    width: 100% !important;
+  }
+  .cardElevated .inPersonActions {
+    justify-content: stretch !important;
+  }
+}
+
+/* Format pill — never crop, use a slightly smaller variant if needed but
+   show the full word ("In-Person" instead of "In-Perso"). */
+.cardElevated .formatBadge {
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+/* At very tight 3-col widths, lose just the format pill if necessary to
+   keep the other badges on one row. The format is repeated in the body
+   anyway via the in-person/session sections. */
+@media (max-width: 1180px) {
+  .cardElevated .metaRow {
+    gap: 4px !important;
+  }
+  .cardElevated .formatBadge {
+    /* keep visible, just slightly smaller */
+    font-size: 9.5px !important;
+    padding: 3px 6px !important;
+  }
+}
