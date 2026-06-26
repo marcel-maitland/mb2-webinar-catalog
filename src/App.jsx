@@ -24,8 +24,25 @@ const safe = (v) =>
 
 const isUrl = (u) => safe(u).startsWith("http");
 
-const formatDate = (d) =>
-  d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+// Viewer's IANA timezone, detected once. Safe default to UTC if Intl is missing.
+const VIEWER_TZ = (() => {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; }
+  catch { return "UTC"; }
+})();
+
+/* For ONLINE events, we show times in the viewer's local timezone (so a
+   viewer in NYC sees "8 PM EDT" while a viewer in LA sees "5 PM PDT").
+   For IN-PERSON events, we always show the EVENT's local timezone — if
+   you're driving to a 9 AM event in Carrollton TX, you care about 9 AM
+   Central, not whatever that is in your zone. */
+const pickDisplayTz = (storedTz, isInPersonEvt) =>
+  isInPersonEvt ? (storedTz || VIEWER_TZ) : VIEWER_TZ;
+
+const formatDate = (d, tz) =>
+  d.toLocaleDateString("en-US", {
+    timeZone: tz || VIEWER_TZ,
+    month: "short", day: "numeric", year: "numeric",
+  });
 
 const endOfDay = (d) => {
   const x = new Date(d);
@@ -43,23 +60,26 @@ const isInPerson = (format) => {
 /* ---------- shape Supabase row -> what the cards expect ---------- */
 function fromDb(row) {
   const d = row.event_date ? new Date(row.event_date) : null;
-  const tz = row.event_timezone || "America/Chicago";
+  const storedTz = row.event_timezone || "America/Chicago";
+  const inPersonEvt = isInPerson(row.format);
+  const displayTz = pickDisplayTz(storedTz, inPersonEvt);
 
   // If event_date has a non-midnight time IN ITS STORED TIMEZONE and
   // session1_label is empty, fall back to displaying the event_date's time
-  // — formatted in that timezone with the short zone abbreviation appended.
+  // — formatted in the appropriate display timezone (viewer's local for
+  // online events; event's local for in-person).
   const dateTimeString = (() => {
     if (!d || isNaN(d.getTime())) return "";
-    // Read hour/minute in the stored timezone to check for "midnight" (no time set)
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
+    // Detect "midnight in stored TZ" → treat as "no time was set"
+    const storedParts = new Intl.DateTimeFormat("en-US", {
+      timeZone: storedTz,
       hour: "2-digit", minute: "2-digit", hour12: false,
     }).formatToParts(d);
-    const h = parts.find((p) => p.type === "hour")?.value;
-    const m = parts.find((p) => p.type === "minute")?.value;
-    if (h === "00" && m === "00") return "";
+    const sh = storedParts.find((p) => p.type === "hour")?.value;
+    const sm = storedParts.find((p) => p.type === "minute")?.value;
+    if (sh === "00" && sm === "00") return "";
     return d.toLocaleTimeString("en-US", {
-      timeZone: tz,
+      timeZone: displayTz,
       hour: "numeric",
       minute: "2-digit",
       timeZoneName: "short",
@@ -71,6 +91,9 @@ function fromDb(row) {
     title: safe(row.title) || "Untitled Event",
     description: safe(row.description),
     date: d,
+    displayTz,        // <-- which TZ the card should render in
+    storedTz,         // <-- original event TZ (for debug / labels if needed)
+    inPersonEvt,
     category: safe(row.category),
     ce: typeof row.ce_hours === "number" ? row.ce_hours : null,
     cost: safe(row.cost),
@@ -113,15 +136,21 @@ function PinIcon() {
   );
 }
 
-/* Calendar-tear-off date sticker for catalog cards */
-function CalendarBlock({ date }) {
+/* Calendar-tear-off date sticker for catalog cards. Uses the event's
+   "display" timezone so the date shown matches the time displayed below. */
+function CalendarBlock({ date, tz }) {
   if (!(date instanceof Date) || isNaN(date.getTime())) return null;
-  const month = date.toLocaleString(undefined, { month: "short" }).toUpperCase();
-  const day = date.getDate();
-  const year = date.getFullYear();
+  const zone = tz || VIEWER_TZ;
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: zone,
+    year: "numeric", month: "short", day: "numeric",
+  }).formatToParts(date);
+  const month = parts.find((p) => p.type === "month")?.value?.toUpperCase() || "";
+  const day = parts.find((p) => p.type === "day")?.value || "";
+  const year = parseInt(parts.find((p) => p.type === "year")?.value || "0", 10);
   const thisYear = new Date().getFullYear();
   return (
-    <div className="calBlock" aria-label={date.toLocaleDateString(undefined, { dateStyle: "long" })}>
+    <div className="calBlock" aria-label={date.toLocaleDateString("en-US", { timeZone: zone, dateStyle: "long" })}>
       <div className="calBlockMonth">{month}</div>
       <div className="calBlockDay">{day}</div>
       {year !== thisYear && <div className="calBlockYear">{year}</div>}
@@ -593,8 +622,8 @@ function Card({ item, clientName = "" }) {
         {/* Gradient overlay so the calendar block reads on any image */}
         <span className="thumbGradient" aria-hidden="true" />
         {item.mb2Exclusive ? <span className="mb2Badge">Exclusive</span> : null}
-        {/* Date sticker — the headline visual change */}
-        <CalendarBlock date={item.date} />
+        {/* Date sticker — renders in the event's display TZ */}
+        <CalendarBlock date={item.date} tz={item.displayTz} />
       </div>
 
       <div className="body">
@@ -633,7 +662,7 @@ function Card({ item, clientName = "" }) {
               {item.date ? (
                 <div className="inPersonRow">
                   <span className="inPersonKey">Date</span>
-                  <span className="inPersonVal">{formatDate(item.date)}</span>
+                  <span className="inPersonVal">{formatDate(item.date, item.displayTz)}</span>
                 </div>
               ) : null}
 
