@@ -622,16 +622,25 @@ function Card({ item, clientName = "" }) {
         {/* Gradient overlay so the calendar block reads on any image */}
         <span className="thumbGradient" aria-hidden="true" />
         {item.mb2Exclusive ? <span className="mb2Badge">Exclusive</span> : null}
-        {/* Urgency badge — top-right of thumbnail, separated from attribute pills */}
-        {isToday
-          ? <span className="thumbUrgency thumbUrgencyToday">Today</span>
-          : isSoon && (
+        {/* Urgency: TODAY events get a banner that REPLACES the calendar tile
+            (same bottom-left position, more attention-grabbing). Future-soon
+            events keep their calendar tile and get a "Tomorrow" / "In N days"
+            badge in the top-right. */}
+        {isToday ? (
+          <span className="todayBanner" aria-label="Happening today">
+            <span className="todayBannerDot" aria-hidden="true" />
+            <span className="todayBannerText">Today</span>
+          </span>
+        ) : (
+          <>
+            <CalendarBlock date={item.date} tz={item.displayTz} />
+            {isSoon && (
               <span className="thumbUrgency">
                 {dInDays === 1 ? "Tomorrow" : `In ${dInDays} days`}
               </span>
             )}
-        {/* Date sticker — renders in the event's display TZ */}
-        <CalendarBlock date={item.date} tz={item.displayTz} />
+          </>
+        )}
       </div>
 
       <div className="body">
