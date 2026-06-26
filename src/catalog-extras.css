@@ -169,76 +169,169 @@
 }
 
 /* ====================================================================
-   Responsive guard-rails — fixes layout breakage at narrow card widths
+   Responsive grid — always 3 columns on desktop (shrinking cards),
+   2 columns on tablet, 1 column on phone. Cards always have the same
+   layout shape; only the size scales with viewport.
    ==================================================================== */
 
-/* Grid: never let cards get narrower than 340px. The auto-fill behavior
-   means 3 columns at 1100px+, 2 columns at 720-1100px, 1 column below.
-   Cards stay legible at every width — the calendar tile, pills, and
-   vendor logo always have room to breathe. */
+/* Desktop: always exactly 3 columns. Cards shrink with the viewport. */
 .grid {
   display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)) !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   gap: 24px !important;
   align-items: stretch !important;
 }
 
-/* The pills + vendor logo row inside each card — flex with proper wrapping.
-   At narrow card widths, pills wrap to a second line cleanly instead of
-   getting pushed around. */
-.cardElevated .topRow {
-  display: flex !important;
-  align-items: flex-start !important;
-  justify-content: space-between !important;
-  gap: 12px !important;
-  flex-wrap: wrap !important;
-}
-.cardElevated .metaRow {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  align-items: center !important;
-  gap: 6px !important;
-  min-width: 0 !important;
-  flex: 1 1 auto !important;
-}
-.cardElevated .vendorLogo {
-  flex-shrink: 0 !important;
-  max-height: 26px !important;
-  max-width: 90px !important;
-  object-fit: contain !important;
+/* Tablet: 2 columns */
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 18px !important;
+  }
 }
 
-/* Card itself: ensure it never overflows its grid cell */
+/* Phone: 1 column */
+@media (max-width: 560px) {
+  .grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+}
+
+/* Card overflow safety — never spill out of its grid cell */
 .cardElevated {
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .cardElevated .body {
   min-width: 0;
+  flex: 1;
 }
 .cardElevated .title {
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
-/* Calendar tile: shrink slightly on narrower cards so it never dominates
-   the thumbnail. Clamp gives a smooth scale based on viewport width. */
-@media (max-width: 720px) {
+/* Thumbnail keeps its aspect ratio at every card width — no cropping. */
+.cardElevated .thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+.cardElevated .thumb > img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block;
+}
+
+/* Pills row: keep on ONE row, with vendor logo pinned to the right.
+   At narrow widths, pills get slightly smaller fonts/padding but stay
+   on the same line. */
+.cardElevated .topRow {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+}
+.cardElevated .metaRow {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 5px !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  overflow: hidden;
+}
+.cardElevated .metaRow > * {
+  flex-shrink: 0;
+}
+.cardElevated .vendorLogo {
+  flex-shrink: 0 !important;
+  max-height: 24px !important;
+  max-width: 80px !important;
+  object-fit: contain !important;
+}
+
+/* Pill sizing — defaults */
+.cardElevated .soonChip,
+.cardElevated .ceBadge,
+.cardElevated .formatBadge {
+  white-space: nowrap;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  line-height: 1.2;
+}
+
+/* When the grid moves into tighter 3-column territory, scale down pills
+   + calendar so everything still fits on one row inside each card. */
+@media (max-width: 1180px) {
+  .cardElevated .soonChip,
+  .cardElevated .ceBadge,
+  .cardElevated .formatBadge {
+    font-size: 10px !important;
+    padding: 3px 7px !important;
+  }
+  .cardElevated .vendorLogo {
+    max-height: 20px !important;
+    max-width: 64px !important;
+  }
   .calBlock {
-    width: 58px !important;
+    width: 48px !important;
   }
   .calBlockDay {
-    font-size: 24px !important;
+    font-size: 18px !important;
+  }
+  .calBlockMonth,
+  .calBlockYear {
+    font-size: 8px !important;
   }
 }
 
-/* Phone — final tightening */
-@media (max-width: 420px) {
-  .grid {
-    grid-template-columns: 1fr !important;
-    gap: 16px !important;
+/* Even tighter for narrow 3-col layouts (1024px desktop, 3-up) */
+@media (max-width: 1024px) {
+  .cardElevated .body {
+    padding-left: 14px;
+    padding-right: 14px;
   }
-  .calBlock { width: 54px !important; left: 12px !important; }
+  .cardElevated .title {
+    font-size: 15px !important;
+    line-height: 1.25 !important;
+  }
+  .cardElevated .descFull {
+    font-size: 13px !important;
+  }
+}
+
+/* Tablet (2-col): cards have more room again — restore mid-sized pills */
+@media (max-width: 900px) {
+  .cardElevated .soonChip,
+  .cardElevated .ceBadge,
+  .cardElevated .formatBadge {
+    font-size: 11px !important;
+    padding: 3px 8px !important;
+  }
+  .cardElevated .vendorLogo {
+    max-height: 24px !important;
+    max-width: 80px !important;
+  }
+  .calBlock { width: 54px !important; }
   .calBlockDay { font-size: 22px !important; }
+}
+
+/* Phone (1-col): full room, comfortable sizing */
+@media (max-width: 560px) {
+  .cardElevated .body {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .calBlock { width: 52px !important; left: 12px !important; }
+  .calBlockDay { font-size: 20px !important; }
 }
