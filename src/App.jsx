@@ -527,13 +527,13 @@ function CatalogElevatedStyles() {
       /* THE STAR: calendar tear-off date tile */
       .calBlock {
         position: absolute;
-        left: 12px;
+        left: 10px;
         bottom: 8px;
         z-index: 3;
-        width: 54px;
+        width: 46px;
         background: #fff;
-        border-radius: 10px;
-        box-shadow: 0 8px 18px rgba(17,24,39,.20), 0 0 0 1px rgba(17,24,39,.04);
+        border-radius: 9px;
+        box-shadow: 0 7px 16px rgba(17,24,39,.20), 0 0 0 1px rgba(17,24,39,.04);
         overflow: hidden;
         text-align: center;
         font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
@@ -541,25 +541,25 @@ function CatalogElevatedStyles() {
       .calBlockMonth {
         background: #f97316;
         color: #fff;
-        font-size: 9px;
+        font-size: 8px;
         font-weight: 800;
         letter-spacing: 0.12em;
-        padding: 4px 0 3px;
+        padding: 3px 0 2px;
         text-transform: uppercase;
       }
       .calBlockDay {
-        font-size: 22px;
+        font-size: 19px;
         font-weight: 800;
         color: #111827;
         line-height: 1.1;
-        padding: 4px 0 3px;
+        padding: 3px 0 2px;
         letter-spacing: -0.02em;
       }
       .calBlockYear {
-        font-size: 9px;
+        font-size: 8px;
         font-weight: 600;
         color: #6b7280;
-        padding: 0 0 4px;
+        padding: 0 0 3px;
         letter-spacing: 0.04em;
       }
 
@@ -622,6 +622,14 @@ function Card({ item, clientName = "" }) {
         {/* Gradient overlay so the calendar block reads on any image */}
         <span className="thumbGradient" aria-hidden="true" />
         {item.mb2Exclusive ? <span className="mb2Badge">Exclusive</span> : null}
+        {/* Urgency badge — top-right of thumbnail, separated from attribute pills */}
+        {isToday
+          ? <span className="thumbUrgency thumbUrgencyToday">Today</span>
+          : isSoon && (
+              <span className="thumbUrgency">
+                {dInDays === 1 ? "Tomorrow" : `In ${dInDays} days`}
+              </span>
+            )}
         {/* Date sticker — renders in the event's display TZ */}
         <CalendarBlock date={item.date} tz={item.displayTz} />
       </div>
@@ -629,9 +637,6 @@ function Card({ item, clientName = "" }) {
       <div className="body">
         <div className="topRow">
           <div className="metaRow">
-            {isToday
-              ? <span className="soonChip soonChipToday">Today</span>
-              : isSoon && <span className="soonChip">{dInDays === 1 ? "Tomorrow" : `In ${dInDays} days`}</span>}
             {typeof item.ce === "number" ? <span className="ceBadge">{item.ce} CE</span> : null}
             {safe(item.format) ? <span className="formatBadge">{item.format}</span> : null}
           </div>
