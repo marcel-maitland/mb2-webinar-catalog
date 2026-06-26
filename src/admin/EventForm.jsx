@@ -534,16 +534,15 @@ export default function EventForm({ mode }) {
           </Section>
 
           <Section title="Online registration" subtitle="Where attendees register. Time is taken from the Time field above.">
-            <SessionRow
-              n={1}
-              label={form.session1_label}
-              url={form.session1_url}
-              onLabel={(v) => set("session1_label", v)}
-              onUrl={(v) => set("session1_url", v)}
-              hideLabel
-            />
-            <SessionRow
-              n={2}
+            <Field label="Registration URL">
+              <input
+                value={form.session1_url ?? ""}
+                onChange={(e) => set("session1_url", e.target.value)}
+                placeholder=""
+              />
+            </Field>
+
+            <SecondTimeSlot
               label={form.session2_label}
               url={form.session2_url}
               onLabel={(v) => set("session2_label", v)}
@@ -929,6 +928,72 @@ function SessionRow({ n, label, url, onLabel, onUrl, hideLabel = false }) {
         onChange={(e) => onUrl(e.target.value)}
         placeholder=""
       />
+    </div>
+  );
+}
+
+/* =====================================================================
+   SECOND TIME SLOT — collapsed by default, expands into a clear
+   "additional session" block with explicit Time + Registration URL
+   fields so it's obvious what each input does.
+===================================================================== */
+function SecondTimeSlot({ label, url, onLabel, onUrl }) {
+  const hasValue = !!(label || url);
+  const [expanded, setExpanded] = useState(hasValue);
+
+  // If parent props change to have a value (e.g. on edit load), open.
+  useEffect(() => {
+    if (hasValue) setExpanded(true);
+  }, [hasValue]);
+
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        className="evSecondSlotAdd"
+        onClick={() => setExpanded(true)}
+      >
+        + Add another time slot
+      </button>
+    );
+  }
+
+  return (
+    <div className="evSecondSlot">
+      <div className="evSecondSlotHeader">
+        <span className="evSecondSlotTitle">Additional time slot</span>
+        <button
+          type="button"
+          className="evSecondSlotRemove"
+          onClick={() => {
+            onLabel("");
+            onUrl("");
+            setExpanded(false);
+          }}
+        >
+          Remove
+        </button>
+      </div>
+      <div className="evSecondSlotGrid">
+        <Field label="Time for this session">
+          <input
+            value={label ?? ""}
+            onChange={(e) => onLabel(e.target.value)}
+            placeholder=""
+          />
+        </Field>
+        <Field label="Registration URL for this session">
+          <input
+            value={url ?? ""}
+            onChange={(e) => onUrl(e.target.value)}
+            placeholder=""
+          />
+        </Field>
+      </div>
+      <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+        Only fill this in if the same event runs at a second time with its own
+        registration link. Most events only need the one above.
+      </p>
     </div>
   );
 }

@@ -202,6 +202,69 @@
 .linkBtn:hover:not(:disabled) { color: #0f5e58; }
 .linkBtn:disabled { color: #94a3b8; cursor: default; text-decoration: none; }
 
+/* Second time slot — additional session block (collapsed by default) */
+.evSecondSlotAdd {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px dashed #cbd5e1;
+  color: #475569;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  margin-top: 8px;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.evSecondSlotAdd:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.evSecondSlot {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 12px;
+}
+.evSecondSlotHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.evSecondSlotTitle {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.evSecondSlotRemove {
+  background: none;
+  border: none;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-family: inherit;
+}
+.evSecondSlotRemove:hover { background: #fee2e2; }
+.evSecondSlotGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 12px;
+}
+@media (max-width: 600px) {
+  .evSecondSlotGrid { grid-template-columns: 1fr; }
+}
+
 /* Portal Link panel (inside the Edit Client modal) */
 .portalPanel { padding-top: 6px; }
 .portalUrlBox {
