@@ -493,62 +493,33 @@
   min-width: 0 !important;
 }
 
-/* Tighter 3-up widths: shrink the button + time label proportionally
-   so they STAY side-by-side. No stacking, no wrapping. Everything just
-   gets a bit smaller as the card width drops. */
-@media (max-width: 1280px) {
-  .cardElevated .sessionBtn,
-  .cardElevated .inPersonActions .sessionBtn {
-    padding: 8px 14px !important;
-    font-size: 13px !important;
-  }
-  .cardElevated .session .sessionLabel {
-    font-size: 13px !important;
-  }
+/* ====================================================================
+   Lock-and-scale strategy
+   ====================================================================
+   Above 1180px: cards render at full design size, 3 columns.
+   Below 1180px (down to the 900px 2-col breakpoint): the card's design
+   stays "locked" at its full proportions and we zoom the entire card
+   uniformly. Every internal element — pills, buttons, calendar tile,
+   text, paddings — shrinks together as one piece, so visual integrity
+   is identical at every width. No element-by-element tweaking.
+
+   Uses CSS `zoom` (supported in all modern browsers including Firefox
+   126+) because, unlike `transform: scale`, it affects layout — the
+   grid recalculates around the smaller cards automatically.
+*/
+@media (max-width: 1180px) and (min-width: 901px) {
+  .cardElevated { zoom: 0.93; }
 }
-@media (max-width: 1100px) {
-  .cardElevated .sessionBtn,
-  .cardElevated .inPersonActions .sessionBtn {
-    padding: 7px 12px !important;
-    font-size: 12px !important;
-  }
-  .cardElevated .session .sessionLabel {
-    font-size: 12px !important;
-  }
-  .cardElevated .inPersonBox {
-    padding: 12px !important;
-  }
-  .cardElevated .inPersonRow .inPersonKey,
-  .cardElevated .inPersonRow .inPersonVal {
-    font-size: 12px !important;
-  }
+@media (max-width: 1080px) and (min-width: 901px) {
+  .cardElevated { zoom: 0.86; }
 }
-@media (max-width: 980px) {
-  .cardElevated .sessionBtn,
-  .cardElevated .inPersonActions .sessionBtn {
-    padding: 6px 10px !important;
-    font-size: 11.5px !important;
-  }
-  .cardElevated .session .sessionLabel {
-    font-size: 11.5px !important;
-  }
-  .cardElevated .inPersonRow .inPersonKey,
-  .cardElevated .inPersonRow .inPersonVal {
-    font-size: 11.5px !important;
-  }
+@media (max-width: 980px) and (min-width: 901px) {
+  .cardElevated { zoom: 0.78; }
 }
 
-/* Tablet (2-col): restore comfortable sizing */
-@media (max-width: 900px) {
-  .cardElevated .sessionBtn,
-  .cardElevated .inPersonActions .sessionBtn {
-    padding: 10px 18px !important;
-    font-size: 14px !important;
-  }
-  .cardElevated .session .sessionLabel {
-    font-size: 14px !important;
-  }
-}
+/* Tablet (2-col, ≤900px) and phone (1-col, ≤560px) drop back to zoom 1
+   because cards have room again. Their layout is set in earlier media
+   queries above. */
 
 /* Format pill — never crop, use a slightly smaller variant if needed but
    show the full word ("In-Person" instead of "In-Perso"). */
