@@ -81,9 +81,11 @@ const splitTimestamp = (iso, ianaTz) => {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return { date: "", time: "" };
   if (!ianaTz) {
+    const h = pad(d.getHours());
+    const m = pad(d.getMinutes());
     return {
       date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-      time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+      time: h === "00" && m === "00" ? "" : `${h}:${m}`,
     };
   }
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -95,9 +97,15 @@ const splitTimestamp = (iso, ianaTz) => {
   const get = (type) => parts.find((p) => p.type === type)?.value || "";
   let hour = get("hour");
   if (hour === "24") hour = "00"; // Intl quirk in some browsers
+  const minute = get("minute");
+  // If the stored timestamp is exactly midnight, treat it as "no time was
+  // entered" rather than 12:00 AM — the form shows blank instead of a
+  // misleading default. (Events that are legitimately at midnight will
+  // need to be re-entered, but that's a vanishingly rare case in dental CE.)
+  const time = hour === "00" && minute === "00" ? "" : `${hour}:${minute}`;
   return {
     date: `${get("year")}-${get("month")}-${get("day")}`,
-    time: `${hour}:${get("minute")}`,
+    time,
   };
 };
 
@@ -525,13 +533,14 @@ export default function EventForm({ mode }) {
             />
           </Section>
 
-          <Section title="Online registration" subtitle="Up to two sessions per event.">
+          <Section title="Online registration" subtitle="Where attendees register. Time is taken from the Time field above.">
             <SessionRow
               n={1}
               label={form.session1_label}
               url={form.session1_url}
               onLabel={(v) => set("session1_label", v)}
               onUrl={(v) => set("session1_url", v)}
+              hideLabel
             />
             <SessionRow
               n={2}
@@ -548,14 +557,14 @@ export default function EventForm({ mode }) {
                 <input
                   value={form.location ?? ""}
                   onChange={(e) => set("location", e.target.value)}
-                  placeholder="1718 Trinity Valley Dr., Carrollton, TX 75006"
+                  placeholder=""
                 />
               </Field>
               <Field label="In-person registration link">
                 <input
                   value={form.in_person_registration_url ?? ""}
                   onChange={(e) => set("in_person_registration_url", e.target.value)}
-                  placeholder="https://"
+                  placeholder=""
                 />
               </Field>
             </Section>
@@ -802,7 +811,7 @@ function CategoryCombobox({ value, onChange, suggestions = [] }) {
         value={value || ""}
         onChange={(e) => { onChange(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
-        placeholder="Surgical, Orthodontics, Prevention…"
+        placeholder=""
         autoComplete="off"
       />
       {open && (
@@ -893,7 +902,7 @@ function ThumbnailDropZone({ url, uploading, onUpload, onClear, onUrlChange, fil
       {showUrl && (
         <input
           className="urlInput"
-          placeholder="https://…image.jpg"
+          placeholder=""
           value={url ?? ""}
           onChange={(e) => onUrlChange(e.target.value)}
         />
@@ -902,21 +911,23 @@ function ThumbnailDropZone({ url, uploading, onUpload, onClear, onUrlChange, fil
   );
 }
 
-function SessionRow({ n, label, url, onLabel, onUrl }) {
+function SessionRow({ n, label, url, onLabel, onUrl, hideLabel = false }) {
   return (
-    <div className="evSessionRow">
+    <div className="evSessionRow" style={hideLabel ? { gridTemplateColumns: "32px 1fr" } : undefined}>
       <span className="evSessionN">{n}</span>
-      <input
-        className="evSessionLabel"
-        value={label ?? ""}
-        onChange={(e) => onLabel(e.target.value)}
-        placeholder={n === 1 ? "Time, e.g. 7:00 PM CT" : "Optional second session time"}
-      />
+      {!hideLabel && (
+        <input
+          className="evSessionLabel"
+          value={label ?? ""}
+          onChange={(e) => onLabel(e.target.value)}
+          placeholder=""
+        />
+      )}
       <input
         className="evSessionUrl"
         value={url ?? ""}
         onChange={(e) => onUrl(e.target.value)}
-        placeholder="https://registration-link"
+        placeholder=""
       />
     </div>
   );
