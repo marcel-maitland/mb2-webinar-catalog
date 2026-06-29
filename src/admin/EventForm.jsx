@@ -7,9 +7,11 @@ import { useClient } from "./AdminApp.jsx";
 const BLANK = {
   title: "",
   description: "",
-  event_date_part: "",   // yyyy-MM-dd for <input type="date">
-  event_time_part: "",   // HH:mm    for <input type="time">  (optional)
-  event_timezone: "America/Chicago",  // IANA timezone for the entered time
+  event_date_part: "",          // yyyy-MM-dd for start
+  event_time_part: "",          // HH:mm     for start (optional)
+  event_timezone: "America/Chicago",
+  event_end_date_part: "",      // yyyy-MM-dd for end (optional)
+  event_end_time_part: "",      // HH:mm     for end (optional)
   category: "",
   ce_hours: "",
   cost: "",
@@ -184,15 +186,19 @@ export default function EventForm({ mode }) {
       else if (data) {
         const tz = data.event_timezone || "America/Chicago";
         const { date, time } = splitTimestamp(data.event_date, tz);
+        const end = splitTimestamp(data.event_end_date, tz);
         const next = {
           ...BLANK,
           ...data,
           event_date_part: date,
           event_time_part: time,
+          event_end_date_part: end.date,
+          event_end_time_part: end.time,
           event_timezone: tz,
           roles: Array.isArray(data.roles) ? data.roles : [],
         };
         delete next.event_date;
+        delete next.event_end_date;
         setForm(next);
         setOriginal(next);
       }
@@ -255,12 +261,22 @@ export default function EventForm({ mode }) {
     if (!form.title.trim()) { setError("Event title is required."); return; }
     setSaving(true);
     setError("");
-    const { event_date_part, event_time_part, ...rest } = form;
+    const {
+      event_date_part,
+      event_time_part,
+      event_end_date_part,
+      event_end_time_part,
+      ...rest
+    } = form;
+    const tz = form.event_timezone || "America/Chicago";
     const payload = {
       ...rest,
       ce_hours: form.ce_hours === "" || form.ce_hours == null ? null : Number(form.ce_hours),
-      event_date: combineDateTime(event_date_part, event_time_part, form.event_timezone),
-      event_timezone: form.event_timezone || "America/Chicago",
+      event_date: combineDateTime(event_date_part, event_time_part, tz),
+      event_end_date: event_end_date_part
+        ? combineDateTime(event_end_date_part, event_end_time_part, tz)
+        : null,
+      event_timezone: tz,
       roles: form.roles,
       client_id: currentClientId,
     };
@@ -277,17 +293,21 @@ export default function EventForm({ mode }) {
         if (error) throw error;
         // Stay on page. Sync `original` so the form is no longer dirty,
         // and pop a transient "Saved" badge.
-        const tz = data.event_timezone || "America/Chicago";
-        const { date, time } = splitTimestamp(data.event_date, tz);
+        const dtz = data.event_timezone || "America/Chicago";
+        const { date, time } = splitTimestamp(data.event_date, dtz);
+        const end = splitTimestamp(data.event_end_date, dtz);
         const next = {
           ...BLANK,
           ...data,
           event_date_part: date,
           event_time_part: time,
-          event_timezone: tz,
+          event_end_date_part: end.date,
+          event_end_time_part: end.time,
+          event_timezone: dtz,
           roles: Array.isArray(data.roles) ? data.roles : [],
         };
         delete next.event_date;
+        delete next.event_end_date;
         setForm(next);
         setOriginal(next);
         setJustSaved(true);
@@ -317,6 +337,9 @@ export default function EventForm({ mode }) {
       title: `${form.title} (copy)`,
       description: form.description || null,
       event_date: combineDateTime(form.event_date_part, form.event_time_part, form.event_timezone),
+      event_end_date: form.event_end_date_part
+        ? combineDateTime(form.event_end_date_part, form.event_end_time_part, form.event_timezone)
+        : null,
       event_timezone: form.event_timezone || "America/Chicago",
       category: form.category || null,
       ce_hours: form.ce_hours === "" || form.ce_hours == null ? null : Number(form.ce_hours),
@@ -449,6 +472,34 @@ export default function EventForm({ mode }) {
                   ))}
                 </select>
               </Field>
+            </div>
+
+            {/* Optional end date + end time. For single-day events leave blank.
+                For multi-day events (e.g. Jun 26 – Jun 28), fill End date.
+                For day-long events with a wrap-up time, fill End time. */}
+            <div className="row3" style={{ marginTop: 4 }}>
+              <Field label="End date" hint="Optional · for multi-day events">
+                <input
+                  type="date"
+                  value={form.event_end_date_part ?? ""}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    set("event_end_date_part", next);
+                    if (!next) set("event_end_time_part", "");
+                  }}
+                  min={form.event_date_part || undefined}
+                  disabled={!form.event_date_part}
+                />
+              </Field>
+              <Field label="End time" hint="Optional · e.g. 5:00 PM">
+                <input
+                  type="time"
+                  value={form.event_end_time_part ?? ""}
+                  onChange={(e) => set("event_end_time_part", e.target.value)}
+                  disabled={!form.event_date_part}
+                />
+              </Field>
+              <div /> {/* spacer to align with timezone column */}
             </div>
 
             {/* Details — pricing + accreditation on a second, looser row */}

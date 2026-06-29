@@ -60,39 +60,86 @@ const isInPerson = (format) => {
 /* ---------- shape Supabase row -> what the cards expect ---------- */
 function fromDb(row) {
   const d = row.event_date ? new Date(row.event_date) : null;
+  const dEnd = row.event_end_date ? new Date(row.event_end_date) : null;
   const storedTz = row.event_timezone || "America/Chicago";
   const inPersonEvt = isInPerson(row.format);
   const displayTz = pickDisplayTz(storedTz, inPersonEvt);
 
-  // If event_date has a non-midnight time IN ITS STORED TIMEZONE and
-  // session1_label is empty, fall back to displaying the event_date's time
-  // — formatted in the appropriate display timezone (viewer's local for
-  // online events; event's local for in-person).
-  const dateTimeString = (() => {
-    if (!d || isNaN(d.getTime())) return "";
-    // Detect "midnight in stored TZ" → treat as "no time was set"
+  // Helper: format a Date's HH:MM in a given TZ as a string like "7:00 PM EDT".
+  // Returns "" if the time portion is exactly midnight in the stored TZ
+  // (which we treat as "no time was set").
+  const formatTime = (when) => {
+    if (!when || isNaN(when.getTime())) return "";
     const storedParts = new Intl.DateTimeFormat("en-US", {
       timeZone: storedTz,
       hour: "2-digit", minute: "2-digit", hour12: false,
-    }).formatToParts(d);
+    }).formatToParts(when);
     const sh = storedParts.find((p) => p.type === "hour")?.value;
     const sm = storedParts.find((p) => p.type === "minute")?.value;
     if (sh === "00" && sm === "00") return "";
-    return d.toLocaleTimeString("en-US", {
+    return when.toLocaleTimeString("en-US", {
       timeZone: displayTz,
       hour: "numeric",
       minute: "2-digit",
       timeZoneName: "short",
     });
+  };
+
+  // Plain-time formatter (without timezone suffix) for ranges,
+  // so "8:00 AM – 5:00 PM CDT" reads naturally instead of repeating CDT.
+  const formatTimeShort = (when) => {
+    if (!when || isNaN(when.getTime())) return "";
+    const storedParts = new Intl.DateTimeFormat("en-US", {
+      timeZone: storedTz,
+      hour: "2-digit", minute: "2-digit", hour12: false,
+    }).formatToParts(when);
+    const sh = storedParts.find((p) => p.type === "hour")?.value;
+    const sm = storedParts.find((p) => p.type === "minute")?.value;
+    if (sh === "00" && sm === "00") return "";
+    return when.toLocaleTimeString("en-US", {
+      timeZone: displayTz,
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
+  // Build the time-range string for the card (Session 1 label fallback).
+  // - Single time: "7:00 PM EDT"
+  // - Time range:  "8:00 AM – 5:00 PM EDT"
+  // - No time: ""
+  const dateTimeString = (() => {
+    const startFull = formatTime(d);
+    if (!startFull) return "";
+    const endShort = formatTimeShort(dEnd);
+    if (endShort) {
+      const startShort = formatTimeShort(d);
+      // append the TZ suffix from startFull just once at the end
+      const tzMatch = startFull.match(/\s([A-Z]{2,5}T?)$/);
+      const tzSuffix = tzMatch ? ` ${tzMatch[1]}` : "";
+      return `${startShort} – ${endShort}${tzSuffix}`;
+    }
+    return startFull;
   })();
+
+  // Multi-day check: end date is on a different calendar day than start
+  // (in the event's display TZ).
+  const sameDay = (a, b) => {
+    if (!a || !b) return true;
+    const aStr = a.toLocaleDateString("en-US", { timeZone: displayTz, year: "numeric", month: "2-digit", day: "2-digit" });
+    const bStr = b.toLocaleDateString("en-US", { timeZone: displayTz, year: "numeric", month: "2-digit", day: "2-digit" });
+    return aStr === bStr;
+  };
+  const multiDay = !!(dEnd && d && !sameDay(d, dEnd));
 
   return {
     id: row.id,
     title: safe(row.title) || "Untitled Event",
     description: safe(row.description),
     date: d,
-    displayTz,        // <-- which TZ the card should render in
-    storedTz,         // <-- original event TZ (for debug / labels if needed)
+    endDate: dEnd,     // <-- nullable; when set, drives range displays
+    multiDay,          // <-- true if end is on a different day than start
+    displayTz,         // <-- which TZ the card should render in
+    storedTz,          // <-- original event TZ
     inPersonEvt,
     category: safe(row.category),
     ce: typeof row.ce_hours === "number" ? row.ce_hours : null,
@@ -676,7 +723,11 @@ function Card({ item, clientName = "" }) {
               {item.date ? (
                 <div className="inPersonRow">
                   <span className="inPersonKey">Date</span>
-                  <span className="inPersonVal">{formatDate(item.date, item.displayTz)}</span>
+                  <span className="inPersonVal">
+                    {item.multiDay && item.endDate
+                      ? `${formatDate(item.date, item.displayTz)} – ${formatDate(item.endDate, item.displayTz)}`
+                      : formatDate(item.date, item.displayTz)}
+                  </span>
                 </div>
               ) : null}
 
