@@ -202,6 +202,177 @@
 .linkBtn:hover:not(:disabled) { color: #0f5e58; }
 .linkBtn:disabled { color: #94a3b8; cursor: default; text-decoration: none; }
 
+/* ====================================================================
+   Schedule block — grouped Start + (optional) End fields with
+   connector line + duration summary. Visually distinct from raw rows
+   so admins immediately see the date/time area as one logical unit.
+   ==================================================================== */
+.schedBlock {
+  background: linear-gradient(180deg, #fafbfc 0%, #f4f6f8 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 16px 14px;
+  margin-bottom: 16px;
+}
+.schedHeader {
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin: 0 0 12px 4px;
+}
+.schedRow {
+  display: grid;
+  grid-template-columns: 78px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+.schedRowSide {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #475569;
+}
+.schedRowDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.schedRowDotStart { background: var(--accent); box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.18); }
+.schedRowDotEnd   { background: #94a3b8;   box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.22); }
+.schedRowLabel {
+  letter-spacing: 0.02em;
+}
+.schedFields {
+  display: grid;
+  gap: 10px;
+}
+.schedFields3 {
+  grid-template-columns: 1fr 1fr 1.2fr;
+}
+.schedFields2 {
+  grid-template-columns: 1fr 1fr 32px;
+  align-items: end;
+}
+
+/* Connector + summary between Starts and Ends rows */
+.schedConnector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0 6px 30px;
+  margin-left: 2px;
+}
+.schedConnectorLine {
+  width: 2px;
+  height: 20px;
+  background: linear-gradient(180deg, var(--accent) 0%, #cbd5e1 100%);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.schedSummary {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: 0.01em;
+}
+.schedSummaryErr {
+  color: #b91c1c;
+}
+
+/* "Remove end" small circular button */
+.schedEndActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 4px;
+}
+.schedRemoveBtn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #64748b;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.schedRemoveBtn:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+/* "+ Add end date/time" placeholder when collapsed */
+.schedAddEndBtn {
+  width: calc(100% - 78px - 10px);
+  margin-left: calc(78px + 10px);
+  margin-top: 8px;
+  padding: 9px 14px;
+  background: transparent;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.schedAddEndBtn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.schedAddEndBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+  .schedRow {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .schedRowSide {
+    padding-top: 0;
+  }
+  .schedFields3 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .schedFields3 .field:last-child {
+    grid-column: 1 / -1;
+  }
+  .schedFields2 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .schedFields2 .schedEndActions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+  .schedAddEndBtn {
+    width: 100%;
+    margin-left: 0;
+  }
+  .schedConnector {
+    padding-left: 8px;
+  }
+}
+
 /* Second time slot — additional session block (collapsed by default) */
 .evSecondSlotAdd {
   display: inline-flex;

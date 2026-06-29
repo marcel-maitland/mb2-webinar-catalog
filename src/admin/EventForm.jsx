@@ -441,66 +441,8 @@ export default function EventForm({ mode }) {
             </Field>
 
             {/* When — scheduling info on its own row */}
-            <div className="row3">
-              <Field label="Date">
-                <input
-                  type="date"
-                  value={form.event_date_part ?? ""}
-                  onChange={(e) => {
-                    const next = e.target.value;
-                    set("event_date_part", next);
-                    if (!next) set("event_time_part", ""); // clear time if date is cleared
-                  }}
-                />
-              </Field>
-              <Field label="Time" hint={form.event_date_part ? "Optional" : "Set a date first"}>
-                <input
-                  type="time"
-                  value={form.event_time_part ?? ""}
-                  onChange={(e) => set("event_time_part", e.target.value)}
-                  disabled={!form.event_date_part}
-                />
-              </Field>
-              <Field label="Timezone">
-                <select
-                  value={form.event_timezone || "America/Chicago"}
-                  onChange={(e) => set("event_timezone", e.target.value)}
-                  disabled={!form.event_date_part}
-                >
-                  {US_TIMEZONES.map((tz) => (
-                    <option key={tz.id} value={tz.id}>{tz.label}</option>
-                  ))}
-                </select>
-              </Field>
-            </div>
+            <ScheduleBlock form={form} set={set} />
 
-            {/* Optional end date + end time. For single-day events leave blank.
-                For multi-day events (e.g. Jun 26 – Jun 28), fill End date.
-                For day-long events with a wrap-up time, fill End time. */}
-            <div className="row3" style={{ marginTop: 4 }}>
-              <Field label="End date" hint="Optional · for multi-day events">
-                <input
-                  type="date"
-                  value={form.event_end_date_part ?? ""}
-                  onChange={(e) => {
-                    const next = e.target.value;
-                    set("event_end_date_part", next);
-                    if (!next) set("event_end_time_part", "");
-                  }}
-                  min={form.event_date_part || undefined}
-                  disabled={!form.event_date_part}
-                />
-              </Field>
-              <Field label="End time" hint="Optional · e.g. 5:00 PM">
-                <input
-                  type="time"
-                  value={form.event_end_time_part ?? ""}
-                  onChange={(e) => set("event_end_time_part", e.target.value)}
-                  disabled={!form.event_date_part}
-                />
-              </Field>
-              <div /> {/* spacer to align with timezone column */}
-            </div>
 
             {/* Details — pricing + accreditation on a second, looser row */}
             <div className="row2">
@@ -689,6 +631,172 @@ function Switch({ label, checked, onChange, tone = "accent" }) {
       <span className="evSwitchSlider" />
       <span className="evSwitchLabel">{label}</span>
     </label>
+  );
+}
+
+/* =====================================================================
+   SCHEDULE BLOCK — start + (optional) end, with a single shared timezone.
+   The end fields are collapsed by default behind a small "Add end" button
+   so single-occurrence events aren't crowded by extra inputs. When set,
+   the Starts → Ends pair shows a visual connector and a friendly
+   duration summary ("Spans 3 days · 9 hours") so the admin can spot
+   data-entry mistakes at a glance.
+===================================================================== */
+function ScheduleBlock({ form, set }) {
+  const hasEnd = !!(form.event_end_date_part || form.event_end_time_part);
+  const [showEnd, setShowEnd] = useState(hasEnd);
+
+  // If the data behind the form changes (e.g. after edit-load), expand
+  // the end row automatically so existing values are visible.
+  useEffect(() => { if (hasEnd) setShowEnd(true); }, [hasEnd]);
+
+  const hasStart = !!form.event_date_part;
+
+  // Compute a human-readable duration when both ends are set.
+  const summary = useMemo(() => {
+    if (!form.event_date_part || !form.event_end_date_part) return "";
+    const tz = form.event_timezone || "America/Chicago";
+    const start = combineDateTime(form.event_date_part, form.event_time_part || "00:00", tz);
+    const end = combineDateTime(form.event_end_date_part, form.event_end_time_part || "00:00", tz);
+    if (!start || !end) return "";
+    const ms = new Date(end).getTime() - new Date(start).getTime();
+    if (ms <= 0) return "ⓘ End is before start";
+    const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((ms / (1000 * 60 * 60)) % 24);
+    const mins = Math.floor((ms / (1000 * 60)) % 60);
+    const parts = [];
+    if (days > 0) parts.push(`${days} day${days === 1 ? "" : "s"}`);
+    if (hours > 0) parts.push(`${hours} hr${hours === 1 ? "" : "s"}`);
+    if (parts.length === 0 && mins > 0) parts.push(`${mins} min`);
+    return parts.length ? `Spans ${parts.join(" · ")}` : "";
+  }, [
+    form.event_date_part,
+    form.event_time_part,
+    form.event_end_date_part,
+    form.event_end_time_part,
+    form.event_timezone,
+  ]);
+
+  const removeEnd = () => {
+    set("event_end_date_part", "");
+    set("event_end_time_part", "");
+    setShowEnd(false);
+  };
+
+  return (
+    <div className="schedBlock">
+      <div className="schedHeader">
+        <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style={{ marginRight: 6, verticalAlign: "-2px" }}>
+          <rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="currentColor" strokeWidth="2"/>
+          <path d="M8 3v4M16 3v4M3 10h18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+        Schedule
+      </div>
+
+      {/* STARTS row */}
+      <div className="schedRow">
+        <div className="schedRowSide">
+          <span className="schedRowLabel">Starts</span>
+          <span className="schedRowDot schedRowDotStart" aria-hidden="true" />
+        </div>
+        <div className="schedFields schedFields3">
+          <Field label="Date">
+            <input
+              type="date"
+              value={form.event_date_part ?? ""}
+              onChange={(e) => {
+                const next = e.target.value;
+                set("event_date_part", next);
+                if (!next) {
+                  set("event_time_part", "");
+                  set("event_end_date_part", "");
+                  set("event_end_time_part", "");
+                  setShowEnd(false);
+                }
+              }}
+            />
+          </Field>
+          <Field label="Time" hint={hasStart ? "Optional" : "Set a date first"}>
+            <input
+              type="time"
+              value={form.event_time_part ?? ""}
+              onChange={(e) => set("event_time_part", e.target.value)}
+              disabled={!hasStart}
+            />
+          </Field>
+          <Field label="Timezone">
+            <select
+              value={form.event_timezone || "America/Chicago"}
+              onChange={(e) => set("event_timezone", e.target.value)}
+              disabled={!hasStart}
+            >
+              {US_TIMEZONES.map((tz) => (
+                <option key={tz.id} value={tz.id}>{tz.label}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      </div>
+
+      {/* CONNECTOR + ENDS row, or "add" button when collapsed */}
+      {showEnd ? (
+        <>
+          <div className="schedConnector" aria-hidden="true">
+            <span className="schedConnectorLine" />
+            {summary && <span className={`schedSummary ${summary.startsWith("ⓘ") ? "schedSummaryErr" : ""}`}>{summary}</span>}
+          </div>
+          <div className="schedRow">
+            <div className="schedRowSide">
+              <span className="schedRowLabel">Ends</span>
+              <span className="schedRowDot schedRowDotEnd" aria-hidden="true" />
+            </div>
+            <div className="schedFields schedFields2">
+              <Field label="Date">
+                <input
+                  type="date"
+                  value={form.event_end_date_part ?? ""}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    set("event_end_date_part", next);
+                    if (!next) set("event_end_time_part", "");
+                  }}
+                  min={form.event_date_part || undefined}
+                  disabled={!hasStart}
+                />
+              </Field>
+              <Field label="Time" hint="Optional">
+                <input
+                  type="time"
+                  value={form.event_end_time_part ?? ""}
+                  onChange={(e) => set("event_end_time_part", e.target.value)}
+                  disabled={!hasStart}
+                />
+              </Field>
+              <div className="schedEndActions">
+                <button
+                  type="button"
+                  className="schedRemoveBtn"
+                  onClick={removeEnd}
+                  title="Remove end date/time"
+                  aria-label="Remove end date/time"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <button
+          type="button"
+          className="schedAddEndBtn"
+          onClick={() => setShowEnd(true)}
+          disabled={!hasStart}
+        >
+          + Add end date/time
+        </button>
+      )}
+    </div>
   );
 }
 
