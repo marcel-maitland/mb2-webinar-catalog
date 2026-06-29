@@ -22,10 +22,13 @@ const BLANK = {
   roles: [],
   location: "",
   in_person_registration_url: "",
+  in_person_registration_email: "",
   session1_label: "",
   session1_url: "",
+  session1_email: "",
   session2_label: "",
   session2_url: "",
+  session2_email: "",
   discount_code: "",
   discount_description: "",
   mb2_exclusive: false,
@@ -357,6 +360,9 @@ export default function EventForm({ mode }) {
       session1_url: form.session1_url || null,
       session2_label: form.session2_label || null,
       session2_url: form.session2_url || null,
+      in_person_registration_email: form.in_person_registration_email || null,
+      session1_email: form.session1_email || null,
+      session2_email: form.session2_email || null,
       discount_code: form.discount_code || null,
       discount_description: form.discount_description || null,
       mb2_exclusive: !!form.mb2_exclusive,
@@ -534,19 +540,20 @@ export default function EventForm({ mode }) {
           </Section>
 
           <Section title="Online registration" subtitle="Where attendees register. Time is taken from the Time field above.">
-            <Field label="Registration URL">
-              <input
-                value={form.session1_url ?? ""}
-                onChange={(e) => set("session1_url", e.target.value)}
-                placeholder=""
-              />
-            </Field>
+            <RegistrationInput
+              urlValue={form.session1_url ?? ""}
+              emailValue={form.session1_email ?? ""}
+              onUrl={(v) => set("session1_url", v)}
+              onEmail={(v) => set("session1_email", v)}
+            />
 
             <SecondTimeSlot
               label={form.session2_label}
               url={form.session2_url}
+              email={form.session2_email}
               onLabel={(v) => set("session2_label", v)}
               onUrl={(v) => set("session2_url", v)}
+              onEmail={(v) => set("session2_email", v)}
             />
           </Section>
 
@@ -559,13 +566,13 @@ export default function EventForm({ mode }) {
                   placeholder=""
                 />
               </Field>
-              <Field label="In-person registration link">
-                <input
-                  value={form.in_person_registration_url ?? ""}
-                  onChange={(e) => set("in_person_registration_url", e.target.value)}
-                  placeholder=""
-                />
-              </Field>
+              <RegistrationInput
+                label="In-person registration"
+                urlValue={form.in_person_registration_url ?? ""}
+                emailValue={form.in_person_registration_email ?? ""}
+                onUrl={(v) => set("in_person_registration_url", v)}
+                onEmail={(v) => set("in_person_registration_email", v)}
+              />
             </Section>
           )}
 
@@ -803,6 +810,39 @@ function ScheduleBlock({ form, set }) {
           + Add end date/time
         </button>
       )}
+    </div>
+  );
+}
+
+/* =====================================================================
+   REGISTRATION INPUT — paired URL + email fields with a small "or"
+   divider. URL takes precedence at display time. Lets admins set
+   either a registration link OR a contact email per session.
+===================================================================== */
+function RegistrationInput({ label = "Registration", urlValue, emailValue, onUrl, onEmail }) {
+  return (
+    <div className="regInput">
+      <Field label={`${label} URL`}>
+        <input
+          type="url"
+          value={urlValue}
+          onChange={(e) => onUrl(e.target.value)}
+          placeholder=""
+        />
+      </Field>
+      <div className="regInputDivider">
+        <span className="regInputDividerLine" />
+        <span className="regInputDividerText">or</span>
+        <span className="regInputDividerLine" />
+      </div>
+      <Field label={`${label} email`} hint="Used only if no URL is provided">
+        <input
+          type="email"
+          value={emailValue}
+          onChange={(e) => onEmail(e.target.value)}
+          placeholder=""
+        />
+      </Field>
     </div>
   );
 }
@@ -1169,11 +1209,10 @@ function SessionRow({ n, label, url, onLabel, onUrl, hideLabel = false }) {
    "additional session" block with explicit Time + Registration URL
    fields so it's obvious what each input does.
 ===================================================================== */
-function SecondTimeSlot({ label, url, onLabel, onUrl }) {
-  const hasValue = !!(label || url);
+function SecondTimeSlot({ label, url, email, onLabel, onUrl, onEmail }) {
+  const hasValue = !!(label || url || email);
   const [expanded, setExpanded] = useState(hasValue);
 
-  // If parent props change to have a value (e.g. on edit load), open.
   useEffect(() => {
     if (hasValue) setExpanded(true);
   }, [hasValue]);
@@ -1200,31 +1239,30 @@ function SecondTimeSlot({ label, url, onLabel, onUrl }) {
           onClick={() => {
             onLabel("");
             onUrl("");
+            onEmail && onEmail("");
             setExpanded(false);
           }}
         >
           Remove
         </button>
       </div>
-      <div className="evSecondSlotGrid">
-        <Field label="Time for this session">
-          <input
-            value={label ?? ""}
-            onChange={(e) => onLabel(e.target.value)}
-            placeholder=""
-          />
-        </Field>
-        <Field label="Registration URL for this session">
-          <input
-            value={url ?? ""}
-            onChange={(e) => onUrl(e.target.value)}
-            placeholder=""
-          />
-        </Field>
-      </div>
+      <Field label="Time for this session">
+        <input
+          value={label ?? ""}
+          onChange={(e) => onLabel(e.target.value)}
+          placeholder=""
+        />
+      </Field>
+      <RegistrationInput
+        label="Registration"
+        urlValue={url ?? ""}
+        emailValue={email ?? ""}
+        onUrl={onUrl}
+        onEmail={onEmail || (() => {})}
+      />
       <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
         Only fill this in if the same event runs at a second time with its own
-        registration link. Most events only need the one above.
+        registration link or contact email.
       </p>
     </div>
   );

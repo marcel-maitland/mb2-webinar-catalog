@@ -373,6 +373,30 @@
   }
 }
 
+/* Registration input — URL + email pair with subtle "or" divider */
+.regInput {
+  display: flex;
+  flex-direction: column;
+}
+.regInputDivider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -2px 0 6px;
+}
+.regInputDividerLine {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+}
+.regInputDividerText {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+
 /* Discount block — collapsed "Add a discount code" button, expanded
    into code + description fields */
 .discountAddBtn {

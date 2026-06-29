@@ -23,6 +23,7 @@ const safe = (v) =>
   typeof v === "string" ? v.trim() : v == null ? "" : String(v).trim();
 
 const isUrl = (u) => safe(u).startsWith("http");
+const isEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(safe(e));
 
 // Viewer's IANA timezone, detected once. Safe default to UTC if Intl is missing.
 const VIEWER_TZ = (() => {
@@ -152,12 +153,21 @@ function fromDb(row) {
     mb2Exclusive: !!row.mb2_exclusive,
     location: safe(row.location),
     inPersonRegistrationLink: safe(row.in_person_registration_url),
+    inPersonRegistrationEmail: safe(row.in_person_registration_email),
     discountCode: safe(row.discount_code),
     discountDescription: safe(row.discount_description),
     sessions: [
-      { label: safe(row.session1_label) || dateTimeString, url: safe(row.session1_url) },
-      { label: safe(row.session2_label), url: safe(row.session2_url) },
-    ].filter((s) => s.label || s.url),
+      {
+        label: safe(row.session1_label) || dateTimeString,
+        url: safe(row.session1_url),
+        email: safe(row.session1_email),
+      },
+      {
+        label: safe(row.session2_label),
+        url: safe(row.session2_url),
+        email: safe(row.session2_email),
+      },
+    ].filter((s) => s.label || s.url || s.email),
   };
 }
 
@@ -685,10 +695,55 @@ function CatalogElevatedStyles() {
       .sessionGroup { display: flex; flex-direction: column; gap: 0; }
       .sessionGroup + .sessionGroup { margin-top: 8px; }
 
+      /* Email-based registration display (replaces the Register button when
+         an event has no URL but does have a registration email) */
+      .emailReg {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+        padding: 8px 14px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        min-width: 0;
+        max-width: 100%;
+      }
+      .emailRegLabel {
+        font-size: 11px;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+      }
+      .emailRegAddr {
+        font-size: 14px;
+        font-weight: 700;
+        color: #0F766E;
+        text-decoration: none;
+        word-break: break-all;
+        line-height: 1.2;
+      }
+      .emailRegAddr:hover { text-decoration: underline; }
+
       @media (max-width: 700px) {
         .discountBanner { flex-direction: column; align-items: flex-start; gap: 4px; }
       }
     `}</style>
+  );
+}
+
+/* Renders "For registration, email <addr>" in place of the Register button
+   when an event has an email-based registration but no URL. The address
+   is a clickable mailto: link. */
+function EmailReg({ email }) {
+  if (!isEmail(email)) return null;
+  return (
+    <div className="emailReg">
+      <span className="emailRegLabel">For registration, email</span>
+      <a className="emailRegAddr" href={`mailto:${email}`}>{email}</a>
+    </div>
   );
 }
 
@@ -719,8 +774,14 @@ function Card({ item, clientName = "" }) {
 
   const inPerson = isInPerson(item.format);
   const inPersonRegOk = isUrl(item.inPersonRegistrationLink);
+  const inPersonRegEmail = isEmail(item.inPersonRegistrationEmail);
+  // Either method present means we should show registration UI
+  const inPersonRegAvailable = inPersonRegOk || inPersonRegEmail;
 
-  const sessionsWithLinks = (Array.isArray(item.sessions) ? item.sessions : []).filter((s) => isUrl(s?.url));
+  // Include sessions that have EITHER a URL or an email address (both are
+  // valid registration paths). URL wins if both are set.
+  const sessionsWithReg = (Array.isArray(item.sessions) ? item.sessions : [])
+    .filter((s) => isUrl(s?.url) || isEmail(s?.email));
   const timeLabel = safe(item.sessions?.[0]?.label);
 
   const dInDays = item.date ? daysUntil(item.date) : Infinity;
@@ -792,7 +853,7 @@ function Card({ item, clientName = "" }) {
           </div>
         ) : null}
 
-        {inPerson && (item.date || safe(item.location) || inPersonRegOk) ? (
+        {inPerson && (item.date || safe(item.location) || inPersonRegAvailable) ? (
           <div className="inPersonBox">
             <div className="inPersonBoxGrid">
               {item.date ? (
@@ -821,13 +882,17 @@ function Card({ item, clientName = "" }) {
               ) : null}
             </div>
 
-            {inPersonRegOk ? (
+            {inPersonRegAvailable ? (
               <>
                 <DiscountBanner code={item.discountCode} description={item.discountDescription} />
                 <div className="inPersonActions">
-                  <a className="sessionBtn" href={item.inPersonRegistrationLink} target="_blank" rel="noopener">
-                    Register →
-                  </a>
+                  {inPersonRegOk ? (
+                    <a className="sessionBtn" href={item.inPersonRegistrationLink} target="_blank" rel="noopener">
+                      Register →
+                    </a>
+                  ) : (
+                    <EmailReg email={item.inPersonRegistrationEmail} />
+                  )}
                 </div>
               </>
             ) : null}
@@ -835,16 +900,20 @@ function Card({ item, clientName = "" }) {
         ) : null}
 
         <div className="sessions">
-          {sessionsWithLinks.map((s, i) => (
+          {sessionsWithReg.map((s, i) => (
             <div className="sessionGroup" key={i}>
               {i === 0 && (
                 <DiscountBanner code={item.discountCode} description={item.discountDescription} />
               )}
               <div className="session">
                 <span className="sessionLabel">{s.label}</span>
-                <a className="sessionBtn" href={s.url} target="_blank" rel="noopener">
-                  Register →
-                </a>
+                {isUrl(s.url) ? (
+                  <a className="sessionBtn" href={s.url} target="_blank" rel="noopener">
+                    Register →
+                  </a>
+                ) : (
+                  <EmailReg email={s.email} />
+                )}
               </div>
             </div>
           ))}
