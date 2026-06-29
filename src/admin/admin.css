@@ -373,6 +373,79 @@
   }
 }
 
+/* Discount block — collapsed "Add a discount code" button, expanded
+   into code + description fields */
+.discountAddBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px dashed #cbd5e1;
+  color: #475569;
+  padding: 9px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  margin-top: 8px;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.discountAddBtn:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.discountBlock {
+  margin-top: 12px;
+  background: linear-gradient(180deg, #fff7ed 0%, #fffbeb 100%);
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.discountHeader {
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #9a3412;
+  margin-bottom: 12px;
+}
+.discountRemoveBtn {
+  margin-left: auto;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 1px solid #fdba74;
+  background: #fff;
+  color: #9a3412;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.discountRemoveBtn:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+.discountFields {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+@media (max-width: 720px) {
+  .discountFields {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Second time slot — additional session block (collapsed by default) */
 .evSecondSlotAdd {
   display: inline-flex;

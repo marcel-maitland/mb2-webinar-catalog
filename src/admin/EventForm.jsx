@@ -26,6 +26,8 @@ const BLANK = {
   session1_url: "",
   session2_label: "",
   session2_url: "",
+  discount_code: "",
+  discount_description: "",
   mb2_exclusive: false,
   is_published: false,
 };
@@ -355,6 +357,8 @@ export default function EventForm({ mode }) {
       session1_url: form.session1_url || null,
       session2_label: form.session2_label || null,
       session2_url: form.session2_url || null,
+      discount_code: form.discount_code || null,
+      discount_description: form.discount_description || null,
       mb2_exclusive: !!form.mb2_exclusive,
       is_published: false,         // safer default
       client_id: currentClientId,
@@ -487,6 +491,9 @@ export default function EventForm({ mode }) {
                 />
               </Field>
             </div>
+
+            {/* Optional discount code — shown on the catalog above Register */}
+            <DiscountBlock form={form} set={set} />
           </Section>
 
           <Section title="Presenter" subtitle="Who's teaching this event.">
@@ -796,6 +803,72 @@ function ScheduleBlock({ form, set }) {
           + Add end date/time
         </button>
       )}
+    </div>
+  );
+}
+
+/* =====================================================================
+   DISCOUNT BLOCK — optional code + description. Collapsed by default
+   behind a small "Add discount code" link. Existing data auto-expands.
+===================================================================== */
+function DiscountBlock({ form, set }) {
+  const hasDiscount = !!(form.discount_code || form.discount_description);
+  const [show, setShow] = useState(hasDiscount);
+  useEffect(() => { if (hasDiscount) setShow(true); }, [hasDiscount]);
+
+  if (!show) {
+    return (
+      <button
+        type="button"
+        className="discountAddBtn"
+        onClick={() => setShow(true)}
+      >
+        + Add a discount code
+      </button>
+    );
+  }
+
+  const remove = () => {
+    set("discount_code", "");
+    set("discount_description", "");
+    setShow(false);
+  };
+
+  return (
+    <div className="discountBlock">
+      <div className="discountHeader">
+        <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style={{ marginRight: 6, verticalAlign: "-2px" }}>
+          <path d="M9 4l11 11-7 7L2 11V4h7z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+          <circle cx="7" cy="9" r="1.5" fill="currentColor"/>
+        </svg>
+        Discount (optional)
+        <button
+          type="button"
+          className="discountRemoveBtn"
+          onClick={remove}
+          title="Remove discount"
+          aria-label="Remove discount"
+        >
+          ×
+        </button>
+      </div>
+      <div className="discountFields">
+        <Field label="Code" hint="What attendees type at checkout">
+          <input
+            value={form.discount_code ?? ""}
+            onChange={(e) => set("discount_code", e.target.value)}
+            placeholder=""
+            style={{ fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace", letterSpacing: "0.05em", textTransform: "uppercase" }}
+          />
+        </Field>
+        <Field label="Description" hint="Short explanation of the savings">
+          <input
+            value={form.discount_description ?? ""}
+            onChange={(e) => set("discount_description", e.target.value)}
+            placeholder=""
+          />
+        </Field>
+      </div>
     </div>
   );
 }

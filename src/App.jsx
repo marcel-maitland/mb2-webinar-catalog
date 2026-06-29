@@ -152,6 +152,8 @@ function fromDb(row) {
     mb2Exclusive: !!row.mb2_exclusive,
     location: safe(row.location),
     inPersonRegistrationLink: safe(row.in_person_registration_url),
+    discountCode: safe(row.discount_code),
+    discountDescription: safe(row.discount_description),
     sessions: [
       { label: safe(row.session1_label) || dateTimeString, url: safe(row.session1_url) },
       { label: safe(row.session2_label), url: safe(row.session2_url) },
@@ -634,7 +636,80 @@ function CatalogElevatedStyles() {
         z-index: 3;
         box-shadow: 0 6px 14px rgba(249,115,22,.35);
       }
+
+      /* Discount banner — small callout above the Register button */
+      .discountBanner {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);
+        border: 1px solid #67e8f9;
+        border-left: 4px solid #1dbfc9;
+        padding: 8px 12px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+      }
+      .discountBannerCode {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+      }
+      .discountBannerCodeLabel {
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #0e7490;
+        opacity: 0.85;
+      }
+      .discountBannerCodeValue {
+        font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        color: #0e7490;
+        background: #fff;
+        padding: 3px 8px;
+        border-radius: 6px;
+        border: 1px dashed #67e8f9;
+        text-transform: uppercase;
+      }
+      .discountBannerDesc {
+        font-size: 12.5px;
+        color: #0e4f5a;
+        line-height: 1.4;
+        font-weight: 500;
+        min-width: 0;
+      }
+      .sessionGroup { display: flex; flex-direction: column; gap: 0; }
+      .sessionGroup + .sessionGroup { margin-top: 8px; }
+
+      @media (max-width: 700px) {
+        .discountBanner { flex-direction: column; align-items: flex-start; gap: 4px; }
+      }
     `}</style>
+  );
+}
+
+/* Renders a small discount callout above the Register button.
+   Returns null if neither code nor description is set. */
+function DiscountBanner({ code, description }) {
+  const hasCode = !!safe(code);
+  const hasDesc = !!safe(description);
+  if (!hasCode && !hasDesc) return null;
+  return (
+    <div className="discountBanner" role="note">
+      {hasCode && (
+        <div className="discountBannerCode">
+          <span className="discountBannerCodeLabel">Promo</span>
+          <span className="discountBannerCodeValue">{code}</span>
+        </div>
+      )}
+      {hasDesc && (
+        <div className="discountBannerDesc">{description}</div>
+      )}
+    </div>
   );
 }
 
@@ -747,22 +822,30 @@ function Card({ item, clientName = "" }) {
             </div>
 
             {inPersonRegOk ? (
-              <div className="inPersonActions">
-                <a className="sessionBtn" href={item.inPersonRegistrationLink} target="_blank" rel="noopener">
-                  Register →
-                </a>
-              </div>
+              <>
+                <DiscountBanner code={item.discountCode} description={item.discountDescription} />
+                <div className="inPersonActions">
+                  <a className="sessionBtn" href={item.inPersonRegistrationLink} target="_blank" rel="noopener">
+                    Register →
+                  </a>
+                </div>
+              </>
             ) : null}
           </div>
         ) : null}
 
         <div className="sessions">
           {sessionsWithLinks.map((s, i) => (
-            <div className="session" key={i}>
-              <span className="sessionLabel">{s.label}</span>
-              <a className="sessionBtn" href={s.url} target="_blank" rel="noopener">
-                Register →
-              </a>
+            <div className="sessionGroup" key={i}>
+              {i === 0 && (
+                <DiscountBanner code={item.discountCode} description={item.discountDescription} />
+              )}
+              <div className="session">
+                <span className="sessionLabel">{s.label}</span>
+                <a className="sessionBtn" href={s.url} target="_blank" rel="noopener">
+                  Register →
+                </a>
+              </div>
             </div>
           ))}
         </div>
