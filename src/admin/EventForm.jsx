@@ -286,6 +286,30 @@ export default function EventForm({ mode }) {
       client_id: currentClientId,
     };
     try {
+      // Auto-provision the vendor row if the typed name doesn't match an
+      // existing vendor for this client. This handles the case where the
+      // admin typed a new vendor name in the combobox without explicitly
+      // clicking "+ Add new vendor".
+      const vendorName = (form.vendor || "").trim();
+      if (vendorName && currentClientId) {
+        const { data: existingVendor } = await supabase
+          .from("vendors")
+          .select("id")
+          .eq("client_id", currentClientId)
+          .ilike("name", vendorName)
+          .limit(1)
+          .maybeSingle();
+        if (!existingVendor) {
+          await supabase
+            .from("vendors")
+            .insert({
+              name: vendorName,
+              logo_url: form.vendor_logo_url || null,
+              client_id: currentClientId,
+            });
+        }
+      }
+
       if (mode === "new") {
         const { data, error } = await supabase
           .from("events").insert(payload).select().single();
