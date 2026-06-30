@@ -289,7 +289,10 @@ export default function App() {
       setLoading(true);
       setLoadError("");
       try {
-        // Fetch events + vendor defaults in parallel.
+        // Fetch events + vendor info in parallel so we can fall back to
+        // the vendor's current logo + default thumbnail when an event row
+        // is missing them (because it predates the upload or the sync
+        // trigger didn't fire).
         const [evRes, vendorRes] = await Promise.all([
           supabase
             .from("events")
@@ -299,25 +302,27 @@ export default function App() {
             .order("event_date", { ascending: true }),
           supabase
             .from("vendors")
-            .select("name, default_thumb_url")
+            .select("name, logo_url, default_thumb_url")
             .eq("client_id", client.id),
         ]);
         if (evRes.error) throw evRes.error;
 
-        // Vendor name → default thumbnail (lowercase key for case-insensitive match)
-        const vendorThumbByName = {};
+        // Vendor name → vendor row (lowercase key for case-insensitive match)
+        const vendorByName = {};
         for (const v of vendorRes.data || []) {
-          if (v.name && v.default_thumb_url) {
-            vendorThumbByName[v.name.toLowerCase()] = v.default_thumb_url;
-          }
+          if (v.name) vendorByName[v.name.toLowerCase()] = v;
         }
 
         if (!cancelled) {
-          // Inject vendor default as a fallback BEFORE shaping the row
           const enriched = (evRes.data || []).map((r) => {
+            const vinfo = vendorByName[(r.vendor || "").toLowerCase()];
             const ownThumb = (r.thumb_url || "").trim();
-            const fallback = vendorThumbByName[(r.vendor || "").toLowerCase()] || "";
-            return { ...r, thumb_url: ownThumb || fallback };
+            const ownLogo  = (r.vendor_logo_url || "").trim();
+            return {
+              ...r,
+              thumb_url:       ownThumb || vinfo?.default_thumb_url || "",
+              vendor_logo_url: ownLogo  || vinfo?.logo_url           || "",
+            };
           });
           setRows(enriched.map(fromDb));
         }

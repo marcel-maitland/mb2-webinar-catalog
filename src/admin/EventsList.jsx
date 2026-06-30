@@ -85,28 +85,34 @@ export default function EventsList() {
         .order("event_date", { ascending: true }),
       supabase
         .from("vendors")
-        .select("name, default_thumb_url")
+        .select("name, logo_url, default_thumb_url")
         .eq("client_id", currentClientId),
     ]);
     if (evRes.error) { setError(evRes.error.message); setLoading(false); return; }
 
-    // Build a vendor name → default thumbnail map for fallback display.
-    const vendorThumbByName = {};
+    // Build a vendor name → vendor row map for fallback display.
+    const vendorByName = {};
     for (const v of vendorRes.data || []) {
-      if (v.name && v.default_thumb_url) {
-        vendorThumbByName[v.name.toLowerCase()] = v.default_thumb_url;
-      }
+      if (v.name) vendorByName[v.name.toLowerCase()] = v;
     }
 
-    // Enrich each event with a `_effective_thumb_url` field that falls
-    // back to the vendor's default when the event has no thumbnail set.
-    const enriched = (evRes.data || []).map((r) => ({
-      ...r,
-      _effective_thumb_url:
-        (r.thumb_url && r.thumb_url.trim()) ||
-        vendorThumbByName[(r.vendor || "").toLowerCase()] ||
-        "",
-    }));
+    // Enrich each event with `_effective_thumb_url` + `_effective_logo_url`
+    // that fall back to the vendor's current logo / default thumbnail when
+    // the event row is missing them.
+    const enriched = (evRes.data || []).map((r) => {
+      const vinfo = vendorByName[(r.vendor || "").toLowerCase()];
+      return {
+        ...r,
+        _effective_thumb_url:
+          (r.thumb_url && r.thumb_url.trim()) ||
+          vinfo?.default_thumb_url ||
+          "",
+        _effective_logo_url:
+          (r.vendor_logo_url && r.vendor_logo_url.trim()) ||
+          vinfo?.logo_url ||
+          "",
+      };
+    });
 
     setRows(enriched);
     setLoading(false);
@@ -375,8 +381,8 @@ export default function EventsList() {
                 </div>
 
                 <div className="elColVendor">
-                  {r.vendor_logo_url
-                    ? <img className="elVendorLogo" src={r.vendor_logo_url} alt="" />
+                  {r._effective_logo_url
+                    ? <img className="elVendorLogo" src={r._effective_logo_url} alt="" />
                     : <span className="elVendorLogo elVendorLogoEmpty" />}
                   <span className="elVendorName">{r.vendor || "—"}</span>
                 </div>
