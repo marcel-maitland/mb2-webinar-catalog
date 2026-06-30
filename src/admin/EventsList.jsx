@@ -77,13 +77,38 @@ export default function EventsList() {
     if (!currentClientId) return;
     setLoading(true);
     setError("");
-    const { data, error } = await supabase
-      .from("events")
-      .select("*")
-      .eq("client_id", currentClientId)
-      .order("event_date", { ascending: true });
-    if (error) setError(error.message);
-    else setRows(data || []);
+    const [evRes, vendorRes] = await Promise.all([
+      supabase
+        .from("events")
+        .select("*")
+        .eq("client_id", currentClientId)
+        .order("event_date", { ascending: true }),
+      supabase
+        .from("vendors")
+        .select("name, default_thumb_url")
+        .eq("client_id", currentClientId),
+    ]);
+    if (evRes.error) { setError(evRes.error.message); setLoading(false); return; }
+
+    // Build a vendor name → default thumbnail map for fallback display.
+    const vendorThumbByName = {};
+    for (const v of vendorRes.data || []) {
+      if (v.name && v.default_thumb_url) {
+        vendorThumbByName[v.name.toLowerCase()] = v.default_thumb_url;
+      }
+    }
+
+    // Enrich each event with a `_effective_thumb_url` field that falls
+    // back to the vendor's default when the event has no thumbnail set.
+    const enriched = (evRes.data || []).map((r) => ({
+      ...r,
+      _effective_thumb_url:
+        (r.thumb_url && r.thumb_url.trim()) ||
+        vendorThumbByName[(r.vendor || "").toLowerCase()] ||
+        "",
+    }));
+
+    setRows(enriched);
     setLoading(false);
   };
 
@@ -329,8 +354,8 @@ export default function EventsList() {
               <article key={r.id} className="elRow">
                 <div className="elColTitle">
                   <Link to={`/admin/events/${r.id}`} className="elThumb">
-                    {r.thumb_url
-                      ? <img src={r.thumb_url} alt="" loading="lazy" />
+                    {r._effective_thumb_url
+                      ? <img src={r._effective_thumb_url} alt="" loading="lazy" />
                       : <span className="elThumbPh" />}
                   </Link>
                   <div className="elTitleWrap">

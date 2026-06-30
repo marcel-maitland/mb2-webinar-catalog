@@ -289,14 +289,38 @@ export default function App() {
       setLoading(true);
       setLoadError("");
       try {
-        const { data, error } = await supabase
-          .from("events")
-          .select("*")
-          .eq("is_published", true)
-          .eq("client_id", client.id)
-          .order("event_date", { ascending: true });
-        if (error) throw error;
-        if (!cancelled) setRows((data || []).map(fromDb));
+        // Fetch events + vendor defaults in parallel.
+        const [evRes, vendorRes] = await Promise.all([
+          supabase
+            .from("events")
+            .select("*")
+            .eq("is_published", true)
+            .eq("client_id", client.id)
+            .order("event_date", { ascending: true }),
+          supabase
+            .from("vendors")
+            .select("name, default_thumb_url")
+            .eq("client_id", client.id),
+        ]);
+        if (evRes.error) throw evRes.error;
+
+        // Vendor name → default thumbnail (lowercase key for case-insensitive match)
+        const vendorThumbByName = {};
+        for (const v of vendorRes.data || []) {
+          if (v.name && v.default_thumb_url) {
+            vendorThumbByName[v.name.toLowerCase()] = v.default_thumb_url;
+          }
+        }
+
+        if (!cancelled) {
+          // Inject vendor default as a fallback BEFORE shaping the row
+          const enriched = (evRes.data || []).map((r) => {
+            const ownThumb = (r.thumb_url || "").trim();
+            const fallback = vendorThumbByName[(r.vendor || "").toLowerCase()] || "";
+            return { ...r, thumb_url: ownThumb || fallback };
+          });
+          setRows(enriched.map(fromDb));
+        }
       } catch (e) {
         console.error("Data load error:", e);
         if (!cancelled) {
