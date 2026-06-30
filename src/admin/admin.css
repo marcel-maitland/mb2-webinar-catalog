@@ -19,7 +19,10 @@
   display:flex; align-items:center; gap:24px;
   padding: 14px 24px;
   background:#fff; border-bottom:1px solid var(--border);
-  box-shadow: 0 1px 0 rgba(0,0,0,.02);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  position: sticky;
+  top: 0;
+  z-index: 50;
 }
 .adminBrand a { font-weight:800; text-decoration:none; color:var(--text); }
 
@@ -2041,8 +2044,10 @@
 .evForm { display: flex; flex-direction: column; gap: 0; }
 
 /* --- sticky toolbar --- */
+/* `top` matches the height of the sticky .adminNav above (≈ 60px) so
+   this toolbar parks just under it instead of hiding behind. */
 .evToolbar {
-  position: sticky; top: 0; z-index: 30;
+  position: sticky; top: 60px; z-index: 30;
   background: rgba(255,255,255,0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
