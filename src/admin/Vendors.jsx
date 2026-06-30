@@ -25,7 +25,7 @@ export default function Vendors() {
     setError("");
     const { data: vData, error: vErr } = await supabase
       .from("vendors")
-      .select("id, name, logo_url, updated_at")
+      .select("id, name, logo_url, default_thumb_url, updated_at")
       .eq("client_id", currentClientId)
       .order("name");
     if (vErr) { setError(vErr.message); setLoading(false); return; }
@@ -293,10 +293,13 @@ export function VendorModal({ mode = "add", vendor, onClose, onSaved, initialNam
   const isEdit = mode === "edit" && vendor;
   const [name, setName] = useState(isEdit ? vendor.name : initialName);
   const [logoUrl, setLogoUrl] = useState(isEdit ? (vendor.logo_url || "") : "");
+  const [defaultThumbUrl, setDefaultThumbUrl] = useState(isEdit ? (vendor.default_thumb_url || "") : "");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingThumb, setUploadingThumb] = useState(false);
   const [error, setError] = useState("");
   const fileRef = useRef(null);
+  const thumbFileRef = useRef(null);
 
   const uploadLogo = async (file) => {
     if (!file) return;
@@ -317,6 +320,25 @@ export function VendorModal({ mode = "add", vendor, onClose, onSaved, initialNam
     }
   };
 
+  const uploadDefaultThumb = async (file) => {
+    if (!file) return;
+    setUploadingThumb(true);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+      const path = `vendor-thumbs/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("event-images")
+        .upload(path, file, { cacheControl: "31536000", upsert: false });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("event-images").getPublicUrl(path);
+      setDefaultThumbUrl(pub.publicUrl);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setUploadingThumb(false);
+    }
+  };
+
   const save = async (e) => {
     e.preventDefault();
     setError("");
@@ -327,7 +349,7 @@ export function VendorModal({ mode = "add", vendor, onClose, onSaved, initialNam
       if (isEdit) {
         const { data, error } = await supabase
           .from("vendors")
-          .update({ name: name.trim(), logo_url: logoUrl.trim() || null })
+          .update({ name: name.trim(), logo_url: logoUrl.trim() || null, default_thumb_url: defaultThumbUrl.trim() || null })
           .eq("id", vendor.id)
           .select()
           .single();
@@ -336,7 +358,7 @@ export function VendorModal({ mode = "add", vendor, onClose, onSaved, initialNam
       } else {
         const { data, error } = await supabase
           .from("vendors")
-          .insert({ name: name.trim(), logo_url: logoUrl.trim() || null, client_id: currentClientId })
+          .insert({ name: name.trim(), logo_url: logoUrl.trim() || null, default_thumb_url: defaultThumbUrl.trim() || null, client_id: currentClientId })
           .select()
           .single();
         if (error) throw error;
@@ -407,6 +429,62 @@ export function VendorModal({ mode = "add", vendor, onClose, onSaved, initialNam
               onChange={(e) => setLogoUrl(e.target.value)}
             />
           </label>
+
+          {/* Default catalog thumbnail — auto-applied to new events with this vendor */}
+          <div className="vdrThumbBlock">
+            <div className="vdrThumbBlockLabel">
+              Default catalog thumbnail
+              <span className="vdrThumbBlockHint">
+                Auto-applied to new events created with this vendor. Each event
+                can override it with its own thumbnail.
+              </span>
+            </div>
+            <div className="vdrThumbBlockMain">
+              <div className={`vdrThumbPreview ${defaultThumbUrl ? "" : "vdrThumbPreviewEmpty"}`}>
+                {defaultThumbUrl ? (
+                  <img src={defaultThumbUrl} alt="Default thumbnail" />
+                ) : (
+                  <div className="vdrThumbPreviewPh">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                      <rect x="3" y="5" width="18" height="14" rx="2" stroke="#94a3b8" strokeWidth="2"/>
+                      <circle cx="9" cy="11" r="1.5" fill="#94a3b8"/>
+                      <path d="M21 17l-5-5-9 9" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span>No thumbnail</span>
+                  </div>
+                )}
+              </div>
+              <div className="vdrThumbActions">
+                <button
+                  type="button"
+                  className="ghostBtn"
+                  onClick={() => thumbFileRef.current?.click()}
+                  disabled={uploadingThumb}
+                >
+                  {uploadingThumb ? "Uploading…" : (defaultThumbUrl ? "Replace thumbnail" : "Upload thumbnail")}
+                </button>
+                {defaultThumbUrl && (
+                  <button
+                    type="button"
+                    className="ghostBtn danger"
+                    onClick={() => setDefaultThumbUrl("")}
+                  >
+                    Remove
+                  </button>
+                )}
+                <input
+                  ref={thumbFileRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={(e) => uploadDefaultThumb(e.target.files?.[0])}
+                />
+                <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+                  Recommended: 780 × 340 pixels (matches the catalog card thumbnail).
+                </p>
+              </div>
+            </div>
+          </div>
 
           {error && <p className="errMsg">{error}</p>}
 

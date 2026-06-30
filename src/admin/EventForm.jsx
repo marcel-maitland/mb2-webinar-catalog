@@ -506,13 +506,20 @@ export default function EventForm({ mode }) {
             <Field label="Presenter / Vendor">
               <VendorCombobox
                 value={form.vendor ?? ""}
-                onChange={(name, logo) => {
+                onChange={(name, logo, defaultThumb) => {
                   set("vendor", name);
                   if (logo !== undefined) set("vendor_logo_url", logo);
+                  // Apply the vendor's default thumbnail only when the event
+                  // has no thumbnail of its own — never overwrite a custom
+                  // thumbnail that the admin already set.
+                  if (defaultThumb && !form.thumb_url) {
+                    set("thumb_url", defaultThumb);
+                  }
                 }}
               />
               <p className="evHint">
-                Manage vendors and logos on the <Link to="/admin/vendors">Vendors page</Link>.
+                Manage vendors, logos, and default thumbnails on the{" "}
+                <Link to="/admin/vendors">Vendors page</Link>.
               </p>
             </Field>
           </Section>
@@ -1284,7 +1291,7 @@ function VendorCombobox({ value, onChange }) {
     if (!currentClientId) return;
     const { data, error } = await supabase
       .from("vendors")
-      .select("id, name, logo_url")
+      .select("id, name, logo_url, default_thumb_url")
       .eq("client_id", currentClientId)
       .order("name");
     if (!error) setVendors(data || []);
@@ -1320,7 +1327,7 @@ function VendorCombobox({ value, onChange }) {
   }, [vendors, value]);
 
   const select = (v) => {
-    onChange(v.name, v.logo_url || "");
+    onChange(v.name, v.logo_url || "", v.default_thumb_url || "");
     setOpen(false);
     setEditing(false);
   };
