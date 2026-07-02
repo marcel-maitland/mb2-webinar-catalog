@@ -459,105 +459,25 @@ export default function App() {
         />
       </header>
 
-      <div className="layout">
-        <aside className="sidebar">
-          <div className="sideTitle">Filters</div>
+      {/* Horizontal filter bar — sticks below the header. Popover dropdowns
+          keep their scrolling internal so the page never gets pushed. */}
+      <FilterBar
+        clientName={clientName}
+        isExclusiveMode={isExclusiveMode}
+        mb2ExclusiveOnly={mb2ExclusiveOnly}
+        setMb2ExclusiveOnly={setMb2ExclusiveOnly}
+        formats={formats} formatSelected={formatSelected} setFormatSelected={setFormatSelected}
+        roles={roles} rolesSelected={rolesSelected} setRolesSelected={setRolesSelected}
+        categories={categories} catSelected={catSelected} setCatSelected={setCatSelected}
+        vendors={vendors} vendorSelected={vendorSelected} setVendorSelected={setVendorSelected}
+        ceHours={ceHours} ceSelected={ceSelected} setCeSelected={setCeSelected}
+        toggle={toggle}
+        clearFilters={clearFilters}
+        filteredCount={filtered.length}
+      />
 
-          {/* The exclusive toggle is HIDDEN in exclusive mode so visitors of
-              the {Client} Exclusive page can't uncheck it. */}
-          {!isExclusiveMode && (
-            <label className="pillCheck exclusiveToggle">
-              <input
-                type="checkbox"
-                checked={mb2ExclusiveOnly}
-                onChange={(e) => setMb2ExclusiveOnly(e.target.checked)}
-              />
-              <span>Show only {clientName} Exclusive</span>
-            </label>
-          )}
-
-          <CollapsibleSection title="Format">
-            <div className="list">
-              {formats.map((f) => (
-                <label className="pillCheck" key={f}>
-                  <input
-                    type="checkbox"
-                    checked={formatSelected.has(f)}
-                    onChange={() => toggle(setFormatSelected, f)}
-                  />
-                  <span>{f}</span>
-                </label>
-              ))}
-            </div>
-          </CollapsibleSection>
-
-          <CollapsibleSection title="Role / Position">
-            <div className="list">
-              {roles.map((r) => (
-                <label className="pillCheck" key={r}>
-                  <input
-                    type="checkbox"
-                    checked={rolesSelected.has(r)}
-                    onChange={() => toggle(setRolesSelected, r)}
-                  />
-                  <span>{r}</span>
-                </label>
-              ))}
-            </div>
-          </CollapsibleSection>
-
-          <CollapsibleSection title="Category">
-            <div className="list">
-              {categories.map((c) => (
-                <label className="pillCheck" key={c}>
-                  <input type="checkbox" checked={catSelected.has(c)} onChange={() => toggle(setCatSelected, c)} />
-                  <span>{c}</span>
-                </label>
-              ))}
-            </div>
-          </CollapsibleSection>
-
-          <CollapsibleSection title="Vendors">
-            <div className="list">
-              {vendors.map((v) => (
-                <label className="pillCheck" key={v}>
-                  <input
-                    type="checkbox"
-                    checked={vendorSelected.has(v)}
-                    onChange={() => toggle(setVendorSelected, v)}
-                  />
-                  <span>{v}</span>
-                </label>
-              ))}
-            </div>
-          </CollapsibleSection>
-
-          <CollapsibleSection title="CE Hours">
-            <div className="list">
-              {ceHours.map((h) => (
-                <label className="pillCheck" key={h}>
-                  <input type="checkbox" checked={ceSelected.has(h)} onChange={() => toggle(setCeSelected, h)} />
-                  <span>{h} CE</span>
-                </label>
-              ))}
-            </div>
-          </CollapsibleSection>
-
-          <button className="clearBtn" type="button" onClick={clearFilters}>
-            Clear filters
-          </button>
-
-          <div className="sideDivider" />
-
-          <div className="sideStat">
-            <span>Results</span>
-            <strong>
-              {filtered.length} <span className="muted">/ {rows.length}</span>
-            </strong>
-          </div>
-        </aside>
-
-        <main className="main">
+      <div className="layoutTop">
+        <main className="mainFull">
           {loading && <div className="center">Loading…</div>}
 
           {!loading && loadError && (
@@ -587,6 +507,216 @@ export default function App() {
           )}
         </main>
       </div>
+    </div>
+  );
+}
+
+/* =====================================================================
+   FILTER BAR + POPOVERS — horizontal sticky filters at the top of the
+   catalog. Each filter is a compact chip button; clicking opens a
+   floating popover whose internal scrolling never disturbs page scroll.
+===================================================================== */
+function FilterBar(props) {
+  const {
+    clientName, isExclusiveMode,
+    mb2ExclusiveOnly, setMb2ExclusiveOnly,
+    formats, formatSelected, setFormatSelected,
+    roles, rolesSelected, setRolesSelected,
+    categories, catSelected, setCatSelected,
+    vendors, vendorSelected, setVendorSelected,
+    ceHours, ceSelected, setCeSelected,
+    toggle, clearFilters, filteredCount,
+  } = props;
+
+  const hasAnyFilter =
+    (!isExclusiveMode && mb2ExclusiveOnly) ||
+    formatSelected.size > 0 ||
+    rolesSelected.size > 0 ||
+    catSelected.size > 0 ||
+    vendorSelected.size > 0 ||
+    ceSelected.size > 0;
+
+  const eventLabel = filteredCount === 1 ? "event" : "events";
+
+  return (
+    <div className="filterBar" role="toolbar" aria-label="Event filters">
+      <div className="filterBarInner">
+        {!isExclusiveMode && (
+          <button
+            type="button"
+            className={`filterExclBtn ${mb2ExclusiveOnly ? "active" : ""}`}
+            onClick={() => setMb2ExclusiveOnly(!mb2ExclusiveOnly)}
+            aria-pressed={mb2ExclusiveOnly}
+            title={`Only show ${clientName || "your organization"} Exclusive events`}
+          >
+            <span className="filterExclStar" aria-hidden="true">★</span>
+            <span className="filterExclLabel">{clientName || "MB2"} Exclusive</span>
+          </button>
+        )}
+
+        <FilterPopover
+          label="Format"
+          options={formats}
+          selected={formatSelected}
+          onToggle={(v) => toggle(setFormatSelected, v)}
+          onClear={() => setFormatSelected(new Set())}
+        />
+        <FilterPopover
+          label="Role"
+          options={roles}
+          selected={rolesSelected}
+          onToggle={(v) => toggle(setRolesSelected, v)}
+          onClear={() => setRolesSelected(new Set())}
+          searchable={roles.length > 10}
+        />
+        <FilterPopover
+          label="Category"
+          options={categories}
+          selected={catSelected}
+          onToggle={(v) => toggle(setCatSelected, v)}
+          onClear={() => setCatSelected(new Set())}
+          searchable={categories.length > 10}
+        />
+        <FilterPopover
+          label="Vendor"
+          options={vendors}
+          selected={vendorSelected}
+          onToggle={(v) => toggle(setVendorSelected, v)}
+          onClear={() => setVendorSelected(new Set())}
+          searchable
+        />
+        <FilterPopover
+          label="CE Hours"
+          options={ceHours}
+          selected={ceSelected}
+          onToggle={(v) => toggle(setCeSelected, v)}
+          onClear={() => setCeSelected(new Set())}
+          formatOption={(o) => `${o} CE`}
+        />
+
+        <div className="filterBarSpacer" />
+
+        {hasAnyFilter && (
+          <button
+            type="button"
+            className="filterBarClear"
+            onClick={clearFilters}
+            title="Reset all filters"
+          >
+            Clear all
+          </button>
+        )}
+        <div className="filterBarCount" aria-live="polite">
+          <strong>{filteredCount}</strong> {eventLabel}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FilterPopover({
+  label,
+  options,
+  selected,
+  onToggle,
+  onClear,
+  searchable = false,
+  formatOption,
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  useEffect(() => { if (!open) setSearch(""); }, [open]);
+
+  const filtered = useMemo(() => {
+    if (!search) return options;
+    const q = search.toLowerCase();
+    return options.filter((o) => String(o).toLowerCase().includes(q));
+  }, [options, search]);
+
+  const count = selected.size;
+  const disabled = options.length === 0;
+
+  return (
+    <div className="filterPop" ref={ref}>
+      <button
+        type="button"
+        className={`filterPopBtn ${count > 0 ? "active" : ""} ${open ? "open" : ""}`}
+        onClick={() => !disabled && setOpen((o) => !o)}
+        disabled={disabled}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+      >
+        <span className="filterPopLabel">{label}</span>
+        {count > 0 && <span className="filterPopCount">{count}</span>}
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" className="filterPopChev">
+          <path d="M1 3l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      {open && (
+        <div className="filterPopMenu" role="listbox" aria-label={label}>
+          {searchable && (
+            <div className="filterPopSearchWrap">
+              <input
+                type="text"
+                className="filterPopSearch"
+                placeholder={`Search ${label.toLowerCase()}…`}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+          )}
+          <div className="filterPopList">
+            {filtered.length === 0 ? (
+              <div className="filterPopEmpty">No matches</div>
+            ) : (
+              filtered.map((opt) => {
+                const key = String(opt);
+                const displayLabel = formatOption ? formatOption(opt) : String(opt);
+                const isSel = selected.has(opt);
+                return (
+                  <label key={key} className={`filterPopItem ${isSel ? "selected" : ""}`}>
+                    <input
+                      type="checkbox"
+                      checked={isSel}
+                      onChange={() => onToggle(opt)}
+                    />
+                    <span className="filterPopItemLabel">{displayLabel}</span>
+                    {isSel && <span className="filterPopItemCheck" aria-hidden="true">✓</span>}
+                  </label>
+                );
+              })
+            )}
+          </div>
+          {count > 0 && (
+            <div className="filterPopFooter">
+              <button
+                type="button"
+                className="filterPopClearBtn"
+                onClick={() => { onClear(); }}
+              >
+                Clear {label.toLowerCase()}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
