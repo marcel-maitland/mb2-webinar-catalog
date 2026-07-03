@@ -131,7 +131,9 @@ function OnDemandCard({ course }) {
         <span className="thumbGradient" aria-hidden="true" />
 
         {/* "ON DEMAND" pill in top-left corner — replaces the EXCLUSIVE badge */}
-        <span className="odCardBadge">On Demand</span>
+        <span className="odCardBadge">
+          {course.type === "Learning Path" ? "Learning Path" : "On Demand"}
+        </span>
 
         {/* Play icon in bottom-left — signals video/course content */}
         <span className="odPlayBadge" aria-hidden="true">

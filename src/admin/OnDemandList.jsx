@@ -87,7 +87,10 @@ export default function OnDemandList() {
             Available to all visitors on the public catalog.
           </p>
         </div>
-        <div className="elHeroActions">
+        <div className="elHeroActions" style={{ display: "flex", gap: 8 }}>
+          <Link to="/admin/on-demand/import" className="ghostBtn">
+            Import CSV / Excel
+          </Link>
           <Link to="/admin/on-demand/new" className="elPrimaryBtn">
             + New course
           </Link>

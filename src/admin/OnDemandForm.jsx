@@ -5,12 +5,15 @@ import "./admin.css";
 
 const BLANK = {
   title: "",
+  type: "Course",
   description: "",
   thumbnail_url: "",
   course_url: "",
   sort_order: 0,
   is_published: false,
 };
+
+const COURSE_TYPES = ["Course", "Learning Path"];
 
 export default function OnDemandForm({ mode = "edit" }) {
   const { id } = useParams();
@@ -86,6 +89,7 @@ export default function OnDemandForm({ mode = "edit" }) {
     setError("");
     const payload = {
       title: form.title.trim(),
+      type: form.type || "Course",
       description: form.description || null,
       thumbnail_url: form.thumbnail_url || null,
       course_url: form.course_url || null,
@@ -184,6 +188,23 @@ export default function OnDemandForm({ mode = "edit" }) {
                 onChange={(e) => set("title", e.target.value)}
                 placeholder=""
               />
+            </Field>
+
+            <Field label="Type">
+              <div className="evPills" role="radiogroup">
+                {COURSE_TYPES.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    role="radio"
+                    aria-checked={form.type === t}
+                    className={`evPill ${form.type === t ? "active" : ""}`}
+                    onClick={() => set("type", t)}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
             </Field>
 
             <Field label="Description">
@@ -365,7 +386,9 @@ function PreviewCard({ course }) {
             </svg>
           </div>
         )}
-        <span className="odCardBadge">On Demand</span>
+        <span className="odCardBadge">
+          {course.type === "Learning Path" ? "Learning Path" : "On Demand"}
+        </span>
         <span className="odPlayBadge" aria-hidden="true">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="12" r="10" fill="rgba(255,255,255,0.95)"/>

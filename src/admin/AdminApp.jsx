@@ -9,6 +9,7 @@ import Vendors from "./Vendors.jsx";
 import Clients from "./Clients.jsx";
 import OnDemandList from "./OnDemandList.jsx";
 import OnDemandForm from "./OnDemandForm.jsx";
+import OnDemandImport from "./OnDemandImport.jsx";
 import "./admin.css";
 
 /* ============================================================
@@ -207,6 +208,7 @@ function AdminShell() {
           <Route path="import" element={<ImportCsv />} />
           {isSuperAdmin && <Route path="clients" element={<Clients />} />}
           {isSuperAdmin && <Route path="on-demand" element={<OnDemandList />} />}
+          {isSuperAdmin && <Route path="on-demand/import" element={<OnDemandImport />} />}
           {isSuperAdmin && <Route path="on-demand/new" element={<OnDemandForm mode="new" />} />}
           {isSuperAdmin && <Route path="on-demand/:id" element={<OnDemandForm mode="edit" />} />}
           <Route path="*" element={<Navigate to="/admin" replace />} />
