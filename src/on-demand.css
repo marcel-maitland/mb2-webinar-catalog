@@ -1,0 +1,87 @@
+/* ====================================================================
+   ON DEMAND CATALOG — layered on top of catalog-extras.css
+   Matches the events catalog visual language, tweaked for the fact
+   that on-demand courses don't have dates/times.
+   ==================================================================== */
+
+/* Results strip below the header (mirrors filter bar height/position) */
+.odResults {
+  position: sticky;
+  top: 116px;
+  z-index: 20;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+  padding: 14px 32px;
+}
+.odResultsInner {
+  max-width: 1600px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.odResultsCount {
+  font-size: 13px;
+  color: #64748b;
+}
+.odResultsCount strong { color: #0f172a; font-weight: 700; }
+
+/* Grid — same shape as .grid (repeats desktop 3-col behavior) */
+.odGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  align-items: stretch;
+}
+@media (max-width: 900px) {
+  .odGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+}
+@media (max-width: 560px) {
+  .odGrid { grid-template-columns: 1fr; gap: 14px; }
+}
+
+/* Card tweaks specific to on-demand */
+.odCard { /* inherits .cardElevated */ }
+
+/* On Demand badge — top-left of thumbnail (replaces EXCLUSIVE) */
+.odCard .odCardBadge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 3;
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 5px 11px;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+
+/* Play icon in bottom-left of thumbnail */
+.odCard .odPlayBadge {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25));
+  transition: transform 0.15s ease;
+}
+.odCard:hover .odPlayBadge {
+  transform: scale(1.15);
+}
+
+/* "Available anytime" text style */
+.odCard .sessionLabel {
+  color: #64748b;
+  font-weight: 600 !important;
+  font-style: italic;
+}

@@ -7,6 +7,8 @@ import EventForm from "./EventForm.jsx";
 import ImportCsv from "./ImportCsv.jsx";
 import Vendors from "./Vendors.jsx";
 import Clients from "./Clients.jsx";
+import OnDemandList from "./OnDemandList.jsx";
+import OnDemandForm from "./OnDemandForm.jsx";
 import "./admin.css";
 
 /* ============================================================
@@ -204,6 +206,9 @@ function AdminShell() {
           <Route path="vendors" element={<Vendors />} />
           <Route path="import" element={<ImportCsv />} />
           {isSuperAdmin && <Route path="clients" element={<Clients />} />}
+          {isSuperAdmin && <Route path="on-demand" element={<OnDemandList />} />}
+          {isSuperAdmin && <Route path="on-demand/new" element={<OnDemandForm mode="new" />} />}
+          {isSuperAdmin && <Route path="on-demand/:id" element={<OnDemandForm mode="edit" />} />}
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </main>
@@ -293,6 +298,7 @@ function Nav({ email }) {
         <NavLink to="/admin" end>Events</NavLink>
         <NavLink to="/admin/vendors">Vendors</NavLink>
         <NavLink to="/admin/import">Import</NavLink>
+        {isSuperAdmin && <NavLink to="/admin/on-demand">On Demand</NavLink>}
         {isSuperAdmin && <NavLink to="/admin/clients">Clients</NavLink>}
         <a href={currentClient?.slug ? `/c/${currentClient.slug}` : "/"} target="_blank" rel="noopener">View catalog ↗</a>
       </nav>

@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import App from "./App.jsx";
 import AdminApp from "./admin/AdminApp.jsx";
 import PortalAuth from "./admin/PortalAuth.jsx";
+import OnDemand from "./OnDemand.jsx";
 import "./App.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -12,6 +13,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <Routes>
         {/* Portal sign-in: the URL itself is the credential. */}
         <Route path="/portal/:token" element={<PortalAuth />} />
+
+        {/* On-demand catalog (public) */}
+        <Route path="/on-demand" element={<OnDemand />} />
 
         {/* Admin dashboard (auth-gated inside AdminApp). */}
         <Route path="/" element={<AdminApp />} />
