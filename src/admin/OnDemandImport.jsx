@@ -4,6 +4,7 @@ import * as XLSX from "xlsx";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import "./admin.css";
+import "./on-demand-admin.css";
 
 const isXlsxName = (name) => /\.(xlsx|xlsm|xls)$/i.test(name || "");
 
@@ -49,8 +50,11 @@ function normalizeRow(raw) {
 
 export default function OnDemandImport() {
   const navigate = useNavigate();
+  const [mode, setMode] = useState("file"); // "file" | "paste"
   const [parsed, setParsed] = useState([]); // [{ raw, ready, status: 'new' | 'duplicate' }]
   const [chosenFile, setChosenFile] = useState(null);
+  const [pasteText, setPasteText] = useState("");
+  const [pasteSourceLabel, setPasteSourceLabel] = useState("");
   const [error, setError] = useState("");
   const [importing, setImporting] = useState(false);
   const [doneCount, setDoneCount] = useState(0);
@@ -58,6 +62,20 @@ export default function OnDemandImport() {
   const [showColumnRef, setShowColumnRef] = useState(false);
   const [skipDupes, setSkipDupes] = useState(true);
   const fileRef = useRef(null);
+
+  const reset = () => {
+    setChosenFile(null);
+    setPasteText("");
+    setPasteSourceLabel("");
+    setParsed([]);
+    setDoneCount(0);
+    setError("");
+  };
+
+  const switchMode = (m) => {
+    setMode(m);
+    reset();
+  };
 
   // Tag each parsed row "new" or "duplicate" by comparing against existing
   // titles (case-insensitive).
@@ -119,6 +137,37 @@ export default function OnDemandImport() {
         error: (err) => setError("Could not parse CSV: " + err.message),
       });
     }
+  };
+
+  // Parse pasted text. Papa auto-detects delimiter (comma, tab, semicolon),
+  // so pasted content from Google Sheets or Excel (tab-separated) as well
+  // as plain CSV both just work.
+  const parsePaste = () => {
+    setError("");
+    setParsed([]);
+    setDoneCount(0);
+    if (!pasteText.trim()) {
+      setError("Nothing to parse. Paste your data first.");
+      return;
+    }
+    // Estimate row count for the "source label" shown in the file header UI.
+    const lineCount = pasteText.split(/\r?\n/).filter((l) => l.trim()).length;
+    setPasteSourceLabel(
+      `Pasted data · ${Math.max(0, lineCount - 1)} row${lineCount - 1 === 1 ? "" : "s"} + header`
+    );
+    Papa.parse(pasteText.trim(), {
+      header: true,
+      skipEmptyLines: true,
+      // Let Papa auto-detect delimiter (works for TSV from Excel/Sheets AND CSV)
+      complete: (result) => {
+        if (!result?.data || result.data.length === 0) {
+          setError("No rows detected. Check that the first row contains column headers.");
+          return;
+        }
+        onParsed(result.data);
+      },
+      error: (err) => setError("Could not parse: " + err.message),
+    });
   };
 
   const runImport = async () => {
@@ -239,8 +288,39 @@ export default function OnDemandImport() {
         )}
       </div>
 
-      {/* Drop zone */}
-      {!chosenFile && (
+      {/* Mode toggle: Upload file vs Paste data */}
+      {!chosenFile && parsed.length === 0 && (
+        <div className="impModeTabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "file"}
+            className={`impModeTab ${mode === "file" ? "active" : ""}`}
+            onClick={() => switchMode("file")}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M12 3v12m0-12l-4 4m4-4l4 4M4 15v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span>Upload file</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "paste"}
+            className={`impModeTab ${mode === "paste" ? "active" : ""}`}
+            onClick={() => switchMode("paste")}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <rect x="8" y="4" width="8" height="4" rx="1" stroke="currentColor" strokeWidth="2"/>
+              <path d="M8 6H6a2 2 0 00-2 2v11a2 2 0 002 2h12a2 2 0 002-2V8a2 2 0 00-2-2h-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            <span>Paste from spreadsheet</span>
+          </button>
+        </div>
+      )}
+
+      {/* File drop zone */}
+      {!chosenFile && parsed.length === 0 && mode === "file" && (
         <div
           className={`impDrop ${drag ? "dragOver" : ""}`}
           onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
@@ -271,27 +351,78 @@ export default function OnDemandImport() {
         </div>
       )}
 
-      {/* File chosen — show preview */}
-      {chosenFile && (
+      {/* Paste-from-spreadsheet area */}
+      {!chosenFile && parsed.length === 0 && mode === "paste" && (
+        <div className="impPasteZone">
+          <div className="impPasteInstructions">
+            <strong>Paste tabular data from Google Sheets or Excel</strong>
+            <p className="muted" style={{ fontSize: 13, margin: "6px 0 0" }}>
+              Select your rows (including the header row) in your spreadsheet,
+              copy with <kbd>⌘</kbd>+<kbd>C</kbd> or <kbd>Ctrl</kbd>+<kbd>C</kbd>,
+              then paste them into the box below. Both CSV and tab-separated
+              formats are auto-detected.
+            </p>
+          </div>
+          <textarea
+            className="impPasteTextarea"
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            placeholder={`Course Title\tType\tDescription\tURL\tThumbnail URL
+Implant Placement 101\tCourse\tLearn the fundamentals…\thttps://…\thttps://…
+Endodontic Learning Path\tLearning Path\tMulti-course series…\thttps://…\thttps://…`}
+            spellCheck={false}
+            rows={10}
+            autoFocus
+          />
+          <div className="impPasteActions">
+            <span className="muted" style={{ fontSize: 12 }}>
+              {pasteText.trim()
+                ? `${pasteText.split(/\r?\n/).filter(l => l.trim()).length} line${pasteText.split(/\r?\n/).filter(l => l.trim()).length === 1 ? "" : "s"} pasted`
+                : "Nothing pasted yet"}
+            </span>
+            <div style={{ display: "flex", gap: 8 }}>
+              {pasteText && (
+                <button
+                  type="button"
+                  className="ghostBtn"
+                  onClick={() => setPasteText("")}
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                className="primaryBtn"
+                onClick={parsePaste}
+                disabled={!pasteText.trim()}
+              >
+                Parse data →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* File chosen OR paste parsed — show preview */}
+      {(chosenFile || (parsed.length > 0 && mode === "paste")) && (
         <>
           <div className="impFileHeader">
             <div>
-              <div className="impFileName">{chosenFile.name}</div>
+              <div className="impFileName">
+                {chosenFile ? chosenFile.name : (pasteSourceLabel || "Pasted data")}
+              </div>
               <div className="impFileSize muted">
-                {(chosenFile.size / 1024).toFixed(1)} KB
+                {chosenFile
+                  ? `${(chosenFile.size / 1024).toFixed(1)} KB`
+                  : `${pasteText.length.toLocaleString()} characters`}
               </div>
             </div>
             <button
               type="button"
               className="ghostBtn"
-              onClick={() => {
-                setChosenFile(null);
-                setParsed([]);
-                setDoneCount(0);
-                setError("");
-              }}
+              onClick={reset}
             >
-              Change file
+              {chosenFile ? "Change file" : "Change source"}
             </button>
           </div>
 

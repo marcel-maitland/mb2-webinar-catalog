@@ -459,6 +459,93 @@
 .odPublishToggle.on { background: #22c55e; }
 .odPublishToggle.on .odPublishToggleSlider { transform: translateX(16px); }
 
+/* ─── IMPORT PAGE: Mode tabs + paste textarea ─── */
+.impModeTabs {
+  display: inline-flex;
+  gap: 4px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+.impModeTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.12s;
+}
+.impModeTab:hover:not(.active) { color: #334155; background: rgba(255, 255, 255, 0.5); }
+.impModeTab.active {
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.impPasteZone {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+}
+.impPasteInstructions strong {
+  color: #0f172a;
+  font-size: 15px;
+}
+.impPasteInstructions kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font-family: ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+}
+.impPasteTextarea {
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-family: ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #0f172a;
+  background: #fafbfc;
+  resize: vertical;
+  min-height: 200px;
+  box-sizing: border-box;
+  transition: all 0.15s;
+}
+.impPasteTextarea:focus {
+  outline: none;
+  border-color: #93c5fd;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
+}
+.impPasteTextarea::placeholder {
+  color: #cbd5e1;
+  font-style: italic;
+}
+.impPasteActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+}
+
 /* ─── EMPTY STATES ─── */
 .odLoading {
   padding: 40px 20px;
