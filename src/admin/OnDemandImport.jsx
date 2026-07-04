@@ -102,6 +102,20 @@ export default function OnDemandImport() {
     const initial = cleaned.map((raw) => ({ raw, ready: normalizeRow(raw) }));
     // Filter rows with no title — they're not usable
     const usable = initial.filter((r) => r.ready.title);
+
+    // If we successfully found data rows but none of them have a title,
+    // the "title" column probably has an unrecognized header name.
+    if (initial.length > 0 && usable.length === 0) {
+      const foundHeaders = Object.keys(initial[0].raw || {});
+      setError(
+        `Found ${initial.length} data row${initial.length === 1 ? "" : "s"}, but ` +
+        `none had a recognizable title column. Your headers were: ` +
+        `${foundHeaders.map((h) => `"${h}"`).join(", ")}. ` +
+        `Accepted title headers include: "Course Title", "Title", "Name".`
+      );
+      return;
+    }
+
     const annotated = await annotateRows(usable);
     setParsed(annotated);
   };
@@ -139,35 +153,77 @@ export default function OnDemandImport() {
     }
   };
 
-  // Parse pasted text. Papa auto-detects delimiter (comma, tab, semicolon),
-  // so pasted content from Google Sheets or Excel (tab-separated) as well
-  // as plain CSV both just work.
+  // Parse pasted text. Detect delimiter manually (tab vs comma) since
+  // Papa's auto-detection can be unreliable on pasted text, and strip
+  // BOM / stray formatting characters that Google Sheets sometimes adds.
   const parsePaste = () => {
     setError("");
     setParsed([]);
     setDoneCount(0);
-    if (!pasteText.trim()) {
+
+    let text = pasteText;
+    if (!text || !text.trim()) {
       setError("Nothing to parse. Paste your data first.");
       return;
     }
-    // Estimate row count for the "source label" shown in the file header UI.
-    const lineCount = pasteText.split(/\r?\n/).filter((l) => l.trim()).length;
-    setPasteSourceLabel(
-      `Pasted data · ${Math.max(0, lineCount - 1)} row${lineCount - 1 === 1 ? "" : "s"} + header`
-    );
-    Papa.parse(pasteText.trim(), {
+
+    // Strip UTF-8 BOM if present (Google Sheets exports sometimes include it)
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+    text = text.trim();
+
+    // Detect delimiter by looking at the FIRST non-empty line.
+    // Google Sheets / Excel paste as TAB-separated; raw CSV is comma-separated.
+    const firstLine = text.split(/\r?\n/).find((l) => l.trim()) || "";
+    const tabCount = (firstLine.match(/\t/g) || []).length;
+    const commaCount = (firstLine.match(/,/g) || []).length;
+    const semicolonCount = (firstLine.match(/;/g) || []).length;
+
+    let delimiter = "\t";
+    if (commaCount > tabCount && commaCount >= semicolonCount) delimiter = ",";
+    else if (semicolonCount > tabCount && semicolonCount > commaCount) delimiter = ";";
+    else if (tabCount === 0 && commaCount === 0 && semicolonCount === 0) {
+      // Only one column? Treat entire line as the title
+      delimiter = ",";
+    }
+
+    // Parse synchronously (no callback) to get result back directly
+    const result = Papa.parse(text, {
       header: true,
       skipEmptyLines: true,
-      // Let Papa auto-detect delimiter (works for TSV from Excel/Sheets AND CSV)
-      complete: (result) => {
-        if (!result?.data || result.data.length === 0) {
-          setError("No rows detected. Check that the first row contains column headers.");
-          return;
-        }
-        onParsed(result.data);
-      },
-      error: (err) => setError("Could not parse: " + err.message),
+      delimiter,
     });
+
+    // Debug info the user can see if parsing fails
+    const delimLabel =
+      delimiter === "\t" ? "TAB" : delimiter === "," ? "COMMA" : "SEMICOLON";
+
+    if (!result?.data || result.data.length === 0) {
+      const rowLines = text.split(/\r?\n/).filter((l) => l.trim());
+      setError(
+        `No data rows detected. Diagnostics: ${rowLines.length} total lines, ` +
+        `${delimLabel} delimiter chosen (${tabCount} tabs / ${commaCount} commas ` +
+        `in the header). Make sure the first line is column headers and ` +
+        `there's at least one data row below it.`
+      );
+      return;
+    }
+
+    // Debug: log to console so we can inspect if needed
+    if (typeof window !== "undefined") {
+      // eslint-disable-next-line no-console
+      console.log("[on-demand paste]", {
+        delimiter: delimLabel,
+        headers: Object.keys(result.data[0] || {}),
+        rowCount: result.data.length,
+        firstRow: result.data[0],
+      });
+    }
+
+    const lineCount = text.split(/\r?\n/).filter((l) => l.trim()).length;
+    setPasteSourceLabel(
+      `Pasted data (${delimLabel}) · ${Math.max(0, lineCount - 1)} row${lineCount - 1 === 1 ? "" : "s"} + header`
+    );
+    onParsed(result.data);
   };
 
   const runImport = async () => {
