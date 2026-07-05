@@ -1,16 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "./lib/supabase.js";
 import "./catalog-extras.css";
 import "./on-demand.css";
 
 const safe = (v) => (typeof v === "string" ? v.trim() : v == null ? "" : String(v));
 const isUrl = (u) => safe(u).startsWith("http");
+const uniq = (arr) => [...new Set(arr.filter((v) => v !== null && v !== undefined && v !== ""))];
 
 export default function OnDemand() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
+  const [typeSelected, setTypeSelected] = useState(new Set());
+  const [ceSelected, setCeSelected] = useState(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -40,14 +43,42 @@ export default function OnDemand() {
     return () => { cancelled = true; };
   }, []);
 
+  const types = useMemo(
+    () => uniq(rows.map((r) => r.type)).sort((a, b) => a.localeCompare(b)),
+    [rows]
+  );
+  const ceHours = useMemo(() => {
+    const vals = rows.map((r) => r.ce_hours).filter((n) => typeof n === "number");
+    return [...new Set(vals)].sort((a, b) => a - b);
+  }, [rows]);
+
+  const toggle = (setFn, value) =>
+    setFn((prev) => {
+      const next = new Set(prev);
+      next.has(value) ? next.delete(value) : next.add(value);
+      return next;
+    });
+
+  const clearFilters = () => {
+    setQuery("");
+    setTypeSelected(new Set());
+    setCeSelected(new Set());
+  };
+
   const filtered = useMemo(() => {
     const q = safe(query).toLowerCase();
-    if (!q) return rows;
+    const typeOn = typeSelected.size > 0;
+    const ceOn = ceSelected.size > 0;
     return rows.filter((r) => {
-      const hay = `${safe(r.title)} ${safe(r.description)}`.toLowerCase();
-      return hay.includes(q);
+      if (typeOn && !typeSelected.has(r.type)) return false;
+      if (ceOn && !(typeof r.ce_hours === "number" && ceSelected.has(r.ce_hours))) return false;
+      if (q) {
+        const hay = `${safe(r.title)} ${safe(r.description)} ${safe(r.type)}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
     });
-  }, [rows, query]);
+  }, [rows, query, typeSelected, ceSelected]);
 
   return (
     <div className="page">
@@ -70,13 +101,14 @@ export default function OnDemand() {
         />
       </header>
 
-      <div className="odResults">
-        <div className="odResultsInner">
-          <span className="odResultsCount">
-            <strong>{filtered.length}</strong> {filtered.length === 1 ? "course" : "courses"}
-          </span>
-        </div>
-      </div>
+      {/* Horizontal filter bar — same pattern as the events catalog */}
+      <OdFilterBar
+        types={types} typeSelected={typeSelected} setTypeSelected={setTypeSelected}
+        ceHours={ceHours} ceSelected={ceSelected} setCeSelected={setCeSelected}
+        toggle={toggle}
+        clearFilters={clearFilters}
+        filteredCount={filtered.length}
+      />
 
       <div className="layoutTop">
         <main className="mainFull">
@@ -93,7 +125,9 @@ export default function OnDemand() {
 
           {!loading && !loadError && filtered.length === 0 && (
             <div className="center">
-              {query ? "No courses match your search." : "No on-demand courses available yet."}
+              {query || typeSelected.size > 0 || ceSelected.size > 0
+                ? "No courses match your filters."
+                : "No on-demand courses available yet."}
             </div>
           )}
 
@@ -113,10 +147,15 @@ export default function OnDemand() {
 function OnDemandCard({ course }) {
   const thumbOk = isUrl(course.thumbnail_url);
   const canRegister = isUrl(course.course_url);
+  const isPath = course.type === "Learning Path";
+  const ce = typeof course.ce_hours === "number" ? course.ce_hours : null;
+  const ceLabel = ce != null
+    ? `${ce} CE${ce === 1 ? "" : ""} ${ce === 1 ? "credit" : "credits"}`
+    : "Available anytime";
 
   return (
     <article className="card cardElevated odCard">
-      <div className={`thumb ${thumbOk ? "" : "thumbNoImg"}`}>
+      <div className={`thumb odThumb ${thumbOk ? "" : "thumbNoImg"}`}>
         {thumbOk ? (
           <img
             src={course.thumbnail_url}
@@ -128,14 +167,13 @@ function OnDemandCard({ course }) {
             }}
           />
         ) : null}
-        <span className="thumbGradient" aria-hidden="true" />
 
-        {/* "ON DEMAND" pill in top-left corner — replaces the EXCLUSIVE badge */}
-        <span className="odCardBadge">
-          {course.type === "Learning Path" ? "Learning Path" : "On Demand"}
+        {/* Type pill in top-left */}
+        <span className={`odCardBadge ${isPath ? "isPath" : ""}`}>
+          {isPath ? "Learning Path" : "On Demand"}
         </span>
 
-        {/* Play icon in bottom-left — signals video/course content */}
+        {/* Play icon in bottom-left */}
         <span className="odPlayBadge" aria-hidden="true">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="12" r="10" fill="rgba(255,255,255,0.95)"/>
@@ -156,7 +194,7 @@ function OnDemandCard({ course }) {
         <div className="sessions">
           <div className="sessionGroup">
             <div className="session">
-              <span className="sessionLabel">Available anytime</span>
+              <span className="sessionLabel odCeLabel">{ceLabel}</span>
               {canRegister ? (
                 <a
                   className="sessionBtn"
@@ -176,5 +214,136 @@ function OnDemandCard({ course }) {
         </div>
       </div>
     </article>
+  );
+}
+
+/* =====================================================================
+   FILTER BAR + POPOVER — mirrors the events catalog filter bar so
+   both catalogs feel consistent. Filters by Type and CE Hours.
+===================================================================== */
+function OdFilterBar(props) {
+  const {
+    types, typeSelected, setTypeSelected,
+    ceHours, ceSelected, setCeSelected,
+    toggle, clearFilters, filteredCount,
+  } = props;
+
+  const hasAnyFilter = typeSelected.size > 0 || ceSelected.size > 0;
+  const courseLabel = filteredCount === 1 ? "course" : "courses";
+
+  return (
+    <div className="filterBar" role="toolbar" aria-label="Course filters">
+      <div className="filterBarInner">
+        <OdFilterPopover
+          label="Type"
+          options={types}
+          selected={typeSelected}
+          onToggle={(v) => toggle(setTypeSelected, v)}
+          onClear={() => setTypeSelected(new Set())}
+        />
+        <OdFilterPopover
+          label="CE Hours"
+          options={ceHours}
+          selected={ceSelected}
+          onToggle={(v) => toggle(setCeSelected, v)}
+          onClear={() => setCeSelected(new Set())}
+          formatOption={(o) => `${o} CE`}
+        />
+
+        <div className="filterBarSpacer" />
+
+        {hasAnyFilter && (
+          <button
+            type="button"
+            className="filterBarClear"
+            onClick={clearFilters}
+            title="Reset all filters"
+          >
+            Clear all
+          </button>
+        )}
+        <div className="filterBarCount" aria-live="polite">
+          <strong>{filteredCount}</strong> {courseLabel}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OdFilterPopover({ label, options, selected, onToggle, onClear, formatOption }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  const count = selected.size;
+  const disabled = options.length === 0;
+
+  return (
+    <div className="filterPop" ref={ref}>
+      <button
+        type="button"
+        className={`filterPopBtn ${count > 0 ? "active" : ""} ${open ? "open" : ""}`}
+        onClick={() => !disabled && setOpen((o) => !o)}
+        disabled={disabled}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+      >
+        <span className="filterPopLabel">{label}</span>
+        {count > 0 && <span className="filterPopCount">{count}</span>}
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" className="filterPopChev">
+          <path d="M1 3l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      {open && (
+        <div className="filterPopMenu" role="listbox" aria-label={label}>
+          <div className="filterPopList">
+            {options.length === 0 ? (
+              <div className="filterPopEmpty">No options</div>
+            ) : (
+              options.map((opt) => {
+                const key = String(opt);
+                const displayLabel = formatOption ? formatOption(opt) : String(opt);
+                const isSel = selected.has(opt);
+                return (
+                  <label key={key} className={`filterPopItem ${isSel ? "selected" : ""}`}>
+                    <input
+                      type="checkbox"
+                      checked={isSel}
+                      onChange={() => onToggle(opt)}
+                    />
+                    <span className="filterPopItemLabel">{displayLabel}</span>
+                    {isSel && <span className="filterPopItemCheck" aria-hidden="true">✓</span>}
+                  </label>
+                );
+              })
+            )}
+          </div>
+          {count > 0 && (
+            <div className="filterPopFooter">
+              <button
+                type="button"
+                className="filterPopClearBtn"
+                onClick={() => onClear()}
+              >
+                Clear {label.toLowerCase()}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

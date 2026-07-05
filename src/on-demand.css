@@ -46,6 +46,23 @@
 /* Card tweaks specific to on-demand */
 .odCard { /* inherits .cardElevated */ }
 
+/* Thumbnail — show the FULL image (no cropping). Use a 16:9 frame with
+   contain fit and a soft background so any letterboxing looks intentional. */
+.odCard .odThumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9 !important;
+  overflow: hidden !important;
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+}
+.odCard .odThumb > img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;   /* was cover — now shows the whole image */
+  object-position: center;
+  display: block;
+}
+
 /* On Demand badge — top-left of thumbnail (replaces EXCLUSIVE) */
 .odCard .odCardBadge {
   position: absolute;
@@ -61,6 +78,10 @@
   padding: 5px 11px;
   border-radius: 999px;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+.odCard .odCardBadge.isPath {
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
 }
 
 /* Play icon in bottom-left of thumbnail */
@@ -79,9 +100,11 @@
   transform: scale(1.15);
 }
 
-/* "Available anytime" text style */
+/* CE-hours / "Available anytime" text style — same italic muted look */
+.odCard .odCeLabel,
 .odCard .sessionLabel {
   color: #64748b;
   font-weight: 600 !important;
   font-style: italic;
+  font-size: 14px;
 }

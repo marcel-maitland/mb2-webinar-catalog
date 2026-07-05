@@ -16,6 +16,7 @@ const HEADER_ALIASES = {
   description: ["description", "desc", "summary", "overview"],
   course_url: ["url", "course url", "link", "course link", "course_url"],
   thumbnail_url: ["thumbnail url", "thumbnail", "image", "image url", "thumb", "thumbnail_url"],
+  ce_hours: ["ce hours", "ce credits", "ce", "credits", "ce_hours", "credit hours", "hours"],
 };
 
 // Normalize a raw CSV/XLSX row into an on-demand course payload.
@@ -26,6 +27,7 @@ function normalizeRow(raw) {
     description: "",
     course_url: "",
     thumbnail_url: "",
+    ce_hours: "",
   };
   // Build a lower-cased key lookup
   const map = {};
@@ -257,12 +259,16 @@ export default function OnDemandImport() {
         : parsed;
 
       for (const r of toImport) {
+        // Parse CE hours as number, tolerate blank
+        const ceRaw = (r.ready.ce_hours || "").toString().trim();
+        const ceNumber = ceRaw ? Number(ceRaw) : null;
         const payload = {
           title: r.ready.title,
           type: r.ready.type,
           description: r.ready.description || null,
           course_url: r.ready.course_url || null,
           thumbnail_url: r.ready.thumbnail_url || null,
+          ce_hours: Number.isFinite(ceNumber) ? ceNumber : null,
           is_published: true,
         };
         const { error } = await supabase.from("on_demand_courses").insert(payload);
@@ -356,6 +362,11 @@ export default function OnDemandImport() {
                   <td><code>Thumbnail URL</code></td>
                   <td>thumbnail, image, image url, thumb</td>
                   <td>https://…/image.jpg</td>
+                </tr>
+                <tr>
+                  <td><code>CE Hours</code></td>
+                  <td>ce hours, ce credits, ce, credits, hours</td>
+                  <td>1, 1.5, 2</td>
                 </tr>
               </tbody>
             </table>

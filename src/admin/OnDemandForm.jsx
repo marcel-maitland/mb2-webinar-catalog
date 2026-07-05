@@ -9,6 +9,7 @@ const BLANK = {
   description: "",
   thumbnail_url: "",
   course_url: "",
+  ce_hours: "",
   sort_order: 0,
   is_published: false,
 };
@@ -93,6 +94,7 @@ export default function OnDemandForm({ mode = "edit" }) {
       description: form.description || null,
       thumbnail_url: form.thumbnail_url || null,
       course_url: form.course_url || null,
+      ce_hours: form.ce_hours === "" || form.ce_hours == null ? null : Number(form.ce_hours),
       sort_order: Number(form.sort_order) || 0,
       is_published: !!form.is_published,
     };
@@ -190,22 +192,34 @@ export default function OnDemandForm({ mode = "edit" }) {
               />
             </Field>
 
-            <Field label="Type">
-              <div className="evPills" role="radiogroup">
-                {COURSE_TYPES.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    role="radio"
-                    aria-checked={form.type === t}
-                    className={`evPill ${form.type === t ? "active" : ""}`}
-                    onClick={() => set("type", t)}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </Field>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 200px", gap: 16, alignItems: "start" }}>
+              <Field label="Type">
+                <div className="evPills" role="radiogroup">
+                  {COURSE_TYPES.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      role="radio"
+                      aria-checked={form.type === t}
+                      className={`evPill ${form.type === t ? "active" : ""}`}
+                      onClick={() => set("type", t)}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+              <Field label="CE credits" hint="Optional · e.g. 1 or 1.5">
+                <input
+                  type="number"
+                  step="0.25"
+                  min="0"
+                  value={form.ce_hours ?? ""}
+                  onChange={(e) => set("ce_hours", e.target.value)}
+                  placeholder=""
+                />
+              </Field>
+            </div>
 
             <Field label="Description">
               <textarea
@@ -371,10 +385,14 @@ function ThumbnailDropZone({ url, uploading, onUpload, onClear, onUrlChange, fil
 function PreviewCard({ course }) {
   const thumbOk = /^https?:\/\//.test(course.thumbnail_url || "");
   const canRegister = /^https?:\/\//.test(course.course_url || "");
+  const ce = course.ce_hours === "" || course.ce_hours == null ? null : Number(course.ce_hours);
+  const ceLabel = ce != null && !Number.isNaN(ce)
+    ? `${ce} CE ${ce === 1 ? "credit" : "credits"}`
+    : "Available anytime";
 
   return (
     <article className="card cardElevated evPreviewCard odCard">
-      <div className={`thumb ${thumbOk ? "" : "thumbNoImg"}`}>
+      <div className={`thumb odThumb ${thumbOk ? "" : "thumbNoImg"}`}>
         {thumbOk ? (
           <img src={course.thumbnail_url} alt="" />
         ) : (
@@ -404,8 +422,8 @@ function PreviewCard({ course }) {
         <div className="sessions">
           <div className="sessionGroup">
             <div className="session">
-              <span className="sessionLabel" style={{ fontStyle: "italic", color: "#64748b" }}>
-                Available anytime
+              <span className="sessionLabel odCeLabel">
+                {ceLabel}
               </span>
               {canRegister ? (
                 <a
