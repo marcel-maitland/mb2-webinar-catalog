@@ -302,7 +302,7 @@ function Nav({ email }) {
         <NavLink to="/admin/import">Import</NavLink>
         {isSuperAdmin && <NavLink to="/admin/on-demand">On Demand</NavLink>}
         {isSuperAdmin && <NavLink to="/admin/clients">Clients</NavLink>}
-        <a href={currentClient?.slug ? `/c/${currentClient.slug}` : "/"} target="_blank" rel="noopener">View catalog ↗</a>
+        <ViewCatalogMenu currentClient={currentClient} isSuperAdmin={isSuperAdmin} />
       </nav>
 
       <div className="adminUser">
@@ -315,6 +315,97 @@ function Nav({ email }) {
         )}
       </div>
     </header>
+  );
+}
+
+/* =====================================================================
+   VIEW CATALOG dropdown — replaces the old single "View catalog ↗"
+   link now that we have both an Events catalog and an On-Demand catalog.
+===================================================================== */
+function ViewCatalogMenu({ currentClient, isSuperAdmin }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  const eventsUrl = currentClient?.slug ? `/${currentClient.slug}` : "/";
+
+  return (
+    <div className="viewCatalogWrap" ref={wrapRef}>
+      <button
+        type="button"
+        className={`viewCatalogBtn ${open ? "open" : ""}`}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+      >
+        View catalog
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" className="viewCatalogChev">
+          <path d="M1 3l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      {open && (
+        <div className="viewCatalogMenu" role="menu">
+          <a
+            className="viewCatalogItem"
+            href={eventsUrl}
+            target="_blank"
+            rel="noopener"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+          >
+            <span className="viewCatalogItemIcon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2"/>
+                <path d="M8 3v4M16 3v4M3 10h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </span>
+            <span className="viewCatalogItemBody">
+              <span className="viewCatalogItemTitle">Events catalog</span>
+              <span className="viewCatalogItemDesc">
+                {currentClient?.name
+                  ? `${currentClient.name} · upcoming CE events`
+                  : "Upcoming CE events"}
+              </span>
+            </span>
+            <span className="viewCatalogItemArrow" aria-hidden="true">↗</span>
+          </a>
+          {isSuperAdmin && (
+            <a
+              className="viewCatalogItem"
+              href="/on-demand"
+              target="_blank"
+              rel="noopener"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+            >
+              <span className="viewCatalogItemIcon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                  <path d="M10 8l6 4-6 4V8z" fill="currentColor"/>
+                </svg>
+              </span>
+              <span className="viewCatalogItemBody">
+                <span className="viewCatalogItemTitle">On-Demand catalog</span>
+                <span className="viewCatalogItemDesc">Watch anytime · self-paced courses</span>
+              </span>
+              <span className="viewCatalogItemArrow" aria-hidden="true">↗</span>
+            </a>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

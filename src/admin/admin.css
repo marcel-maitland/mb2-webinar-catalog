@@ -619,6 +619,110 @@
   .evSecondSlotGrid { grid-template-columns: 1fr; }
 }
 
+/* ============================================================
+   VIEW CATALOG dropdown in the admin top nav
+============================================================ */
+.viewCatalogWrap { position: relative; margin-left: auto; }
+.viewCatalogBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.viewCatalogBtn:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.viewCatalogBtn.open {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.viewCatalogChev {
+  transition: transform 0.15s;
+  color: currentColor;
+  opacity: 0.7;
+}
+.viewCatalogBtn.open .viewCatalogChev { transform: rotate(180deg); }
+
+.viewCatalogMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 280px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.06);
+  padding: 6px;
+  z-index: 100;
+  animation: viewCatalogFadeIn 0.14s ease-out;
+}
+@keyframes viewCatalogFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.viewCatalogItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--text);
+  transition: background 0.12s;
+}
+.viewCatalogItem:hover { background: #f1f5f9; }
+.viewCatalogItem + .viewCatalogItem { margin-top: 2px; }
+.viewCatalogItemIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.viewCatalogItemBody { flex: 1; min-width: 0; }
+.viewCatalogItemTitle {
+  display: block;
+  font-weight: 700;
+  font-size: 13.5px;
+  color: #0f172a;
+  line-height: 1.2;
+}
+.viewCatalogItemDesc {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.viewCatalogItemArrow {
+  color: #94a3b8;
+  font-size: 14px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+.viewCatalogItem:hover .viewCatalogItemArrow {
+  color: var(--accent);
+  opacity: 1;
+  transform: translate(1px, -1px);
+}
+
 /* Portal Link panel (inside the Edit Client modal) */
 .portalPanel { padding-top: 6px; }
 .portalUrlBox {
