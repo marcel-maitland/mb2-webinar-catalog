@@ -2585,8 +2585,10 @@
 .evSwitch.on .evSwitchSlider::before { transform: translateX(14px); }
 .evSwitch-accent.on .evSwitchSlider { background: var(--accent); }
 .evSwitch-gold.on .evSwitchSlider { background: #f59e0b; }
+.evSwitch-success.on .evSwitchSlider { background: #10b981; }
 .evSwitch-accent.on { background: var(--accent-soft); color: var(--accent); }
 .evSwitch-gold.on { background: #fffbeb; color: #b45309; }
+.evSwitch-success.on { background: #ecfdf5; color: #047857; }
 .evSwitchLabel { font-weight: 600; font-size: 13px; }
 
 /* --- danger zone --- */
