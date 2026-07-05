@@ -153,9 +153,8 @@ export default function OnDemandImport() {
     }
   };
 
-  // Parse pasted text. Detect delimiter manually (tab vs comma) since
-  // Papa's auto-detection can be unreliable on pasted text, and strip
-  // BOM / stray formatting characters that Google Sheets sometimes adds.
+  // Parse pasted text. Handle all common line endings and detect delimiter
+  // manually since Papa's auto-detection is unreliable on pasted content.
   const parsePaste = () => {
     setError("");
     setParsed([]);
@@ -169,11 +168,18 @@ export default function OnDemandImport() {
 
     // Strip UTF-8 BOM if present (Google Sheets exports sometimes include it)
     if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+
+    // Normalize ALL possible line separators to \n.
+    // Windows: \r\n · classic Mac: \r · Unix: \n · Unicode:
+    text = text.replace(/\r\n|\r| | /g, "\n");
     text = text.trim();
+
+    // Split into lines and drop empty ones
+    const allLines = text.split("\n").filter((l) => l.trim());
 
     // Detect delimiter by looking at the FIRST non-empty line.
     // Google Sheets / Excel paste as TAB-separated; raw CSV is comma-separated.
-    const firstLine = text.split(/\r?\n/).find((l) => l.trim()) || "";
+    const firstLine = allLines[0] || "";
     const tabCount = (firstLine.match(/\t/g) || []).length;
     const commaCount = (firstLine.match(/,/g) || []).length;
     const semicolonCount = (firstLine.match(/;/g) || []).length;
@@ -182,8 +188,28 @@ export default function OnDemandImport() {
     if (commaCount > tabCount && commaCount >= semicolonCount) delimiter = ",";
     else if (semicolonCount > tabCount && semicolonCount > commaCount) delimiter = ";";
     else if (tabCount === 0 && commaCount === 0 && semicolonCount === 0) {
-      // Only one column? Treat entire line as the title
       delimiter = ",";
+    }
+
+    const delimLabel =
+      delimiter === "\t" ? "TAB" : delimiter === "," ? "COMMA" : "SEMICOLON";
+
+    // Preview of what got pasted (for diagnostics)
+    const preview = text.slice(0, 200);
+    const previewNice = preview
+      .replace(/\t/g, "→")   // tab → arrow
+      .replace(/\n/g, "⏎\n"); // newline → return arrow
+
+    // If we only see ONE line total, no amount of parsing will help.
+    // Show the user a clear diagnostic with a preview of the raw content.
+    if (allLines.length < 2) {
+      setError(
+        `Only ${allLines.length} line detected in the paste — we need at least 2 (headers + one data row).\n\n` +
+        `Detected delimiter would be ${delimLabel}. The paste's first 200 chars (→ = tab, ⏎ = newline):\n\n${previewNice}\n\n` +
+        `If you see all your data flowing together in one line above, your spreadsheet probably lost the row breaks during copy. ` +
+        `Try re-selecting the rows in your source and pasting again. If you're pasting from a PDF or web page, use the file upload option instead.`
+      );
+      return;
     }
 
     // Parse synchronously (no callback) to get result back directly
@@ -193,17 +219,10 @@ export default function OnDemandImport() {
       delimiter,
     });
 
-    // Debug info the user can see if parsing fails
-    const delimLabel =
-      delimiter === "\t" ? "TAB" : delimiter === "," ? "COMMA" : "SEMICOLON";
-
     if (!result?.data || result.data.length === 0) {
-      const rowLines = text.split(/\r?\n/).filter((l) => l.trim());
       setError(
-        `No data rows detected. Diagnostics: ${rowLines.length} total lines, ` +
-        `${delimLabel} delimiter chosen (${tabCount} tabs / ${commaCount} commas ` +
-        `in the header). Make sure the first line is column headers and ` +
-        `there's at least one data row below it.`
+        `No data rows detected. ${allLines.length} lines seen, ${delimLabel} delimiter chosen, ` +
+        `${result?.errors?.length || 0} parse errors. Preview:\n\n${previewNice}`
       );
       return;
     }
@@ -213,15 +232,15 @@ export default function OnDemandImport() {
       // eslint-disable-next-line no-console
       console.log("[on-demand paste]", {
         delimiter: delimLabel,
+        lineCount: allLines.length,
         headers: Object.keys(result.data[0] || {}),
         rowCount: result.data.length,
         firstRow: result.data[0],
       });
     }
 
-    const lineCount = text.split(/\r?\n/).filter((l) => l.trim()).length;
     setPasteSourceLabel(
-      `Pasted data (${delimLabel}) · ${Math.max(0, lineCount - 1)} row${lineCount - 1 === 1 ? "" : "s"} + header`
+      `Pasted data (${delimLabel}) · ${result.data.length} row${result.data.length === 1 ? "" : "s"}`
     );
     onParsed(result.data);
   };
@@ -582,7 +601,21 @@ Endodontic Learning Path\tLearning Path\tMulti-course series…\thttps://…\tht
         </>
       )}
 
-      {error && <p className="errMsg" style={{ marginTop: 16 }}>{error}</p>}
+      {error && (
+        <pre
+          className="errMsg"
+          style={{
+            marginTop: 16,
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+            fontFamily: "inherit",
+            fontSize: 13,
+            lineHeight: 1.5,
+          }}
+        >
+          {error}
+        </pre>
+      )}
     </div>
   );
 }
