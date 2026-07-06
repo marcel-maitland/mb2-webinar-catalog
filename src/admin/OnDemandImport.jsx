@@ -152,7 +152,7 @@ export default function OnDemandImport() {
   const [doneCount, setDoneCount] = useState(0);
   const [drag, setDrag] = useState(false);
   const [showFormatRef, setShowFormatRef] = useState(false);
-  const [skipDupes, setSkipDupes] = useState(true);
+  const [dupeAction, setDupeAction] = useState("skip"); // "skip" | "update" | "insert"
   const [ignoreDescription, setIgnoreDescription] = useState(true);
   const [columnDiag, setColumnDiag] = useState(null); // { mapped, unmapped }
   const fileRef = useRef(null);
@@ -188,16 +188,22 @@ export default function OnDemandImport() {
     if (rows.length === 0) return rows;
     const { data } = await supabase
       .from("on_demand_courses")
-      .select("title");
-    const existing = new Set(
-      (data || []).map((r) => (r.title || "").trim().toLowerCase())
-    );
-    return rows.map((r) => ({
-      ...r,
-      status: existing.has((r.ready.title || "").trim().toLowerCase())
-        ? "duplicate"
-        : "new",
-    }));
+      .select("id, title");
+    // Map lowercased title → existing course id
+    const existingByTitle = new Map();
+    for (const r of data || []) {
+      const key = (r.title || "").trim().toLowerCase();
+      if (key) existingByTitle.set(key, r.id);
+    }
+    return rows.map((r) => {
+      const key = (r.ready.title || "").trim().toLowerCase();
+      const existingId = existingByTitle.get(key);
+      return {
+        ...r,
+        status: existingId ? "duplicate" : "new",
+        existingId: existingId || null,
+      };
+    });
   };
 
   const onParsed = async (rows) => {
@@ -334,26 +340,51 @@ export default function OnDemandImport() {
     let ok = 0;
     let failedRow = null;
     try {
-      const toImport = skipDupes
+      // Build the list of rows to act on. Skip mode filters duplicates out.
+      const toProcess = dupeAction === "skip"
         ? parsed.filter((r) => r.status === "new")
         : parsed;
 
-      for (const r of toImport) {
+      for (const r of toProcess) {
         const ceRaw = (r.ready.ce_hours || "").toString().trim();
         const ceNumber = ceRaw ? Number(ceRaw) : null;
-        const payload = {
+        const fullPayload = {
           title: r.ready.title,
           type: r.ready.type,
           description: r.ready.description || null,
           course_url: r.ready.course_url || null,
           thumbnail_url: r.ready.thumbnail_url || null,
           ce_hours: Number.isFinite(ceNumber) ? ceNumber : null,
-          is_published: true,
         };
-        const { error } = await supabase.from("on_demand_courses").insert(payload);
-        if (error) {
-          failedRow = { title: r.ready.title, err: error.message };
-          throw error;
+
+        if (r.status === "duplicate" && dupeAction === "update" && r.existingId) {
+          // UPDATE existing row. Only include fields that have a value in the
+          // import so we don't wipe out data that's empty in the spreadsheet.
+          const updatePayload = {};
+          if (fullPayload.title) updatePayload.title = fullPayload.title;
+          if (fullPayload.type) updatePayload.type = fullPayload.type;
+          if (fullPayload.description != null) updatePayload.description = fullPayload.description;
+          if (fullPayload.course_url != null) updatePayload.course_url = fullPayload.course_url;
+          if (fullPayload.thumbnail_url != null) updatePayload.thumbnail_url = fullPayload.thumbnail_url;
+          if (fullPayload.ce_hours != null) updatePayload.ce_hours = fullPayload.ce_hours;
+          const { error } = await supabase
+            .from("on_demand_courses")
+            .update(updatePayload)
+            .eq("id", r.existingId);
+          if (error) {
+            failedRow = { title: r.ready.title, err: error.message };
+            throw error;
+          }
+        } else {
+          // INSERT — either it's a new row, or dupeAction is "insert" (import as new)
+          const insertPayload = { ...fullPayload, is_published: true };
+          const { error } = await supabase
+            .from("on_demand_courses")
+            .insert(insertPayload);
+          if (error) {
+            failedRow = { title: r.ready.title, err: error.message };
+            throw error;
+          }
         }
         ok += 1;
         setDoneCount(ok);
@@ -372,7 +403,15 @@ export default function OnDemandImport() {
 
   const newCount = parsed.filter((r) => r.status === "new").length;
   const dupeCount = parsed.filter((r) => r.status === "duplicate").length;
-  const willImportCount = skipDupes ? newCount : parsed.length;
+  const willImportCount =
+    dupeAction === "skip" ? newCount : parsed.length;
+  const insertCount =
+    dupeAction === "skip"
+      ? newCount
+      : dupeAction === "insert"
+      ? parsed.length
+      : newCount; // update mode: only new rows are inserted
+  const updateCount = dupeAction === "update" ? dupeCount : 0;
   const showInput = !chosenFile && parsed.length === 0;
 
   return (
@@ -640,17 +679,63 @@ Endodontic Learning Path\tLearning Path\t4\thttps://…\thttps://…`}
               {columnDiag && <ColumnMappingPanel diag={columnDiag} /> }
 
               {dupeCount > 0 && (
-                <label className="impInlineCheckbox impInlineCheckboxCard">
-                  <input
-                    type="checkbox"
-                    checked={skipDupes}
-                    onChange={(e) => setSkipDupes(e.target.checked)}
-                  />
-                  <span>
-                    Skip duplicates
-                    <span className="impInlineCheckboxHint"> — {dupeCount} row{dupeCount === 1 ? "" : "s"} with matching titles will be ignored.</span>
-                  </span>
-                </label>
+                <div className="impDupeControl">
+                  <div className="impDupeControlHeader">
+                    <div className="impDupeControlIcon">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/>
+                        <path d="M12 8v5m0 3h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="impDupeControlTitle">
+                        {dupeCount} course{dupeCount === 1 ? "" : "s"} already exist with the same title
+                      </div>
+                      <div className="impDupeControlSub">
+                        How should we handle these existing rows?
+                      </div>
+                    </div>
+                  </div>
+                  <div className="impDupeSegmented" role="radiogroup">
+                    <DupeSegOption
+                      value="skip"
+                      current={dupeAction}
+                      onChange={setDupeAction}
+                      title="Skip existing"
+                      desc="Leave existing rows unchanged. Only insert new titles."
+                      icon={
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <path d="M6 12h12M14 6l4 6-4 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      }
+                    />
+                    <DupeSegOption
+                      value="update"
+                      current={dupeAction}
+                      onChange={setDupeAction}
+                      title="Update existing"
+                      desc="Overwrite existing rows with values from your import. Empty cells won't wipe existing data."
+                      icon={
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <path d="M4 12a8 8 0 0114-5m2-2v6h-6M20 12a8 8 0 01-14 5m-2 2v-6h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      }
+                    />
+                    <DupeSegOption
+                      value="insert"
+                      current={dupeAction}
+                      onChange={setDupeAction}
+                      title="Import as new"
+                      desc="Create a second row with the same title. Rarely what you want."
+                      icon={
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <path d="M12 5v14m-7-7h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
+                      }
+                      warn
+                    />
+                  </div>
+                </div>
               )}
 
               <div className="impPreviewV2">
@@ -698,9 +783,18 @@ Endodontic Learning Path\tLearning Path\t4\thttps://…\thttps://…`}
 
               <div className="impActionsV2">
                 <div className="impActionsInfo">
-                  {importing
-                    ? `Importing… ${doneCount} of ${willImportCount}`
-                    : `Ready to import ${willImportCount} course${willImportCount === 1 ? "" : "s"}.`}
+                  {importing ? (
+                    `Working… ${doneCount} of ${willImportCount}`
+                  ) : (
+                    <>
+                      Ready to <strong>{insertCount > 0 ? `insert ${insertCount}` : ""}</strong>
+                      {insertCount > 0 && updateCount > 0 ? " and " : ""}
+                      <strong>{updateCount > 0 ? `update ${updateCount}` : ""}</strong>
+                      {dupeAction === "skip" && dupeCount > 0 ? (
+                        <span className="muted"> · skipping {dupeCount} existing</span>
+                      ) : null}
+                    </>
+                  )}
                 </div>
                 <div className="impActionsBtns">
                   <button type="button" className="ghostBtn" onClick={reset} disabled={importing}>
@@ -712,7 +806,11 @@ Endodontic Learning Path\tLearning Path\t4\thttps://…\thttps://…`}
                     onClick={runImport}
                     disabled={importing || willImportCount === 0}
                   >
-                    {importing ? "Importing…" : `Import ${willImportCount} course${willImportCount === 1 ? "" : "s"}`}
+                    {importing
+                      ? "Working…"
+                      : dupeAction === "update" && updateCount > 0
+                      ? `Import ${insertCount} · Update ${updateCount}`
+                      : `Import ${willImportCount} course${willImportCount === 1 ? "" : "s"}`}
                   </button>
                 </div>
               </div>
@@ -727,6 +825,32 @@ Endodontic Learning Path\tLearning Path\t4\thttps://…\thttps://…`}
         </pre>
       )}
     </div>
+  );
+}
+
+function DupeSegOption({ value, current, onChange, title, desc, icon, warn }) {
+  const active = current === value;
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={active}
+      className={`impDupeSegOpt ${active ? "active" : ""} ${warn ? "warn" : ""}`}
+      onClick={() => onChange(value)}
+    >
+      <span className="impDupeSegIcon">{icon}</span>
+      <span className="impDupeSegText">
+        <span className="impDupeSegTitle">{title}</span>
+        <span className="impDupeSegDesc">{desc}</span>
+      </span>
+      {active && (
+        <span className="impDupeSegCheck" aria-hidden="true">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <path d="M5 12l4 4L19 6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </span>
+      )}
+    </button>
   );
 }
 
