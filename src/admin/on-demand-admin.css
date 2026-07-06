@@ -352,7 +352,7 @@
   -webkit-backdrop-filter: blur(6px);
 }
 .odGridCardStatus.isDraft {
-  background: rgba(234, 88, 12, 0.9);
+  background: rgba(14, 148, 163, 0.9);
 }
 .odGridCardBody {
   padding: 14px 16px 12px;
@@ -1412,9 +1412,9 @@
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.14);
 }
 .impDupeSegOpt.warn.active {
-  border-color: #f97316;
-  background: linear-gradient(135deg, #ffffff 0%, #fff7ed 100%);
-  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.14);
+  border-color: #1dbfc9;
+  background: linear-gradient(135deg, #ffffff 0%, #ecfeff 100%);
+  box-shadow: 0 2px 8px rgba(29, 191, 201, 0.14);
 }
 .impDupeSegIcon {
   flex-shrink: 0;
@@ -1462,8 +1462,8 @@
   box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
 }
 .impDupeSegOpt.warn.active .impDupeSegCheck {
-  background: #f97316;
-  box-shadow: 0 2px 4px rgba(249, 115, 22, 0.3);
+  background: #1dbfc9;
+  box-shadow: 0 2px 4px rgba(29, 191, 201, 0.3);
 }
 
 /* Import options strip — global settings above the input method */

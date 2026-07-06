@@ -10,7 +10,7 @@
 .cardElevated:hover {
   transform: translateY(-3px);
   box-shadow: 0 14px 32px rgba(17, 24, 39, .12);
-  border-color: rgba(249, 115, 22, .35);
+  border-color: rgba(29, 191, 201, .35);
 }
 
 /* Make sure .thumb is a positioned ancestor for the calendar sticker */
@@ -59,7 +59,7 @@
 }
 
 .calBlockMonth {
-  background: linear-gradient(135deg, #fb923c 0%, #f97316 60%, #ea580c 100%);
+  background: linear-gradient(135deg, #67e8f0 0%, #1dbfc9 60%, #0e94a3 100%);
   color: #fff;
   font-size: 10px;
   font-weight: 800;
@@ -199,15 +199,15 @@
   white-space: nowrap;
 }
 .cardElevated .thumbUrgencyToday {
-  background: #f97316;
+  background: #1dbfc9;
   color: #fff;
-  border-color: #f97316;
-  box-shadow: 0 4px 14px rgba(249, 115, 22, 0.45);
+  border-color: #1dbfc9;
+  box-shadow: 0 4px 14px rgba(29, 191, 201, 0.45);
   animation: thumbUrgencyPulse 1.8s ease-in-out infinite;
 }
 @keyframes thumbUrgencyPulse {
-  0%, 100% { box-shadow: 0 4px 14px rgba(249, 115, 22, 0.45), 0 0 0 0 rgba(249, 115, 22, 0.4); }
-  50%      { box-shadow: 0 4px 14px rgba(249, 115, 22, 0.45), 0 0 0 8px rgba(249, 115, 22, 0); }
+  0%, 100% { box-shadow: 0 4px 14px rgba(29, 191, 201, 0.45), 0 0 0 0 rgba(29, 191, 201, 0.4); }
+  50%      { box-shadow: 0 4px 14px rgba(29, 191, 201, 0.45), 0 0 0 8px rgba(29, 191, 201, 0); }
 }
 
 /* Slightly smaller at narrower 3-col widths */
@@ -245,24 +245,24 @@
 
 /* Register button — refined with a gradient + glow */
 .cardElevated .sessionBtn {
-  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+  background: linear-gradient(135deg, #67e8f0 0%, #1dbfc9 100%);
   border: none;
-  box-shadow: 0 6px 14px rgba(249, 115, 22, .35);
+  box-shadow: 0 6px 14px rgba(29, 191, 201, .35);
   transition: transform .12s ease, box-shadow .12s ease;
   font-weight: 700;
 }
 .cardElevated .sessionBtn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(249, 115, 22, .45);
+  box-shadow: 0 10px 22px rgba(29, 191, 201, .45);
 }
 
 /* MB2 / Exclusive badge — slightly more confident */
 .cardElevated .mb2Badge {
-  background: linear-gradient(135deg, #f97316, #ea580c);
+  background: linear-gradient(135deg, #1dbfc9, #0e94a3);
   color: #fff;
   font-weight: 800;
   letter-spacing: 0.04em;
-  box-shadow: 0 4px 10px rgba(249, 115, 22, .4);
+  box-shadow: 0 4px 10px rgba(29, 191, 201, .4);
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
@@ -559,13 +559,13 @@
 }
 .filterExclBtn:hover { border-color: #cbd5e1; background: #f8fafc; }
 .filterExclBtn.active {
-  background: linear-gradient(135deg, #fff7ed, #ffedd5);
+  background: linear-gradient(135deg, #ecfeff, #ffedd5);
   border-color: #fdba74;
   color: #9a3412;
-  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.15);
+  box-shadow: 0 2px 6px rgba(29, 191, 201, 0.15);
 }
-.filterExclStar { color: #f97316; font-size: 14px; }
-.filterExclBtn.active .filterExclStar { color: #ea580c; }
+.filterExclStar { color: #1dbfc9; font-size: 14px; }
+.filterExclBtn.active .filterExclStar { color: #0e94a3; }
 .filterExclLabel { white-space: nowrap; }
 
 /* Chip-style buttons for each filter category */
