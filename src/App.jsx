@@ -241,9 +241,9 @@ function ClockIcon() {
    APP
 ================================= */
 
-export default function App() {
+export default function App({ embedded = false, slugOverride = null }) {
   const { slug: routeSlug } = useParams();
-  const effectiveSlug = (routeSlug || DEFAULT_SLUG).toLowerCase();
+  const effectiveSlug = (slugOverride || routeSlug || DEFAULT_SLUG).toLowerCase();
 
   const [client, setClient] = useState(null);     // { id, name, slug, logo_url } | null
   const [clientLoading, setClientLoading] = useState(true);
@@ -437,27 +437,38 @@ export default function App() {
     : "Upcoming Events";
 
   return (
-    <div className="page">
+    <div className={`page ${embedded ? "pageEmbedded" : ""}`}>
       <CatalogElevatedStyles />
-      <header className="header">
-        <div className="headerLeft">
-          <div className="titleRow">
-            <h1>{title}</h1>
+      {!embedded && (
+        <header className="header">
+          <div className="headerLeft">
+            <div className="titleRow">
+              <h1>{title}</h1>
+            </div>
+            <p>
+              {isExclusiveMode
+                ? `Browse upcoming ${clientName} Exclusive events, register instantly, and filter by category, vendor, CE hours, format, or role.`
+                : "Browse upcoming events, register instantly, and filter by category, vendor, CE hours, format, or role."}
+            </p>
           </div>
-          <p>
-            {isExclusiveMode
-              ? `Browse upcoming ${clientName} Exclusive events, register instantly, and filter by category, vendor, CE hours, format, or role.`
-              : "Browse upcoming events, register instantly, and filter by category, vendor, CE hours, format, or role."}
-          </p>
-        </div>
 
+          <input
+            className="search"
+            placeholder="Search events, vendors, categories…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </header>
+      )}
+
+      {embedded && (
         <input
-          className="search"
+          className="search searchEmbedded"
           placeholder="Search events, vendors, categories…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-      </header>
+      )}
 
       {/* Horizontal filter bar — sticks below the header. Popover dropdowns
           keep their scrolling internal so the page never gets pushed. */}

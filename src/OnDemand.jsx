@@ -7,7 +7,7 @@ const safe = (v) => (typeof v === "string" ? v.trim() : v == null ? "" : String(
 const isUrl = (u) => safe(u).startsWith("http");
 const uniq = (arr) => [...new Set(arr.filter((v) => v !== null && v !== undefined && v !== ""))];
 
-export default function OnDemand() {
+export default function OnDemand({ embedded = false }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -93,25 +93,36 @@ export default function OnDemand() {
   }, [rows, query, typeSelected, ceSelected, rolesSelected]);
 
   return (
-    <div className="page">
-      <header className="header">
-        <div className="headerLeft">
-          <div className="titleRow">
-            <h1>On Demand Courses</h1>
+    <div className={`page ${embedded ? "pageEmbedded" : ""}`}>
+      {!embedded && (
+        <header className="header">
+          <div className="headerLeft">
+            <div className="titleRow">
+              <h1>On Demand Courses</h1>
+            </div>
+            <p>
+              Access our library of on-demand continuing education courses.
+              Learn on your schedule, at your pace.
+            </p>
           </div>
-          <p>
-            Access our library of on-demand continuing education courses.
-            Learn on your schedule, at your pace.
-          </p>
-        </div>
 
+          <input
+            className="search"
+            placeholder="Search on-demand courses…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </header>
+      )}
+
+      {embedded && (
         <input
-          className="search"
+          className="search searchEmbedded"
           placeholder="Search on-demand courses…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-      </header>
+      )}
 
       {/* Horizontal filter bar — same pattern as the events catalog */}
       <OdFilterBar

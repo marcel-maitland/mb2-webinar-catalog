@@ -5,6 +5,7 @@ import App from "./App.jsx";
 import AdminApp from "./admin/AdminApp.jsx";
 import PortalAuth from "./admin/PortalAuth.jsx";
 import OnDemand from "./OnDemand.jsx";
+import UnifiedCatalog from "./UnifiedCatalog.jsx";
 import "./App.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -14,8 +15,15 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         {/* Portal sign-in: the URL itself is the credential. */}
         <Route path="/portal/:token" element={<PortalAuth />} />
 
-        {/* On-demand catalog (public) */}
+        {/* On-demand catalog (public, standalone) */}
         <Route path="/on-demand" element={<OnDemand />} />
+
+        {/* UNIFIED CATALOG — tabs between On-Demand and Live Events.
+            Designed for TI iframe embeds:
+              /all         → default (MB2)
+              /all/:slug   → specific client, e.g. /all/mb2 */}
+        <Route path="/all" element={<UnifiedCatalog />} />
+        <Route path="/all/:slug" element={<UnifiedCatalog />} />
 
         {/* Admin dashboard (auth-gated inside AdminApp). */}
         <Route path="/" element={<AdminApp />} />
