@@ -57,13 +57,14 @@
   height: 100%;
 }
 
-/* Thumbnail — fixed 16:9 frame so every card starts its body at the
-   same Y position. object-fit: cover to fill the frame edge-to-edge
-   without gaps or letterboxing. */
+/* Thumbnail — fixed 4:3 frame so every card starts its body at the
+   same Y position. 4:3 is a taller ratio than 16:9 and matches most
+   dental-education course thumbnails without cropping their top or
+   bottom. object-fit: cover to fill the frame edge-to-edge. */
 .odCard .odThumb {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9 !important;
+  aspect-ratio: 4 / 3 !important;
   overflow: hidden !important;
   background: #f1f5f9;
   padding: 0 !important;
