@@ -57,16 +57,18 @@
   height: 100%;
 }
 
-/* Thumbnail — fixed 16:9 frame matching the source aspect ratio.
-   Source thumbnails are 960 × 540 (exactly 16:9), so `object-fit: cover`
-   fills the frame edge-to-edge with zero cropping and zero letterboxing.
-   Every card starts its body at the same Y position across the grid. */
+/* Thumbnail — fixed 16:9 frame so every card starts its body at the
+   same Y position across the grid. `object-fit: contain` guarantees the
+   FULL source image is always visible — no top/bottom cropping — even
+   when the source doesn't match 16:9 exactly. Any negative space around
+   the image is filled with a soft neutral gradient so letterboxing reads
+   as intentional framing rather than a bug. */
 .odCard .odThumb {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9 !important;
   overflow: hidden !important;
-  background: #f1f5f9;
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
   padding: 0 !important;
   margin: 0 !important;
   display: block;
@@ -75,7 +77,7 @@
 .odCard .odThumb > img {
   width: 100% !important;
   height: 100% !important;
-  object-fit: cover !important;
+  object-fit: contain !important;
   object-position: center;
   display: block;
 }
