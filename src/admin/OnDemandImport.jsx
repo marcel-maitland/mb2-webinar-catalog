@@ -27,7 +27,23 @@ const HEADER_ALIASES = {
     "continuing education credit hours",
     "agd hours", "agd credits", "pace hours", "pace credits", "agd", "pace",
   ],
+  roles: [
+    "roles", "role", "audience", "audiences", "for", "targeted at",
+    "target audience", "who is this for", "who for",
+  ],
 };
+
+// Split a raw roles value (comma, pipe, or semicolon separated) into a
+// cleaned string[]. "Dentist, Hygienist | Assistant" → ["Dentist","Hygienist","Assistant"]
+function parseRoles(v) {
+  if (v == null) return [];
+  const s = String(v).trim();
+  if (!s) return [];
+  return s
+    .split(/[,;|/]+/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
 
 // Normalize a header key aggressively — lowercase, collapse ALL whitespace
 // (including non-breaking spaces  ), strip parenthetical suffixes like
@@ -52,6 +68,7 @@ function normalizeRow(raw, opts = {}) {
     course_url: "",
     thumbnail_url: "",
     ce_hours: "",
+    roles: [],
   };
   const map = {};
   for (const [k, v] of Object.entries(raw || {})) {
@@ -82,6 +99,10 @@ function normalizeRow(raw, opts = {}) {
         break;
       }
     }
+  }
+  // Roles came in as a raw string (comma/pipe separated). Split into array.
+  if (typeof out.roles === "string") {
+    out.roles = parseRoles(out.roles);
   }
   const t = out.type.toLowerCase();
   if (t.includes("learning") || t.includes("path")) out.type = "Learning Path";
@@ -135,9 +156,9 @@ function diagnoseColumns(rawRow, opts = {}) {
 
 // Downloadable CSV template
 const TEMPLATE_CSV = [
-  "Course Title,Type,CE Hours,URL,Thumbnail URL,Description",
-  '"7 Strategies for Telephone Success",Course,0.5,https://learn.example.com/telephone,https://example.com/thumb1.jpg,"Optional — leave blank if you\'ll add later."',
-  '"Endodontics Learning Path","Learning Path",4,https://learn.example.com/endo-path,https://example.com/thumb2.jpg,',
+  "Course Title,Type,CE Hours,Roles,URL,Thumbnail URL,Description",
+  '"7 Strategies for Telephone Success",Course,0.5,"Front Office, Assistant",https://learn.example.com/telephone,https://example.com/thumb1.jpg,"Optional — leave blank if you\'ll add later."',
+  '"Endodontics Learning Path","Learning Path",4,"Dentist, Hygienist",https://learn.example.com/endo-path,https://example.com/thumb2.jpg,',
 ].join("\n");
 
 export default function OnDemandImport() {
@@ -348,6 +369,7 @@ export default function OnDemandImport() {
       for (const r of toProcess) {
         const ceRaw = (r.ready.ce_hours || "").toString().trim();
         const ceNumber = ceRaw ? Number(ceRaw) : null;
+        const rolesArr = Array.isArray(r.ready.roles) ? r.ready.roles : [];
         const fullPayload = {
           title: r.ready.title,
           type: r.ready.type,
@@ -355,6 +377,7 @@ export default function OnDemandImport() {
           course_url: r.ready.course_url || null,
           thumbnail_url: r.ready.thumbnail_url || null,
           ce_hours: Number.isFinite(ceNumber) ? ceNumber : null,
+          roles: rolesArr,
         };
 
         if (r.status === "duplicate" && dupeAction === "update" && r.existingId) {
@@ -367,6 +390,7 @@ export default function OnDemandImport() {
           if (fullPayload.course_url != null) updatePayload.course_url = fullPayload.course_url;
           if (fullPayload.thumbnail_url != null) updatePayload.thumbnail_url = fullPayload.thumbnail_url;
           if (fullPayload.ce_hours != null) updatePayload.ce_hours = fullPayload.ce_hours;
+          if (rolesArr.length > 0) updatePayload.roles = rolesArr;
           const { error } = await supabase
             .from("on_demand_courses")
             .update(updatePayload)
@@ -516,6 +540,7 @@ export default function OnDemandImport() {
                 <FormatRow name="CE Hours" aliases="ce hours, ce credits, credits, hours" example="0.5, 1, 1.5, 2" />
                 <FormatRow name="URL" aliases="url, course url, link" example="https://learn.example.com/…" />
                 <FormatRow name="Thumbnail URL" aliases="thumbnail, image, image url" example="https://…/image.jpg" />
+                <FormatRow name="Roles" aliases="roles, role, audience, for, target audience" example="Dentist, Hygienist, Assistant" />
                 <FormatRow name="Description" aliases="description, desc, summary" example="Short summary shown on the card." />
               </div>
             </div>
@@ -755,8 +780,9 @@ Endodontic Learning Path\tLearning Path\t4\thttps://…\thttps://…`}
                       <tr>
                         <th style={{ width: 90 }}>Status</th>
                         <th>Title</th>
-                        <th style={{ width: 120 }}>Type</th>
-                        <th style={{ width: 80 }}>CE</th>
+                        <th style={{ width: 110 }}>Type</th>
+                        <th style={{ width: 60 }}>CE</th>
+                        <th style={{ width: 200 }}>Roles</th>
                         <th>URL</th>
                       </tr>
                     </thead>
@@ -775,6 +801,15 @@ Endodontic Learning Path\tLearning Path\t4\thttps://…\thttps://…`}
                             </span>
                           </td>
                           <td className="muted">{r.ready.ce_hours || "—"}</td>
+                          <td className="muted">
+                            {Array.isArray(r.ready.roles) && r.ready.roles.length > 0 ? (
+                              <span className="impRolesCell">
+                                {r.ready.roles.map((role) => (
+                                  <span key={role} className="impRolePill">{role}</span>
+                                ))}
+                              </span>
+                            ) : "—"}
+                          </td>
                           <td className="muted impCellUrl">
                             {r.ready.course_url ? (
                               <a href={r.ready.course_url} target="_blank" rel="noopener">
@@ -886,6 +921,7 @@ const FIELD_LABELS = {
   title: "Title",
   type: "Type",
   ce_hours: "CE Hours",
+  roles: "Roles",
   course_url: "URL",
   thumbnail_url: "Thumbnail URL",
   description: "Description",

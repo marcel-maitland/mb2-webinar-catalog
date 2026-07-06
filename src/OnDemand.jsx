@@ -14,6 +14,7 @@ export default function OnDemand() {
   const [query, setQuery] = useState("");
   const [typeSelected, setTypeSelected] = useState(new Set());
   const [ceSelected, setCeSelected] = useState(new Set());
+  const [rolesSelected, setRolesSelected] = useState(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +52,10 @@ export default function OnDemand() {
     const vals = rows.map((r) => r.ce_hours).filter((n) => typeof n === "number");
     return [...new Set(vals)].sort((a, b) => a - b);
   }, [rows]);
+  const roles = useMemo(() => {
+    const all = rows.flatMap((r) => (Array.isArray(r.roles) ? r.roles : []));
+    return uniq(all).sort((a, b) => a.localeCompare(b));
+  }, [rows]);
 
   const toggle = (setFn, value) =>
     setFn((prev) => {
@@ -63,22 +68,29 @@ export default function OnDemand() {
     setQuery("");
     setTypeSelected(new Set());
     setCeSelected(new Set());
+    setRolesSelected(new Set());
   };
 
   const filtered = useMemo(() => {
     const q = safe(query).toLowerCase();
     const typeOn = typeSelected.size > 0;
     const ceOn = ceSelected.size > 0;
+    const rolesOn = rolesSelected.size > 0;
     return rows.filter((r) => {
       if (typeOn && !typeSelected.has(r.type)) return false;
       if (ceOn && !(typeof r.ce_hours === "number" && ceSelected.has(r.ce_hours))) return false;
+      if (rolesOn) {
+        const rRoles = Array.isArray(r.roles) ? r.roles : [];
+        if (!rRoles.some((rr) => rolesSelected.has(rr))) return false;
+      }
       if (q) {
-        const hay = `${safe(r.title)} ${safe(r.description)} ${safe(r.type)}`.toLowerCase();
+        const rolesHay = Array.isArray(r.roles) ? r.roles.join(" ") : "";
+        const hay = `${safe(r.title)} ${safe(r.description)} ${safe(r.type)} ${rolesHay}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [rows, query, typeSelected, ceSelected]);
+  }, [rows, query, typeSelected, ceSelected, rolesSelected]);
 
   return (
     <div className="page">
@@ -105,6 +117,7 @@ export default function OnDemand() {
       <OdFilterBar
         types={types} typeSelected={typeSelected} setTypeSelected={setTypeSelected}
         ceHours={ceHours} ceSelected={ceSelected} setCeSelected={setCeSelected}
+        roles={roles} rolesSelected={rolesSelected} setRolesSelected={setRolesSelected}
         toggle={toggle}
         clearFilters={clearFilters}
         filteredCount={filtered.length}
@@ -263,10 +276,12 @@ function OdFilterBar(props) {
   const {
     types, typeSelected, setTypeSelected,
     ceHours, ceSelected, setCeSelected,
+    roles, rolesSelected, setRolesSelected,
     toggle, clearFilters, filteredCount,
   } = props;
 
-  const hasAnyFilter = typeSelected.size > 0 || ceSelected.size > 0;
+  const hasAnyFilter =
+    typeSelected.size > 0 || ceSelected.size > 0 || rolesSelected.size > 0;
   const courseLabel = filteredCount === 1 ? "course" : "courses";
 
   return (
@@ -278,6 +293,13 @@ function OdFilterBar(props) {
           selected={typeSelected}
           onToggle={(v) => toggle(setTypeSelected, v)}
           onClear={() => setTypeSelected(new Set())}
+        />
+        <OdFilterPopover
+          label="Role"
+          options={roles}
+          selected={rolesSelected}
+          onToggle={(v) => toggle(setRolesSelected, v)}
+          onClear={() => setRolesSelected(new Set())}
         />
         <OdFilterPopover
           label="CE Hours"

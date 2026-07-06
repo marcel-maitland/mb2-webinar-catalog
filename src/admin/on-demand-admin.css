@@ -1485,3 +1485,21 @@
   color: #64748b;
   margin-bottom: 2px;
 }
+
+/* Role pills inside the import preview table */
+.impRolesCell {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.impRolePill {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #ecfeff;
+  color: #0e94a3;
+  border: 1px solid #a5f3fc;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
