@@ -109,3 +109,103 @@ a.odCardClickable:hover .odCardCta {
   filter: brightness(1.08);
   transform: translateX(2px);
 }
+
+/* ============================================================
+   CE CREDIT MEDAL — the visual "hero" of each card
+   Emerald-gradient circular medallion with a star inside,
+   a dashed inner "seal" ring, and a bold number + caption
+   to the right. Reads as "you earn this" instead of muted
+   metadata.
+   ============================================================ */
+
+/* Layout row that holds the medal on the left, CTA on the right */
+.odCard .odSessionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px !important;
+}
+
+.odCredit {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* The medallion — small circular badge in emerald gradient with
+   a dashed inner ring so it reads like an official "seal". */
+.odCredit .odCreditMedal {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 4px 12px rgba(4, 120, 87, 0.28),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.10),
+    inset 0 2px 0 rgba(255, 255, 255, 0.20);
+  border: 2px solid #ffffff;
+  transition: transform 0.18s ease;
+}
+.odCredit .odCreditMedal::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+}
+/* Star lifts slightly on card hover */
+a.odCardClickable:hover .odCredit .odCreditMedal {
+  transform: rotate(-6deg) scale(1.05);
+}
+
+/* Number + caption stacked to the right of the medal */
+.odCredit .odCreditText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1;
+  gap: 3px;
+}
+.odCredit .odCreditNum {
+  font-size: 22px !important;
+  font-weight: 900 !important;
+  font-style: normal !important;
+  color: #047857 !important;
+  letter-spacing: -0.02em;
+  line-height: 1 !important;
+  font-variant-numeric: tabular-nums;
+}
+.odCredit .odCreditLabel {
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  font-style: normal !important;
+  color: #059669 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  line-height: 1;
+}
+
+/* Fallback state — no CE credits set. Subtle italic clock chip
+   that doesn't compete with the CTA visually. */
+.odCard .odCreditFallback {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  font-style: italic;
+}
+.odCard .odCreditFallback svg { flex-shrink: 0; }

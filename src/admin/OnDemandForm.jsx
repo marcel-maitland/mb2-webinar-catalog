@@ -385,10 +385,11 @@ function ThumbnailDropZone({ url, uploading, onUpload, onClear, onUrlChange, fil
 function PreviewCard({ course }) {
   const thumbOk = /^https?:\/\//.test(course.thumbnail_url || "");
   const canRegister = /^https?:\/\//.test(course.course_url || "");
-  const ce = course.ce_hours === "" || course.ce_hours == null ? null : Number(course.ce_hours);
-  const ceLabel = ce != null && !Number.isNaN(ce)
-    ? `${ce} CE ${ce === 1 ? "credit" : "credits"}`
-    : "Available anytime";
+  const ce =
+    course.ce_hours === "" || course.ce_hours == null
+      ? null
+      : Number(course.ce_hours);
+  const ceOk = ce != null && !Number.isNaN(ce);
 
   return (
     <article className="card cardElevated evPreviewCard odCard">
@@ -412,10 +413,28 @@ function PreviewCard({ course }) {
         ) : null}
         <div className="sessions">
           <div className="sessionGroup">
-            <div className="session">
-              <span className="sessionLabel odCeLabel">
-                {ceLabel}
-              </span>
+            <div className="session odSessionRow">
+              {ceOk ? (
+                <div className="odCredit" aria-label={`${ce} CE ${ce === 1 ? "credit" : "credits"}`}>
+                  <div className="odCreditMedal" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2l2.5 5.5L20 8.5l-4 3.9.9 5.6L12 15.3 7.1 18l.9-5.6L4 8.5l5.5-1z"/>
+                    </svg>
+                  </div>
+                  <div className="odCreditText">
+                    <span className="odCreditNum">{ce}</span>
+                    <span className="odCreditLabel">CE Credit{ce === 1 ? "" : "s"}</span>
+                  </div>
+                </div>
+              ) : (
+                <span className="odCreditFallback">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/>
+                    <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span>Available anytime</span>
+                </span>
+              )}
               {canRegister ? (
                 <a
                   className="sessionBtn odCardCta"

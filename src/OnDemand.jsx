@@ -144,13 +144,50 @@ export default function OnDemand() {
   );
 }
 
+/* -------------------------------------------------------------------------
+   CreditBadge — the CE credit "medal" that lives on each course card.
+   Designed to feel earned/prestigious rather than metadata-y:
+     • Emerald-gradient circular medallion with a dashed inner "seal" ring
+     • Star icon inside the medallion
+     • Large bold number as the visual hero
+     • Small uppercase "CE Credit(s)" caption underneath
+   When no CE credits are configured, falls back to a subtle italic
+   "Available anytime" chip with a clock glyph.
+------------------------------------------------------------------------- */
+function CreditBadge({ ce }) {
+  if (ce == null || Number.isNaN(ce)) {
+    return (
+      <span className="odCreditFallback" aria-label="Available anytime">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/>
+          <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <span>Available anytime</span>
+      </span>
+    );
+  }
+  const ceLabel = `${ce} CE ${ce === 1 ? "credit" : "credits"}`;
+  return (
+    <div className="odCredit" aria-label={ceLabel}>
+      <div className="odCreditMedal" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2l2.5 5.5L20 8.5l-4 3.9.9 5.6L12 15.3 7.1 18l.9-5.6L4 8.5l5.5-1z"/>
+        </svg>
+      </div>
+      <div className="odCreditText">
+        <span className="odCreditNum">{ce}</span>
+        <span className="odCreditLabel">
+          CE Credit{ce === 1 ? "" : "s"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function OnDemandCard({ course }) {
   const thumbOk = isUrl(course.thumbnail_url);
   const canRegister = isUrl(course.course_url);
   const ce = typeof course.ce_hours === "number" ? course.ce_hours : null;
-  const ceLabel = ce != null
-    ? `${ce} CE${ce === 1 ? "" : ""} ${ce === 1 ? "credit" : "credits"}`
-    : "Available anytime";
 
   const cardInner = (
     <>
@@ -179,8 +216,8 @@ function OnDemandCard({ course }) {
 
         <div className="sessions">
           <div className="sessionGroup">
-            <div className="session">
-              <span className="sessionLabel odCeLabel">{ceLabel}</span>
+            <div className="session odSessionRow">
+              <CreditBadge ce={ce} />
               {canRegister ? (
                 <span className="sessionBtn odCardCta" aria-hidden="true">
                   Go To Course →
