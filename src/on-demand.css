@@ -64,20 +64,17 @@
   overflow: hidden !important;
 }
 
-/* Thumbnail — fixed 800:385 frame matching the "standard" Dentlogics
-   thumbnail size. Since not all source images are authored at exactly
-   this ratio, `object-fit: contain` guarantees the FULL image is always
-   visible — no top/bottom cropping — with any negative space filled by
-   a soft neutral gradient that reads as intentional framing.
-
-   To eliminate the letterbox entirely, standardize all thumbnails to
-   800 × 385 (or any 2.08:1 multiple) and switch back to `object-fit: cover`. */
+/* Thumbnail — fixed 800:385 frame at the top of the card.
+   `object-fit: cover` fills the frame flush edge-to-edge — no
+   letterboxing on the sides — by scaling the image to the container
+   width. Images that don't match the container's 2.08:1 ratio have
+   their top/bottom trimmed to keep the width flush. */
 .odCard .odThumb {
   position: relative;
   width: 100%;
   aspect-ratio: 800 / 385 !important;
   overflow: hidden !important;
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  background: #f1f5f9;
   padding: 0 !important;
   margin: 0 !important;
   display: block;
@@ -86,7 +83,7 @@
 .odCard .odThumb > img {
   width: 100% !important;
   height: 100% !important;
-  object-fit: contain !important;
+  object-fit: cover !important;
   object-position: center;
   display: block;
 }
