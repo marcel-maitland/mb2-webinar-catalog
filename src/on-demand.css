@@ -46,59 +46,29 @@
 /* Card tweaks specific to on-demand */
 .odCard { /* inherits .cardElevated */ }
 
-/* Thumbnail — show the FULL image (no cropping). Use a 16:9 frame with
-   contain fit and a soft background so any letterboxing looks intentional. */
+/* Thumbnail — image fills the card width edge-to-edge at its natural
+   aspect ratio. No letterboxing, no forced frame; card height adjusts
+   to whatever the image dictates. */
 .odCard .odThumb {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9 !important;
+  height: auto !important;
+  aspect-ratio: auto !important;
   overflow: hidden !important;
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: block;
 }
 .odCard .odThumb > img {
   width: 100% !important;
-  height: 100% !important;
-  object-fit: contain !important;   /* was cover — now shows the whole image */
-  object-position: center;
+  height: auto !important;
+  object-fit: unset !important;
   display: block;
 }
 
-/* On Demand badge — top-left of thumbnail (replaces EXCLUSIVE) */
-.odCard .odCardBadge {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 3;
-  background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 5px 11px;
-  border-radius: 999px;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
-}
-.odCard .odCardBadge.isPath {
-  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
-  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
-}
-
-/* Play icon in bottom-left of thumbnail */
-.odCard .odPlayBadge {
-  position: absolute;
-  left: 12px;
-  bottom: 12px;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25));
-  transition: transform 0.15s ease;
-}
-.odCard:hover .odPlayBadge {
-  transform: scale(1.15);
-}
+/* Kill any stray thumb-placeholder padding so images sit flush with card edges */
+.odCard .thumb { padding: 0 !important; }
 
 /* CE-hours / "Available anytime" text style — same italic muted look */
 .odCard .odCeLabel,

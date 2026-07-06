@@ -404,15 +404,6 @@ function PreviewCard({ course }) {
             </svg>
           </div>
         )}
-        <span className="odCardBadge">
-          {course.type === "Learning Path" ? "Learning Path" : "On Demand"}
-        </span>
-        <span className="odPlayBadge" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" fill="rgba(255,255,255,0.95)"/>
-            <path d="M10 8l6 4-6 4V8z" fill="#0F172A"/>
-          </svg>
-        </span>
       </div>
       <div className="body">
         <h3 className="title">{course.title || "Untitled course"}</h3>

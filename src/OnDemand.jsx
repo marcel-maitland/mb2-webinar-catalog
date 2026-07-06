@@ -147,7 +147,6 @@ export default function OnDemand() {
 function OnDemandCard({ course }) {
   const thumbOk = isUrl(course.thumbnail_url);
   const canRegister = isUrl(course.course_url);
-  const isPath = course.type === "Learning Path";
   const ce = typeof course.ce_hours === "number" ? course.ce_hours : null;
   const ceLabel = ce != null
     ? `${ce} CE${ce === 1 ? "" : ""} ${ce === 1 ? "credit" : "credits"}`
@@ -167,19 +166,6 @@ function OnDemandCard({ course }) {
             }}
           />
         ) : null}
-
-        {/* Type pill in top-left */}
-        <span className={`odCardBadge ${isPath ? "isPath" : ""}`}>
-          {isPath ? "Learning Path" : "On Demand"}
-        </span>
-
-        {/* Play icon in bottom-left */}
-        <span className="odPlayBadge" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" fill="rgba(255,255,255,0.95)"/>
-            <path d="M10 8l6 4-6 4V8z" fill="#0F172A"/>
-          </svg>
-        </span>
       </div>
 
       <div className="body">
