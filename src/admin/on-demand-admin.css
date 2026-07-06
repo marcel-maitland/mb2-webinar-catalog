@@ -1241,3 +1241,104 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* Column mapping diagnostic — shows what columns matched, what's missing */
+.impColMap {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.impColMapToggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  color: #334155;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+.impColMapToggle:hover { background: #f1f5f9; }
+.impColMapToggle strong { color: #0f172a; font-weight: 700; }
+.impColMapChev {
+  margin-left: auto;
+  font-size: 10px;
+  color: #94a3b8;
+}
+.impColMapBody {
+  padding: 16px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.impColMapSection { display: flex; flex-direction: column; gap: 6px; }
+.impColMapSectionLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+.impColMapSectionLabelOk { color: #047857; }
+.impColMapSectionLabelWarn { color: #b45309; }
+.impColMapSectionLabelMuted { color: #64748b; }
+.impColMapRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #f8fafc;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.impColMapField {
+  font-weight: 700;
+  color: #0f172a;
+  min-width: 130px;
+}
+.impColMapOrig {
+  color: #475569;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  background: #fff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+.impColMapMissing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.impColMapMissingPill {
+  padding: 3px 10px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 999px;
+  font-size: 12px;
+  color: #92400e;
+  font-weight: 600;
+}
+.impColMapUnknownPill {
+  padding: 3px 10px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  font-size: 12px;
+  color: #475569;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+.impColMapHint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #64748b;
+  font-style: italic;
+}

@@ -11,13 +11,36 @@ const isXlsxName = (name) => /\.(xlsx|xlsm|xls)$/i.test(name || "");
 // Header aliases — accept multiple naming conventions so admins don't
 // have to worry about exact column names / casing.
 const HEADER_ALIASES = {
-  title: ["title", "course title", "course", "name"],
-  type: ["type", "course type", "kind"],
-  description: ["description", "desc", "summary", "overview"],
-  course_url: ["url", "course url", "link", "course link", "course_url"],
-  thumbnail_url: ["thumbnail url", "thumbnail", "image", "image url", "thumb", "thumbnail_url"],
-  ce_hours: ["ce hours", "ce credits", "ce", "credits", "ce_hours", "credit hours", "hours"],
+  title: ["title", "course title", "course", "name", "course name", "coursetitle", "course_title"],
+  type: ["type", "course type", "kind", "category", "format", "course_type"],
+  description: ["description", "desc", "summary", "overview", "about", "details"],
+  course_url: ["url", "course url", "link", "course link", "course_url", "courseurl", "web address", "website", "webpage"],
+  thumbnail_url: ["thumbnail url", "thumbnail", "image", "image url", "thumb", "thumbnail_url", "thumbnailurl", "img", "picture", "photo"],
+  ce_hours: [
+    "ce hours", "ce credits", "ce", "credits", "ce_hours", "credit hours", "hours",
+    "ce hrs", "hrs", "credit", "ce credit", "ce_credit", "ce_credits",
+    "cehours", "cecredits", "credit_hours", "credithours",
+    "ce hour", "hour", "duration",
+    "ce credit hours", "ce credit hour", "ce_credit_hours", "cecredithours",
+    "credit hour", "credit hrs", "credits hours", "credits hour",
+    "continuing education", "continuing education hours", "continuing education credits",
+    "continuing education credit hours",
+    "agd hours", "agd credits", "pace hours", "pace credits", "agd", "pace",
+  ],
 };
+
+// Normalize a header key aggressively — lowercase, collapse ALL whitespace
+// (including non-breaking spaces  ), strip parenthetical suffixes like
+// "(optional)" and non-alphanumerics that people sometimes drop in.
+function normalizeKey(k) {
+  return String(k)
+    .replace(/ /g, " ")           // non-breaking → regular space
+    .replace(/\([^)]*\)/g, "")         // "(optional)" → ""
+    .replace(/[^\p{L}\p{N}\s_]/gu, " ") // strip punctuation
+    .replace(/\s+/g, " ")              // collapse whitespace
+    .trim()
+    .toLowerCase();
+}
 
 // Normalize a raw CSV/XLSX row into an on-demand course payload.
 function normalizeRow(raw, opts = {}) {
@@ -33,13 +56,29 @@ function normalizeRow(raw, opts = {}) {
   const map = {};
   for (const [k, v] of Object.entries(raw || {})) {
     if (k == null) continue;
-    map[String(k).trim().toLowerCase()] = v == null ? "" : String(v).trim();
+    map[normalizeKey(k)] = v == null ? "" : String(v).trim();
   }
+  // Pass 1: exact match against aliases
+  const matchedKeys = new Set();
   for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
     if (field === "description" && !includeDescription) continue;
     for (const a of aliases) {
       if (map[a] !== undefined && map[a] !== "") {
         out[field] = map[a];
+        matchedKeys.add(a);
+        break;
+      }
+    }
+  }
+  // Pass 2: substring fallback for CE hours — any column whose key contains
+  // "ce", "credit", "hour", or "hrs" AND whose value looks numeric.
+  if (!out.ce_hours) {
+    for (const [key, val] of Object.entries(map)) {
+      if (!val || matchedKeys.has(key)) continue;
+      const num = parseFloat(val);
+      if (Number.isNaN(num)) continue;
+      if (/\b(ce|credit|hour|hrs?)\b/.test(key)) {
+        out.ce_hours = String(num);
         break;
       }
     }
@@ -48,6 +87,50 @@ function normalizeRow(raw, opts = {}) {
   if (t.includes("learning") || t.includes("path")) out.type = "Learning Path";
   else out.type = "Course";
   return out;
+}
+
+// Given the first raw row, figure out which columns mapped to which fields
+// and which columns are unrecognized. Purely diagnostic for the UI.
+function diagnoseColumns(rawRow, opts = {}) {
+  const { includeDescription = true } = opts;
+  if (!rawRow) return { mapped: {}, unmapped: [] };
+  const map = {};
+  const origKeys = {};
+  for (const k of Object.keys(rawRow)) {
+    const nk = normalizeKey(k);
+    map[nk] = rawRow[k] ?? "";
+    origKeys[nk] = k;
+  }
+  const mapped = {};
+  const usedNormalized = new Set();
+  for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
+    if (field === "description" && !includeDescription) continue;
+    for (const a of aliases) {
+      if (map[a] !== undefined && !usedNormalized.has(a)) {
+        mapped[field] = origKeys[a];
+        usedNormalized.add(a);
+        break;
+      }
+    }
+  }
+  // CE fallback
+  if (!mapped.ce_hours) {
+    for (const nk of Object.keys(map)) {
+      if (usedNormalized.has(nk)) continue;
+      const v = map[nk];
+      const num = parseFloat(v);
+      if (Number.isNaN(num)) continue;
+      if (/\b(ce|credit|hour|hrs?)\b/.test(nk)) {
+        mapped.ce_hours = origKeys[nk] + " (matched by substring)";
+        usedNormalized.add(nk);
+        break;
+      }
+    }
+  }
+  const unmapped = Object.keys(origKeys)
+    .filter((nk) => !usedNormalized.has(nk))
+    .map((nk) => origKeys[nk]);
+  return { mapped, unmapped };
 }
 
 // Downloadable CSV template
@@ -71,6 +154,7 @@ export default function OnDemandImport() {
   const [showFormatRef, setShowFormatRef] = useState(false);
   const [skipDupes, setSkipDupes] = useState(true);
   const [ignoreDescription, setIgnoreDescription] = useState(true);
+  const [columnDiag, setColumnDiag] = useState(null); // { mapped, unmapped }
   const fileRef = useRef(null);
 
   const reset = () => {
@@ -80,6 +164,7 @@ export default function OnDemandImport() {
     setParsed([]);
     setDoneCount(0);
     setError("");
+    setColumnDiag(null);
   };
 
   const switchMode = (m) => {
@@ -124,6 +209,13 @@ export default function OnDemandImport() {
       ready: normalizeRow(raw, { includeDescription: !ignoreDescription }),
     }));
     const usable = initial.filter((r) => r.ready.title);
+
+    // Diagnostic — what columns did we detect in the file?
+    if (cleaned.length > 0) {
+      setColumnDiag(
+        diagnoseColumns(cleaned[0], { includeDescription: !ignoreDescription })
+      );
+    }
 
     if (initial.length > 0 && usable.length === 0) {
       const foundHeaders = Object.keys(initial[0].raw || {});
@@ -545,6 +637,8 @@ Endodontic Learning Path\tLearning Path\t4\thttps://…\thttps://…`}
                 </div>
               </div>
 
+              {columnDiag && <ColumnMappingPanel diag={columnDiag} /> }
+
               {dupeCount > 0 && (
                 <label className="impInlineCheckbox impInlineCheckboxCard">
                   <input
@@ -649,6 +743,93 @@ function FormatRow({ name, required, aliases, example }) {
       <div className="impFormatExample">
         <span className="impFormatExampleLabel">Example:</span> {example}
       </div>
+    </div>
+  );
+}
+
+// Shows which columns in the user's file mapped to our known fields
+// and which columns went unrecognized. Big help when CE hours don't map.
+const FIELD_LABELS = {
+  title: "Title",
+  type: "Type",
+  ce_hours: "CE Hours",
+  course_url: "URL",
+  thumbnail_url: "Thumbnail URL",
+  description: "Description",
+};
+function ColumnMappingPanel({ diag }) {
+  const [open, setOpen] = useState(false);
+  const mappedEntries = Object.entries(diag.mapped || {});
+  const unmapped = diag.unmapped || [];
+  const missing = Object.keys(FIELD_LABELS).filter(
+    (f) => !(f in (diag.mapped || {}))
+  );
+
+  return (
+    <div className="impColMap">
+      <button
+        type="button"
+        className="impColMapToggle"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+          <path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+        <span>
+          Column mapping — <strong>{mappedEntries.length}</strong> matched
+          {missing.length > 0 && <>, <strong>{missing.length}</strong> missing</>}
+          {unmapped.length > 0 && <>, <strong>{unmapped.length}</strong> unrecognized</>}
+        </span>
+        <span className="impColMapChev">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {open && (
+        <div className="impColMapBody">
+          {mappedEntries.length > 0 && (
+            <div className="impColMapSection">
+              <div className="impColMapSectionLabel impColMapSectionLabelOk">✓ Matched</div>
+              {mappedEntries.map(([field, orig]) => (
+                <div key={field} className="impColMapRow">
+                  <span className="impColMapField">{FIELD_LABELS[field] || field}</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 12h14m-6-6l6 6-6 6" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                  <span className="impColMapOrig">"{orig}"</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {missing.length > 0 && (
+            <div className="impColMapSection">
+              <div className="impColMapSectionLabel impColMapSectionLabelWarn">
+                ⚠ Not found in your file
+              </div>
+              <div className="impColMapMissing">
+                {missing.map((f) => (
+                  <span key={f} className="impColMapMissingPill">{FIELD_LABELS[f] || f}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {unmapped.length > 0 && (
+            <div className="impColMapSection">
+              <div className="impColMapSectionLabel impColMapSectionLabelMuted">
+                Unrecognized columns (ignored)
+              </div>
+              <div className="impColMapMissing">
+                {unmapped.map((c) => (
+                  <span key={c} className="impColMapUnknownPill">"{c}"</span>
+                ))}
+              </div>
+              <p className="impColMapHint">
+                If any of these should be a real column (like CE Hours), tell me the
+                exact column name and I'll add it as an accepted alias.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
