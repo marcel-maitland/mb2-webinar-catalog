@@ -43,32 +43,85 @@
   .odGrid { grid-template-columns: 1fr; gap: 14px; }
 }
 
-/* Card tweaks specific to on-demand */
-.odCard { /* inherits .cardElevated */ }
+/* ---- Card layout: consistent across a row ----
+   Every card in a row shares:
+     • same thumbnail size (fixed 16:9 aspect ratio)
+     • same title top-line position (because thumbnail heights match)
+     • same bottom bar position (bottom row is auto-pinned to the card floor)
+   The variable content — description length — absorbs into the middle,
+   because we make the body a flex column and stretch a spacer between
+   the description and the bottom bar. */
+.odCard {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100%;
+}
 
-/* Thumbnail — image fills the card width edge-to-edge at its natural
-   aspect ratio. No letterboxing, no forced frame; card height adjusts
-   to whatever the image dictates. */
+/* Thumbnail — fixed 16:9 frame so every card starts its body at the
+   same Y position. object-fit: cover to fill the frame edge-to-edge
+   without gaps or letterboxing. */
 .odCard .odThumb {
   position: relative;
   width: 100%;
-  height: auto !important;
-  aspect-ratio: auto !important;
+  aspect-ratio: 16 / 9 !important;
   overflow: hidden !important;
-  background: transparent !important;
+  background: #f1f5f9;
   padding: 0 !important;
   margin: 0 !important;
   display: block;
+  flex-shrink: 0;
 }
 .odCard .odThumb > img {
   width: 100% !important;
-  height: auto !important;
-  object-fit: unset !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center;
   display: block;
 }
-
-/* Kill any stray thumb-placeholder padding so images sit flush with card edges */
 .odCard .thumb { padding: 0 !important; }
+
+/* Body is a flex column that fills remaining card height. Title and
+   description sit at the top; the session row is pushed to the bottom. */
+.odCard .body {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0;
+}
+/* Push the CE + button row to the bottom of the card so bottoms align
+   across a row regardless of title/description length. */
+.odCard .sessions {
+  margin-top: auto !important;
+}
+.odCard .sessionGroup { display: block; }
+
+/* Give the title a stable top-line: same font-size and line-height,
+   allowed to grow up to 2 lines. Longer titles wrap; cards stay aligned. */
+.odCard .title {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #0f172a;
+  margin: 0 0 8px;
+  /* clamp to 2 lines for consistency across the grid */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+/* Description clamped to 3 lines so cards remain visually similar in bulk;
+   the natural extra space below sits above the bottom bar as breathing room. */
+.odCard .descFull {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #475569;
+  margin: 0 0 14px;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 
 /* CE-hours / "Available anytime" text style — same italic muted look */
 .odCard .odCeLabel,
@@ -110,15 +163,10 @@ a.odCardClickable:hover .odCardCta {
   transform: translateX(2px);
 }
 
-/* ============================================================
-   CE CREDIT MEDAL — the visual "hero" of each card
-   Emerald-gradient circular medallion with a star inside,
-   a dashed inner "seal" ring, and a bold number + caption
-   to the right. Reads as "you earn this" instead of muted
-   metadata.
-   ============================================================ */
-
-/* Layout row that holds the medal on the left, CTA on the right */
+/* ---- CE Credit label — clean and professional ----
+   Small emerald check-in-circle icon + text: "1 CE Credit".
+   No medallion, no seal ring — just a quiet credential signal
+   that reads well at a glance. */
 .odCard .odSessionRow {
   display: flex;
   align-items: center;
@@ -126,86 +174,37 @@ a.odCardClickable:hover .odCardCta {
   gap: 12px;
   padding: 12px 14px !important;
 }
-
-.odCredit {
+.odCard .odCredit {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  color: #047857;
+  font-size: 13.5px;
+  font-weight: 500;
+  font-style: normal !important;
+  line-height: 1;
   min-width: 0;
 }
-
-/* The medallion — small circular badge in emerald gradient with
-   a dashed inner ring so it reads like an official "seal". */
-.odCredit .odCreditMedal {
-  position: relative;
-  width: 42px;
-  height: 42px;
+.odCard .odCredit .odCreditIcon {
   flex-shrink: 0;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #10b981 0%, #047857 100%);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow:
-    0 4px 12px rgba(4, 120, 87, 0.28),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.10),
-    inset 0 2px 0 rgba(255, 255, 255, 0.20);
-  border: 2px solid #ffffff;
-  transition: transform 0.18s ease;
+  color: #10b981;
 }
-.odCredit .odCreditMedal::before {
-  content: "";
-  position: absolute;
-  inset: 3px;
-  border-radius: 50%;
-  border: 1.5px dashed rgba(255, 255, 255, 0.55);
-  pointer-events: none;
-}
-/* Star lifts slightly on card hover */
-a.odCardClickable:hover .odCredit .odCreditMedal {
-  transform: rotate(-6deg) scale(1.05);
-}
-
-/* Number + caption stacked to the right of the medal */
-.odCredit .odCreditText {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  line-height: 1;
-  gap: 3px;
-}
-.odCredit .odCreditNum {
-  font-size: 22px !important;
-  font-weight: 900 !important;
-  font-style: normal !important;
-  color: #047857 !important;
-  letter-spacing: -0.02em;
-  line-height: 1 !important;
+.odCard .odCredit .odCreditText { color: #334155; font-style: normal; }
+.odCard .odCredit .odCreditText strong {
+  color: #047857;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-}
-.odCredit .odCreditLabel {
-  font-size: 10px !important;
-  font-weight: 800 !important;
-  font-style: normal !important;
-  color: #059669 !important;
-  text-transform: uppercase;
-  letter-spacing: 0.10em;
-  line-height: 1;
+  margin-right: 2px;
 }
 
-/* Fallback state — no CE credits set. Subtle italic clock chip
-   that doesn't compete with the CTA visually. */
+/* Fallback state — no CE credits set. Subtle italic clock chip. */
 .odCard .odCreditFallback {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 12px;
-  background: #f1f5f9;
-  border-radius: 999px;
   color: #64748b;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   font-style: italic;
 }
 .odCard .odCreditFallback svg { flex-shrink: 0; }

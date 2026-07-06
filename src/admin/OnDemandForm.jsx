@@ -415,17 +415,15 @@ function PreviewCard({ course }) {
           <div className="sessionGroup">
             <div className="session odSessionRow">
               {ceOk ? (
-                <div className="odCredit" aria-label={`${ce} CE ${ce === 1 ? "credit" : "credits"}`}>
-                  <div className="odCreditMedal" aria-hidden="true">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2l2.5 5.5L20 8.5l-4 3.9.9 5.6L12 15.3 7.1 18l.9-5.6L4 8.5l5.5-1z"/>
-                    </svg>
-                  </div>
-                  <div className="odCreditText">
-                    <span className="odCreditNum">{ce}</span>
-                    <span className="odCreditLabel">CE Credit{ce === 1 ? "" : "s"}</span>
-                  </div>
-                </div>
+                <span className="odCredit" aria-label={`${ce} CE ${ce === 1 ? "credit" : "credits"}`}>
+                  <svg className="odCreditIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.12"/>
+                    <path d="M8 12l3 3 5-6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span className="odCreditText">
+                    <strong>{ce}</strong> CE Credit{ce === 1 ? "" : "s"}
+                  </span>
+                </span>
               ) : (
                 <span className="odCreditFallback">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none">

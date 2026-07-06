@@ -144,16 +144,9 @@ export default function OnDemand() {
   );
 }
 
-/* -------------------------------------------------------------------------
-   CreditBadge — the CE credit "medal" that lives on each course card.
-   Designed to feel earned/prestigious rather than metadata-y:
-     • Emerald-gradient circular medallion with a dashed inner "seal" ring
-     • Star icon inside the medallion
-     • Large bold number as the visual hero
-     • Small uppercase "CE Credit(s)" caption underneath
-   When no CE credits are configured, falls back to a subtle italic
-   "Available anytime" chip with a clock glyph.
-------------------------------------------------------------------------- */
+/* CreditBadge — clean, professional CE credit label. Small check-in-circle
+   icon + bold number + "CE Credit(s)" text. Emerald tone for accreditation
+   feel without visual noise. */
 function CreditBadge({ ce }) {
   if (ce == null || Number.isNaN(ce)) {
     return (
@@ -166,21 +159,32 @@ function CreditBadge({ ce }) {
       </span>
     );
   }
-  const ceLabel = `${ce} CE ${ce === 1 ? "credit" : "credits"}`;
   return (
-    <div className="odCredit" aria-label={ceLabel}>
-      <div className="odCreditMedal" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2l2.5 5.5L20 8.5l-4 3.9.9 5.6L12 15.3 7.1 18l.9-5.6L4 8.5l5.5-1z"/>
-        </svg>
-      </div>
-      <div className="odCreditText">
-        <span className="odCreditNum">{ce}</span>
-        <span className="odCreditLabel">
-          CE Credit{ce === 1 ? "" : "s"}
-        </span>
-      </div>
-    </div>
+    <span
+      className="odCredit"
+      aria-label={`${ce} CE ${ce === 1 ? "credit" : "credits"}`}
+    >
+      <svg
+        className="odCreditIcon"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.12"/>
+        <path
+          d="M8 12l3 3 5-6"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      <span className="odCreditText">
+        <strong>{ce}</strong> CE Credit{ce === 1 ? "" : "s"}
+      </span>
+    </span>
   );
 }
 
