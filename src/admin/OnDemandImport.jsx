@@ -34,6 +34,9 @@ const HEADER_ALIASES = {
     "best for", "applies to", "applicable to", "intended for", "designed for",
     "team", "team members", "team role", "team roles", "for whom",
     "dental role", "dental roles", "position", "positions",
+    "professional role", "professional roles", "professional",
+    "job role", "job roles", "staff role", "staff roles",
+    "practice role", "practice roles",
   ],
 };
 
@@ -169,6 +172,20 @@ function normalizeRow(raw, opts = {}) {
       if (Number.isNaN(num)) continue;
       if (/\b(ce|credit|hour|hrs?)\b/.test(key)) {
         out.ce_hours = String(num);
+        break;
+      }
+    }
+  }
+  // Pass 2b: substring fallback for roles — any column whose key contains
+  // "role" or "audience" as a whole word.
+  const rolesEmpty = Array.isArray(out.roles)
+    ? out.roles.length === 0
+    : !out.roles;
+  if (rolesEmpty) {
+    for (const [key, val] of Object.entries(map)) {
+      if (!val || matchedKeys.has(key)) continue;
+      if (/\b(role|roles|audience|audiences)\b/.test(key)) {
+        out.roles = val;
         break;
       }
     }
