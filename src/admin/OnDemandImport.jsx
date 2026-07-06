@@ -33,6 +33,73 @@ const HEADER_ALIASES = {
   ],
 };
 
+// Auto-detect the real header row inside a 2D matrix of cells and return
+// row objects keyed by that header row's values. Skips leading title /
+// branding rows like a merged "dentlogics_course_catalog" cell above the
+// actual column names, and skips blank rows. Falls back to row 0 if no
+// clearly-real header row is found.
+function matrixToObjects(matrix) {
+  if (!Array.isArray(matrix) || matrix.length === 0) return [];
+
+  // Score each row on how "header-like" it is:
+  //  +3  cell text matches a known column alias (case-insensitive)
+  //  +1  cell is a short, non-URL, non-numeric-only string
+  //  -2  cell is a URL or extremely long text (>80 chars)
+  const KNOWN_HEADERS = new Set(
+    Object.values(HEADER_ALIASES).flat().map((a) => a.toLowerCase())
+  );
+
+  const scoreRow = (row) => {
+    if (!Array.isArray(row)) return -Infinity;
+    let score = 0;
+    let filled = 0;
+    for (const raw of row) {
+      const v = String(raw ?? "").trim();
+      if (!v) continue;
+      filled += 1;
+      const lc = v.toLowerCase();
+      if (KNOWN_HEADERS.has(lc)) score += 3;
+      else if (v.length <= 40 && !/^https?:/i.test(v) && isNaN(Number(v))) score += 1;
+      else if (v.length > 80 || /^https?:/i.test(v)) score -= 2;
+    }
+    // Need at least 2 filled cells to plausibly be a header row
+    if (filled < 2) return -Infinity;
+    return score;
+  };
+
+  // Only search the first 10 rows for the header row — should be plenty.
+  let headerIdx = 0;
+  let bestScore = -Infinity;
+  const searchLimit = Math.min(10, matrix.length);
+  for (let i = 0; i < searchLimit; i++) {
+    const s = scoreRow(matrix[i]);
+    if (s > bestScore) {
+      bestScore = s;
+      headerIdx = i;
+    }
+  }
+
+  const rawHeaders = matrix[headerIdx] || [];
+  const headers = rawHeaders.map((h, i) => {
+    const s = String(h ?? "").trim();
+    return s || `col_${i + 1}`;
+  });
+
+  // Convert every subsequent row into { header: value }
+  const out = [];
+  for (let i = headerIdx + 1; i < matrix.length; i++) {
+    const row = matrix[i] || [];
+    // Skip completely blank rows
+    if (row.every((c) => String(c ?? "").trim() === "")) continue;
+    const obj = {};
+    for (let c = 0; c < headers.length; c++) {
+      obj[headers[c]] = row[c] ?? "";
+    }
+    out.push(obj);
+  }
+  return out;
+}
+
 // Split a raw roles value (comma, pipe, or semicolon separated) into a
 // cleaned string[]. "Dentist, Hygienist | Assistant" → ["Dentist","Hygienist","Assistant"]
 function parseRoles(v) {
@@ -274,7 +341,16 @@ export default function OnDemandImport() {
           const wb = XLSX.read(data, { type: "array" });
           const firstSheet = wb.SheetNames[0];
           const ws = wb.Sheets[firstSheet];
-          const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+          // Read as a 2D array first so we can auto-detect the real header row.
+          // Files often have a title/branding row above the actual column
+          // headers ("dentlogics_course_catalog" in A1 with empty siblings),
+          // which XLSX would otherwise treat as headers and give us __EMPTY_N.
+          const matrix = XLSX.utils.sheet_to_json(ws, {
+            header: 1,
+            defval: "",
+            blankrows: false,
+          });
+          const rows = matrixToObjects(matrix);
           onParsed(rows);
         } catch (err) {
           setError("Could not parse Excel file: " + err.message);
@@ -283,10 +359,15 @@ export default function OnDemandImport() {
       reader.onerror = () => setError("Failed to read file.");
       reader.readAsArrayBuffer(file);
     } else {
+      // Parse CSV as a 2D array so we can auto-detect the header row,
+      // consistent with how the XLSX path handles leading title rows.
       Papa.parse(file, {
-        header: true,
+        header: false,
         skipEmptyLines: true,
-        complete: (result) => onParsed(result.data),
+        complete: (result) => {
+          const rows = matrixToObjects(result.data);
+          onParsed(rows);
+        },
         error: (err) => setError("Could not parse CSV: " + err.message),
       });
     }
