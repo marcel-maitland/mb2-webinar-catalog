@@ -100,14 +100,16 @@ function matrixToObjects(matrix) {
   return out;
 }
 
-// Split a raw roles value (comma, pipe, or semicolon separated) into a
-// cleaned string[]. "Dentist, Hygienist | Assistant" → ["Dentist","Hygienist","Assistant"]
+// Split a raw roles value into a cleaned string[]. Separators are comma,
+// pipe, and semicolon ONLY — NOT slash, because role names like
+// "Front Office / Support Team" legitimately contain slashes.
+// Example: "Dentist, Hygienist | Assistant" → ["Dentist","Hygienist","Assistant"]
 function parseRoles(v) {
   if (v == null) return [];
   const s = String(v).trim();
   if (!s) return [];
   return s
-    .split(/[,;|/]+/)
+    .split(/[,;|]+/)
     .map((x) => x.trim())
     .filter(Boolean);
 }
