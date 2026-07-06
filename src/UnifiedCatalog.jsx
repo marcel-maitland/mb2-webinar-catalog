@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import App from "./App.jsx";
 import OnDemand from "./OnDemand.jsx";
-import { supabase } from "./lib/supabase.js";
 import "./catalog-extras.css";
 import "./on-demand.css";
 import "./unified-catalog.css";
@@ -32,22 +31,6 @@ export default function UnifiedCatalog() {
   const initialTab = searchParams.get("tab") === "events" ? "events" : DEFAULT_TAB;
   const [tab, setTab] = useState(initialTab);
 
-  // Client info for the shared header (logo, name)
-  const [client, setClient] = useState(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from("clients")
-        .select("id, name, slug, logo_url")
-        .eq("slug", slug)
-        .maybeSingle();
-      if (!cancelled) setClient(data || null);
-    })();
-    return () => { cancelled = true; };
-  }, [slug]);
-
   const switchTab = (nextTab) => {
     setTab(nextTab);
     // Keep URL in sync so hard-refresh preserves the tab.
@@ -56,27 +39,11 @@ export default function UnifiedCatalog() {
     setSearchParams(next, { replace: true });
   };
 
-  const displayName = client?.name || (slug === "mb2" ? "MB2 Dental" : slug);
-
   return (
     <div className="unifiedPage">
-      {/* Client header — logo + name centered */}
-      <header className="unifiedHeader">
-        {client?.logo_url && (
-          <img
-            className="unifiedHeaderLogo"
-            src={client.logo_url}
-            alt={`${displayName} logo`}
-          />
-        )}
-        <div className="unifiedHeaderText">
-          <div className="unifiedHeaderKicker">Continuing Education Catalog</div>
-          <h1 className="unifiedHeaderTitle">{displayName}</h1>
-        </div>
-      </header>
-
-      {/* Big tabs — On Demand / Live Events */}
-      <nav className="unifiedTabs" role="tablist" aria-label="Catalog type">
+      {/* Big tabs — On Demand / Live Events. Sticky at top so they persist
+          while the user scrolls through the catalog grid. */}
+      <nav className="unifiedTabs unifiedTabsSticky" role="tablist" aria-label="Catalog type">
         <TabButton
           active={tab === "on-demand"}
           onClick={() => switchTab("on-demand")}
