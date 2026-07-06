@@ -78,3 +78,34 @@
   font-style: italic;
   font-size: 14px;
 }
+
+/* Fully-clickable card (when there's a course URL) */
+a.odCardClickable,
+a.odCardClickable:visited {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+a.odCardClickable:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.10);
+}
+a.odCardClickable:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 3px;
+}
+
+/* The CTA "Go To Course" pill lives inside the card as a visual affordance —
+   it's not itself a link. Highlight it when the whole card is hovered so the
+   user knows the click will do something. */
+a.odCardClickable .odCardCta {
+  transition: transform 0.15s ease, filter 0.15s ease;
+  pointer-events: none; /* clicks bubble up to the wrapping anchor */
+}
+a.odCardClickable:hover .odCardCta {
+  filter: brightness(1.08);
+  transform: translateX(2px);
+}

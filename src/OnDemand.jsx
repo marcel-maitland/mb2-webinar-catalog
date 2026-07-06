@@ -152,8 +152,8 @@ function OnDemandCard({ course }) {
     ? `${ce} CE${ce === 1 ? "" : ""} ${ce === 1 ? "credit" : "credits"}`
     : "Available anytime";
 
-  return (
-    <article className="card cardElevated odCard">
+  const cardInner = (
+    <>
       <div className={`thumb odThumb ${thumbOk ? "" : "thumbNoImg"}`}>
         {thumbOk ? (
           <img
@@ -182,14 +182,9 @@ function OnDemandCard({ course }) {
             <div className="session">
               <span className="sessionLabel odCeLabel">{ceLabel}</span>
               {canRegister ? (
-                <a
-                  className="sessionBtn"
-                  href={course.course_url}
-                  target="_blank"
-                  rel="noopener"
-                >
-                  Take Course →
-                </a>
+                <span className="sessionBtn odCardCta" aria-hidden="true">
+                  Go To Course →
+                </span>
               ) : (
                 <span className="muted" style={{ fontSize: 13 }}>
                   Course link not set
@@ -199,6 +194,22 @@ function OnDemandCard({ course }) {
           </div>
         </div>
       </div>
+    </>
+  );
+
+  return canRegister ? (
+    <a
+      className="card cardElevated odCard odCardClickable"
+      href={course.course_url}
+      target="_blank"
+      rel="noopener"
+      aria-label={`Open course: ${course.title}`}
+    >
+      {cardInner}
+    </a>
+  ) : (
+    <article className="card cardElevated odCard">
+      {cardInner}
     </article>
   );
 }

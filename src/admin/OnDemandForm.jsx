@@ -242,7 +242,7 @@ export default function OnDemandForm({ mode = "edit" }) {
             />
           </Section>
 
-          <Section title="Course link" subtitle="Where visitors go when they click Take Course.">
+          <Section title="Course link" subtitle="Where visitors go when they click the card or Go To Course button.">
             <Field label="Course URL">
               <input
                 value={form.course_url ?? ""}
@@ -418,7 +418,7 @@ function PreviewCard({ course }) {
               </span>
               {canRegister ? (
                 <a
-                  className="sessionBtn"
+                  className="sessionBtn odCardCta"
                   href={course.course_url}
                   target="_blank"
                   rel="noopener"
@@ -426,7 +426,7 @@ function PreviewCard({ course }) {
                     if (!confirm("Open the course URL in a new tab?")) e.preventDefault();
                   }}
                 >
-                  Take Course →
+                  Go To Course →
                 </a>
               ) : (
                 <span className="muted" style={{ fontSize: 13 }}>Course link not set</span>
