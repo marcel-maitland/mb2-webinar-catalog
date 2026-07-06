@@ -192,34 +192,34 @@ export default function OnDemandForm({ mode = "edit" }) {
               />
             </Field>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 200px", gap: 16, alignItems: "start" }}>
-              <Field label="Type">
-                <div className="evPills" role="radiogroup">
-                  {COURSE_TYPES.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      role="radio"
-                      aria-checked={form.type === t}
-                      className={`evPill ${form.type === t ? "active" : ""}`}
-                      onClick={() => set("type", t)}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </Field>
-              <Field label="CE credits" hint="Optional · e.g. 1 or 1.5">
-                <input
-                  type="number"
-                  step="0.25"
-                  min="0"
-                  value={form.ce_hours ?? ""}
-                  onChange={(e) => set("ce_hours", e.target.value)}
-                  placeholder=""
-                />
-              </Field>
-            </div>
+            <Field label="Type">
+              <div className="evPills" role="radiogroup">
+                {COURSE_TYPES.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    role="radio"
+                    aria-checked={form.type === t}
+                    className={`evPill ${form.type === t ? "active" : ""}`}
+                    onClick={() => set("type", t)}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </Field>
+
+            <Field label="CE credits" hint="Optional · e.g. 1 or 1.5. Shown on the catalog card in place of 'Available anytime'.">
+              <input
+                type="number"
+                step="0.25"
+                min="0"
+                value={form.ce_hours ?? ""}
+                onChange={(e) => set("ce_hours", e.target.value)}
+                placeholder="e.g. 1.5"
+                style={{ maxWidth: 200 }}
+              />
+            </Field>
 
             <Field label="Description">
               <textarea
