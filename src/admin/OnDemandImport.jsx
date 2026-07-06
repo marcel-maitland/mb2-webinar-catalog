@@ -29,7 +29,11 @@ const HEADER_ALIASES = {
   ],
   roles: [
     "roles", "role", "audience", "audiences", "for", "targeted at",
-    "target audience", "who is this for", "who for",
+    "target audience", "target audiences", "who is this for", "who for",
+    "recommended for", "recommended roles", "recommended", "suitable for",
+    "best for", "applies to", "applicable to", "intended for", "designed for",
+    "team", "team members", "team role", "team roles", "for whom",
+    "dental role", "dental roles", "position", "positions",
   ],
 };
 
