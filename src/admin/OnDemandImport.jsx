@@ -173,7 +173,7 @@ export default function OnDemandImport() {
 
     // Normalize ALL possible line separators to \n.
     // Windows: \r\n · classic Mac: \r · Unix: \n · Unicode:
-    text = text.replace(/\r\n|\r| | /g, "\n");
+    text = text.replace(/\r\n|\r|\u2028|\u2029/g, "\n");
     text = text.trim();
 
     // Split into lines and drop empty ones
