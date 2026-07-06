@@ -57,18 +57,17 @@
   height: 100%;
 }
 
-/* Thumbnail — fixed 16:9 frame so every card starts its body at the
-   same Y position across the grid. `object-fit: contain` guarantees the
-   FULL source image is always visible — no top/bottom cropping — even
-   when the source doesn't match 16:9 exactly. Any negative space around
-   the image is filled with a soft neutral gradient so letterboxing reads
-   as intentional framing rather than a bug. */
+/* Thumbnail — fixed 800:385 frame matching the source aspect ratio of
+   Dentlogics course thumbnails (800 × 385, ~2.08:1). Because container
+   and source match exactly, `object-fit: cover` fills the frame flush
+   to all four edges — no cropping, no letterboxing. Every card starts
+   its body at the same Y position across the grid. */
 .odCard .odThumb {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 9 !important;
+  aspect-ratio: 800 / 385 !important;
   overflow: hidden !important;
-  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  background: #f1f5f9;
   padding: 0 !important;
   margin: 0 !important;
   display: block;
@@ -77,7 +76,7 @@
 .odCard .odThumb > img {
   width: 100% !important;
   height: 100% !important;
-  object-fit: contain !important;
+  object-fit: cover !important;
   object-position: center;
   display: block;
 }
