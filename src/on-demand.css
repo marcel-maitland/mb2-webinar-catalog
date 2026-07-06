@@ -29,12 +29,14 @@
 }
 .odResultsCount strong { color: #0f172a; font-weight: 700; }
 
-/* Grid — same shape as .grid (repeats desktop 3-col behavior) */
+/* Grid — same shape as .grid (repeats desktop 3-col behavior).
+   `align-items: start` because the cards now have a locked aspect ratio;
+   stretching would fight the fixed shape. */
 .odGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
-  align-items: stretch;
+  align-items: start;
 }
 @media (max-width: 900px) {
   .odGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
@@ -43,18 +45,23 @@
   .odGrid { grid-template-columns: 1fr; gap: 14px; }
 }
 
-/* ---- Card layout: consistent across a row ----
-   Every card in a row shares:
-     • same thumbnail size (fixed 16:9 aspect ratio)
-     • same title top-line position (because thumbnail heights match)
-     • same bottom bar position (bottom row is auto-pinned to the card floor)
-   The variable content — description length — absorbs into the middle,
-   because we make the body a flex column and stretch a spacer between
-   the description and the bottom bar. */
+/* ---- Card layout: FIXED SHAPE across all viewports and content ----
+   The whole card is locked to a single aspect ratio (4:5, portrait).
+   Because the shape is fixed, every card in the grid looks identical
+   at every viewport size — no drift as descriptions grow or shrink,
+   no aspect changes when the grid reflows to 2 columns.
+
+   The thumbnail keeps its own fixed 800:385 ratio at the top; the
+   body absorbs the rest of the card height with the title and
+   description clamped so they can never overflow. Short descriptions
+   leave breathing room above the CE + button footer, long ones fill
+   the space; but the OUTER card shape stays constant either way. */
 .odCard {
   display: flex !important;
   flex-direction: column !important;
-  height: 100%;
+  aspect-ratio: 4 / 5 !important;   /* lock the whole-card shape */
+  height: auto !important;
+  overflow: hidden !important;
 }
 
 /* Thumbnail — fixed 800:385 frame matching the "standard" Dentlogics
