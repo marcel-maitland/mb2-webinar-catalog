@@ -20,7 +20,8 @@ const HEADER_ALIASES = {
 };
 
 // Normalize a raw CSV/XLSX row into an on-demand course payload.
-function normalizeRow(raw) {
+function normalizeRow(raw, opts = {}) {
+  const { includeDescription = true } = opts;
   const out = {
     title: "",
     type: "Course",
@@ -29,13 +30,13 @@ function normalizeRow(raw) {
     thumbnail_url: "",
     ce_hours: "",
   };
-  // Build a lower-cased key lookup
   const map = {};
   for (const [k, v] of Object.entries(raw || {})) {
     if (k == null) continue;
     map[String(k).trim().toLowerCase()] = v == null ? "" : String(v).trim();
   }
   for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
+    if (field === "description" && !includeDescription) continue;
     for (const a of aliases) {
       if (map[a] !== undefined && map[a] !== "") {
         out[field] = map[a];
@@ -43,17 +44,23 @@ function normalizeRow(raw) {
       }
     }
   }
-  // Normalize type — only accept "Course" or "Learning Path" (case-insensitive)
   const t = out.type.toLowerCase();
   if (t.includes("learning") || t.includes("path")) out.type = "Learning Path";
   else out.type = "Course";
   return out;
 }
 
+// Downloadable CSV template
+const TEMPLATE_CSV = [
+  "Course Title,Type,CE Hours,URL,Thumbnail URL,Description",
+  '"7 Strategies for Telephone Success",Course,0.5,https://learn.example.com/telephone,https://example.com/thumb1.jpg,"Optional — leave blank if you\'ll add later."',
+  '"Endodontics Learning Path","Learning Path",4,https://learn.example.com/endo-path,https://example.com/thumb2.jpg,',
+].join("\n");
+
 export default function OnDemandImport() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState("file"); // "file" | "paste"
-  const [parsed, setParsed] = useState([]); // [{ raw, ready, status: 'new' | 'duplicate' }]
+  const [mode, setMode] = useState("file");
+  const [parsed, setParsed] = useState([]);
   const [chosenFile, setChosenFile] = useState(null);
   const [pasteText, setPasteText] = useState("");
   const [pasteSourceLabel, setPasteSourceLabel] = useState("");
@@ -61,8 +68,9 @@ export default function OnDemandImport() {
   const [importing, setImporting] = useState(false);
   const [doneCount, setDoneCount] = useState(0);
   const [drag, setDrag] = useState(false);
-  const [showColumnRef, setShowColumnRef] = useState(false);
+  const [showFormatRef, setShowFormatRef] = useState(false);
   const [skipDupes, setSkipDupes] = useState(true);
+  const [ignoreDescription, setIgnoreDescription] = useState(true);
   const fileRef = useRef(null);
 
   const reset = () => {
@@ -79,8 +87,18 @@ export default function OnDemandImport() {
     reset();
   };
 
-  // Tag each parsed row "new" or "duplicate" by comparing against existing
-  // titles (case-insensitive).
+  const downloadTemplate = () => {
+    const blob = new Blob([TEMPLATE_CSV], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "on-demand-courses-template.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const annotateRows = async (rows) => {
     if (rows.length === 0) return rows;
     const { data } = await supabase
@@ -101,12 +119,12 @@ export default function OnDemandImport() {
     const cleaned = (rows || []).filter((r) =>
       Object.values(r).some((v) => String(v ?? "").trim() !== "")
     );
-    const initial = cleaned.map((raw) => ({ raw, ready: normalizeRow(raw) }));
-    // Filter rows with no title — they're not usable
+    const initial = cleaned.map((raw) => ({
+      raw,
+      ready: normalizeRow(raw, { includeDescription: !ignoreDescription }),
+    }));
     const usable = initial.filter((r) => r.ready.title);
 
-    // If we successfully found data rows but none of them have a title,
-    // the "title" column probably has an unrecognized header name.
     if (initial.length > 0 && usable.length === 0) {
       const foundHeaders = Object.keys(initial[0].raw || {});
       setError(
@@ -155,8 +173,6 @@ export default function OnDemandImport() {
     }
   };
 
-  // Parse pasted text. Handle all common line endings and detect delimiter
-  // manually since Papa's auto-detection is unreliable on pasted content.
   const parsePaste = () => {
     setError("");
     setParsed([]);
@@ -168,19 +184,12 @@ export default function OnDemandImport() {
       return;
     }
 
-    // Strip UTF-8 BOM if present (Google Sheets exports sometimes include it)
     if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-
-    // Normalize ALL possible line separators to \n.
-    // Windows: \r\n · classic Mac: \r · Unix: \n · Unicode:
     text = text.replace(/\r\n|\r|\u2028|\u2029/g, "\n");
     text = text.trim();
 
-    // Split into lines and drop empty ones
     const allLines = text.split("\n").filter((l) => l.trim());
 
-    // Detect delimiter by looking at the FIRST non-empty line.
-    // Google Sheets / Excel paste as TAB-separated; raw CSV is comma-separated.
     const firstLine = allLines[0] || "";
     const tabCount = (firstLine.match(/\t/g) || []).length;
     const commaCount = (firstLine.match(/,/g) || []).length;
@@ -196,25 +205,15 @@ export default function OnDemandImport() {
     const delimLabel =
       delimiter === "\t" ? "TAB" : delimiter === "," ? "COMMA" : "SEMICOLON";
 
-    // Preview of what got pasted (for diagnostics)
-    const preview = text.slice(0, 200);
-    const previewNice = preview
-      .replace(/\t/g, "→")   // tab → arrow
-      .replace(/\n/g, "⏎\n"); // newline → return arrow
-
-    // If we only see ONE line total, no amount of parsing will help.
-    // Show the user a clear diagnostic with a preview of the raw content.
     if (allLines.length < 2) {
+      const preview = text.slice(0, 200).replace(/\t/g, "→").replace(/\n/g, "⏎\n");
       setError(
-        `Only ${allLines.length} line detected in the paste — we need at least 2 (headers + one data row).\n\n` +
-        `Detected delimiter would be ${delimLabel}. The paste's first 200 chars (→ = tab, ⏎ = newline):\n\n${previewNice}\n\n` +
-        `If you see all your data flowing together in one line above, your spreadsheet probably lost the row breaks during copy. ` +
-        `Try re-selecting the rows in your source and pasting again. If you're pasting from a PDF or web page, use the file upload option instead.`
+        `Only ${allLines.length} line detected. Need at least 2 (headers + one data row).\n\n` +
+        `Detected delimiter: ${delimLabel}. First 200 chars (→ = tab, ⏎ = newline):\n\n${preview}`
       );
       return;
     }
 
-    // Parse synchronously (no callback) to get result back directly
     const result = Papa.parse(text, {
       header: true,
       skipEmptyLines: true,
@@ -222,27 +221,16 @@ export default function OnDemandImport() {
     });
 
     if (!result?.data || result.data.length === 0) {
+      const preview = text.slice(0, 200).replace(/\t/g, "→").replace(/\n/g, "⏎\n");
       setError(
         `No data rows detected. ${allLines.length} lines seen, ${delimLabel} delimiter chosen, ` +
-        `${result?.errors?.length || 0} parse errors. Preview:\n\n${previewNice}`
+        `${result?.errors?.length || 0} parse errors.\n\nPreview:\n\n${preview}`
       );
       return;
     }
 
-    // Debug: log to console so we can inspect if needed
-    if (typeof window !== "undefined") {
-      // eslint-disable-next-line no-console
-      console.log("[on-demand paste]", {
-        delimiter: delimLabel,
-        lineCount: allLines.length,
-        headers: Object.keys(result.data[0] || {}),
-        rowCount: result.data.length,
-        firstRow: result.data[0],
-      });
-    }
-
     setPasteSourceLabel(
-      `Pasted data (${delimLabel}) · ${result.data.length} row${result.data.length === 1 ? "" : "s"}`
+      `Pasted data · ${result.data.length} row${result.data.length === 1 ? "" : "s"}`
     );
     onParsed(result.data);
   };
@@ -259,7 +247,6 @@ export default function OnDemandImport() {
         : parsed;
 
       for (const r of toImport) {
-        // Parse CE hours as number, tolerate blank
         const ceRaw = (r.ready.ce_hours || "").toString().trim();
         const ceNumber = ceRaw ? Number(ceRaw) : null;
         const payload = {
@@ -294,318 +281,346 @@ export default function OnDemandImport() {
   const newCount = parsed.filter((r) => r.status === "new").length;
   const dupeCount = parsed.filter((r) => r.status === "duplicate").length;
   const willImportCount = skipDupes ? newCount : parsed.length;
+  const showInput = !chosenFile && parsed.length === 0;
 
   return (
-    <div className="adminMain">
-      <div className="elHero">
-        <div className="elHeroLeft">
-          <Link to="/admin/on-demand" className="evBack" style={{ marginBottom: 12 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Back to courses
-          </Link>
-          <div className="elHeroLabel">BULK IMPORT</div>
-          <h1 className="elHeroTitle">Import On-Demand Courses</h1>
-          <p className="elHeroSubtitle">
-            Upload a CSV or Excel file with your course list. We'll match your columns
-            automatically and let you review the results before saving.
-          </p>
-        </div>
-      </div>
-
-      {/* Column reference */}
-      <div className="impColumnRef">
-        <button
-          type="button"
-          className="impColumnRefToggle"
-          onClick={() => setShowColumnRef((s) => !s)}
-        >
-          {showColumnRef ? "Hide" : "Show"} expected columns
-        </button>
-        {showColumnRef && (
-          <div className="impColumnRefBody">
-            <p className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
-              Column headers are matched case-insensitively. Only <strong>Course Title</strong>{" "}
-              is required.
-            </p>
-            <table className="impColumnTable">
-              <thead>
-                <tr>
-                  <th>Column name</th>
-                  <th>Accepted aliases</th>
-                  <th>Example</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><code>Course Title</code> *</td>
-                  <td>title, name</td>
-                  <td>Implant Placement Fundamentals</td>
-                </tr>
-                <tr>
-                  <td><code>Type</code></td>
-                  <td>type, course type, kind</td>
-                  <td>Course, Learning Path</td>
-                </tr>
-                <tr>
-                  <td><code>Description</code></td>
-                  <td>description, desc, summary</td>
-                  <td>A short summary…</td>
-                </tr>
-                <tr>
-                  <td><code>URL</code></td>
-                  <td>url, course url, link</td>
-                  <td>https://learn.example.com/…</td>
-                </tr>
-                <tr>
-                  <td><code>Thumbnail URL</code></td>
-                  <td>thumbnail, image, image url, thumb</td>
-                  <td>https://…/image.jpg</td>
-                </tr>
-                <tr>
-                  <td><code>CE Hours</code></td>
-                  <td>ce hours, ce credits, ce, credits, hours</td>
-                  <td>1, 1.5, 2</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Mode toggle: Upload file vs Paste data */}
-      {!chosenFile && parsed.length === 0 && (
-        <div className="impModeTabs" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === "file"}
-            className={`impModeTab ${mode === "file" ? "active" : ""}`}
-            onClick={() => switchMode("file")}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M12 3v12m0-12l-4 4m4-4l4 4M4 15v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <span>Upload file</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === "paste"}
-            className={`impModeTab ${mode === "paste" ? "active" : ""}`}
-            onClick={() => switchMode("paste")}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <rect x="8" y="4" width="8" height="4" rx="1" stroke="currentColor" strokeWidth="2"/>
-              <path d="M8 6H6a2 2 0 00-2 2v11a2 2 0 002 2h12a2 2 0 002-2V8a2 2 0 00-2-2h-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-            <span>Paste from spreadsheet</span>
-          </button>
-        </div>
-      )}
-
-      {/* File drop zone */}
-      {!chosenFile && parsed.length === 0 && mode === "file" && (
-        <div
-          className={`impDrop ${drag ? "dragOver" : ""}`}
-          onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
-          onDragLeave={() => setDrag(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDrag(false);
-            handleFile(e.dataTransfer.files?.[0]);
-          }}
-          onClick={() => fileRef.current?.click()}
-        >
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-            <path d="M12 3v12m0-12l-4 4m4-4l4 4M4 15v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <div className="adminMain impPageV2">
+      {/* Clean header */}
+      <header className="impHeaderV2">
+        <Link to="/admin/on-demand" className="impBackLink">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <div style={{ marginTop: 12 }}>
-            <strong>Drop your file here, or click to browse</strong>
-          </div>
-          <div className="muted" style={{ fontSize: 13, marginTop: 6 }}>
-            Accepts .csv, .xlsx, .xls
-          </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".csv,.xlsx,.xlsm,.xls"
-            style={{ display: "none" }}
-            onChange={(e) => handleFile(e.target.files?.[0])}
-          />
-        </div>
-      )}
+          Back to courses
+        </Link>
+        <h1 className="impTitleV2">Import courses</h1>
+        <p className="impSubtitleV2">
+          Add multiple on-demand courses in one shot from a spreadsheet.
+        </p>
+      </header>
 
-      {/* Paste-from-spreadsheet area */}
-      {!chosenFile && parsed.length === 0 && mode === "paste" && (
-        <div className="impPasteZone">
-          <div className="impPasteInstructions">
-            <strong>Paste tabular data from Google Sheets or Excel</strong>
-            <p className="muted" style={{ fontSize: 13, margin: "6px 0 0" }}>
-              Select your rows (including the header row) in your spreadsheet,
-              copy with <kbd>⌘</kbd>+<kbd>C</kbd> or <kbd>Ctrl</kbd>+<kbd>C</kbd>,
-              then paste them into the box below. Both CSV and tab-separated
-              formats are auto-detected.
-            </p>
-          </div>
-          <textarea
-            className="impPasteTextarea"
-            value={pasteText}
-            onChange={(e) => setPasteText(e.target.value)}
-            placeholder={`Course Title\tType\tDescription\tURL\tThumbnail URL
-Implant Placement 101\tCourse\tLearn the fundamentals…\thttps://…\thttps://…
-Endodontic Learning Path\tLearning Path\tMulti-course series…\thttps://…\thttps://…`}
-            spellCheck={false}
-            rows={10}
-            autoFocus
-          />
-          <div className="impPasteActions">
-            <span className="muted" style={{ fontSize: 12 }}>
-              {pasteText.trim()
-                ? `${pasteText.split(/\r?\n/).filter(l => l.trim()).length} line${pasteText.split(/\r?\n/).filter(l => l.trim()).length === 1 ? "" : "s"} pasted`
-                : "Nothing pasted yet"}
-            </span>
-            <div style={{ display: "flex", gap: 8 }}>
-              {pasteText && (
-                <button
-                  type="button"
-                  className="ghostBtn"
-                  onClick={() => setPasteText("")}
-                >
-                  Clear
-                </button>
-              )}
-              <button
-                type="button"
-                className="primaryBtn"
-                onClick={parsePaste}
-                disabled={!pasteText.trim()}
-              >
-                Parse data →
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* File chosen OR paste parsed — show preview */}
-      {(chosenFile || (parsed.length > 0 && mode === "paste")) && (
+      {showInput && (
         <>
-          <div className="impFileHeader">
-            <div>
-              <div className="impFileName">
-                {chosenFile ? chosenFile.name : (pasteSourceLabel || "Pasted data")}
-              </div>
-              <div className="impFileSize muted">
-                {chosenFile
-                  ? `${(chosenFile.size / 1024).toFixed(1)} KB`
-                  : `${pasteText.length.toLocaleString()} characters`}
-              </div>
-            </div>
+          {/* Big method choice cards */}
+          <div className="impMethodGrid">
             <button
               type="button"
-              className="ghostBtn"
-              onClick={reset}
+              className={`impMethodCard ${mode === "file" ? "active" : ""}`}
+              onClick={() => switchMode("file")}
             >
+              <div className="impMethodIcon impMethodIconBlue">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M14 3v5h5M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 12v6m0-6l-2 2m2-2l2 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div className="impMethodCardBody">
+                <div className="impMethodCardTitle">Upload a file</div>
+                <div className="impMethodCardDesc">
+                  Drop a CSV or Excel spreadsheet (.csv, .xlsx, .xls)
+                </div>
+              </div>
+              {mode === "file" && <span className="impMethodCardCheck" aria-hidden="true">✓</span>}
+            </button>
+
+            <button
+              type="button"
+              className={`impMethodCard ${mode === "paste" ? "active" : ""}`}
+              onClick={() => switchMode("paste")}
+            >
+              <div className="impMethodIcon impMethodIconGreen">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <rect x="8" y="4" width="8" height="4" rx="1" stroke="currentColor" strokeWidth="2"/>
+                  <path d="M8 6H6a2 2 0 00-2 2v11a2 2 0 002 2h12a2 2 0 002-2V8a2 2 0 00-2-2h-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M9 12h6M9 16h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <div className="impMethodCardBody">
+                <div className="impMethodCardTitle">Paste from spreadsheet</div>
+                <div className="impMethodCardDesc">
+                  Copy rows from Google Sheets or Excel and paste
+                </div>
+              </div>
+              {mode === "paste" && <span className="impMethodCardCheck" aria-hidden="true">✓</span>}
+            </button>
+          </div>
+
+          {/* Utility bar with template + format reference toggle */}
+          <div className="impUtilityBar">
+            <button
+              type="button"
+              className="impUtilityLink"
+              onClick={downloadTemplate}
+              title="Downloads a CSV template with the exact column names we look for"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3v13m0 0l-4-4m4 4l4-4M4 21h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Download template CSV
+            </button>
+            <button
+              type="button"
+              className="impUtilityLink"
+              onClick={() => setShowFormatRef((s) => !s)}
+              aria-expanded={showFormatRef}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/>
+                <path d="M12 8v.01M11 12h1v4h1" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              {showFormatRef ? "Hide" : "See"} column format
+            </button>
+          </div>
+
+          {/* Format reference — nicely styled, not monospace-ugly */}
+          {showFormatRef && (
+            <div className="impFormatCard">
+              <p className="impFormatIntro">
+                Column headers are matched case-insensitively. Only <strong>Course Title</strong> is
+                required — everything else is optional and can be filled in later.
+              </p>
+              <div className="impFormatGrid">
+                <FormatRow name="Course Title" required aliases="title, name, course" example="7 Strategies for Telephone Success" />
+                <FormatRow name="Type" aliases="type, course type, kind" example="Course or Learning Path" />
+                <FormatRow name="CE Hours" aliases="ce hours, ce credits, credits, hours" example="0.5, 1, 1.5, 2" />
+                <FormatRow name="URL" aliases="url, course url, link" example="https://learn.example.com/…" />
+                <FormatRow name="Thumbnail URL" aliases="thumbnail, image, image url" example="https://…/image.jpg" />
+                <FormatRow name="Description" aliases="description, desc, summary" example="Short summary shown on the card." />
+              </div>
+            </div>
+          )}
+
+          {/* Method-specific input */}
+          {mode === "file" && (
+            <div
+              className={`impDropV2 ${drag ? "dragOver" : ""}`}
+              onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+              onDragLeave={() => setDrag(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDrag(false);
+                handleFile(e.dataTransfer.files?.[0]);
+              }}
+              onClick={() => fileRef.current?.click()}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") fileRef.current?.click();
+              }}
+            >
+              <div className="impDropIcon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 3v13m0 0l-4-4m4 4l4-4M6 21h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div className="impDropText">
+                <div className="impDropHeadline">
+                  {drag ? "Release to upload" : "Drop your file here"}
+                </div>
+                <div className="impDropSub">
+                  or <span className="impDropLink">click to browse</span> your computer
+                </div>
+                <div className="impDropAccepts">CSV, XLSX, XLS · up to 5 MB</div>
+              </div>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".csv,.xlsx,.xlsm,.xls"
+                style={{ display: "none" }}
+                onChange={(e) => handleFile(e.target.files?.[0])}
+              />
+            </div>
+          )}
+
+          {mode === "paste" && (
+            <div className="impPasteZoneV2">
+              <div className="impPasteHeader">
+                <div>
+                  <div className="impPasteHeaderTitle">Paste your rows below</div>
+                  <div className="impPasteHeaderSub">
+                    In Google Sheets or Excel, select your rows (including the header row),
+                    copy with <kbd>⌘C</kbd> / <kbd>Ctrl</kbd>+<kbd>C</kbd>, then paste here.
+                    Tab-separated and CSV formats are both auto-detected.
+                  </div>
+                </div>
+                <span className="impPasteLineCount">
+                  {pasteText.trim()
+                    ? `${pasteText.split(/\r?\n/).filter(l => l.trim()).length} line${pasteText.split(/\r?\n/).filter(l => l.trim()).length === 1 ? "" : "s"}`
+                    : "empty"}
+                </span>
+              </div>
+
+              <textarea
+                className="impPasteTextareaV2"
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                placeholder={`Course Title\tType\tCE Hours\tURL\tThumbnail URL
+Implant Placement 101\tCourse\t1.5\thttps://…\thttps://…
+Endodontic Learning Path\tLearning Path\t4\thttps://…\thttps://…`}
+                spellCheck={false}
+                rows={10}
+                autoFocus
+              />
+
+              <div className="impPasteFooter">
+                <label className="impInlineCheckbox">
+                  <input
+                    type="checkbox"
+                    checked={ignoreDescription}
+                    onChange={(e) => setIgnoreDescription(e.target.checked)}
+                  />
+                  <span>
+                    Ignore <strong>Description</strong> column
+                    <span className="impInlineCheckboxHint"> — safer when descriptions have line breaks. Add them later per course.</span>
+                  </span>
+                </label>
+                <div className="impPasteActionsV2">
+                  {pasteText && (
+                    <button
+                      type="button"
+                      className="ghostBtn"
+                      onClick={() => setPasteText("")}
+                    >
+                      Clear
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="primaryBtn"
+                    onClick={parsePaste}
+                    disabled={!pasteText.trim()}
+                  >
+                    Parse data
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ marginLeft: 4 }}>
+                      <path d="M5 12h14m-6-6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Preview after file chosen or paste parsed */}
+      {(chosenFile || (parsed.length > 0 && mode === "paste")) && (
+        <>
+          <div className="impFileHeaderV2">
+            <div className="impFileHeaderLeft">
+              <div className="impFileIcon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M14 3v5h5M7 3h7l5 5v11a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div>
+                <div className="impFileName">
+                  {chosenFile ? chosenFile.name : (pasteSourceLabel || "Pasted data")}
+                </div>
+                <div className="impFileSize muted">
+                  {chosenFile
+                    ? `${(chosenFile.size / 1024).toFixed(1)} KB`
+                    : `${pasteText.length.toLocaleString()} characters`}
+                </div>
+              </div>
+            </div>
+            <button type="button" className="ghostBtn" onClick={reset}>
               {chosenFile ? "Change file" : "Change source"}
             </button>
           </div>
 
           {parsed.length > 0 && (
             <>
-              <div className="impFileStats" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-                <div className="impFileStat">
-                  <div className="impFileStatValue">{parsed.length}</div>
-                  <div className="impFileStatLabel">Rows parsed</div>
+              <div className="impStatsV2">
+                <div className="impStat">
+                  <div className="impStatValue">{parsed.length}</div>
+                  <div className="impStatLabel">Rows parsed</div>
                 </div>
-                <div className="impFileStat impFileStatSuccess">
-                  <div className="impFileStatValue">{newCount}</div>
-                  <div className="impFileStatLabel">New</div>
+                <div className="impStat impStatOk">
+                  <div className="impStatValue">{newCount}</div>
+                  <div className="impStatLabel">New</div>
                 </div>
-                <div className="impFileStat impFileStatWarn">
-                  <div className="impFileStatValue">{dupeCount}</div>
-                  <div className="impFileStatLabel">Duplicate titles</div>
+                <div className="impStat impStatWarn">
+                  <div className="impStatValue">{dupeCount}</div>
+                  <div className="impStatLabel">Duplicates</div>
                 </div>
               </div>
 
               {dupeCount > 0 && (
-                <label className="impSkipDupe">
+                <label className="impInlineCheckbox impInlineCheckboxCard">
                   <input
                     type="checkbox"
                     checked={skipDupes}
                     onChange={(e) => setSkipDupes(e.target.checked)}
                   />
-                  <span>Skip duplicates ({dupeCount} row{dupeCount === 1 ? "" : "s"} will be ignored)</span>
+                  <span>
+                    Skip duplicates
+                    <span className="impInlineCheckboxHint"> — {dupeCount} row{dupeCount === 1 ? "" : "s"} with matching titles will be ignored.</span>
+                  </span>
                 </label>
               )}
 
-              {/* Preview table */}
-              <div className="impPreview">
-                <table className="impPreviewTable">
-                  <thead>
-                    <tr>
-                      <th>Status</th>
-                      <th>Title</th>
-                      <th>Type</th>
-                      <th>Description</th>
-                      <th>URL</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {parsed.map((r, i) => (
-                      <tr
-                        key={i}
-                        className={r.status === "duplicate" ? "impRowDupe" : ""}
-                      >
-                        <td>
-                          {r.status === "duplicate" ? (
-                            <span className="impStatusPill impStatusPillDupe">Duplicate</span>
-                          ) : (
-                            <span className="impStatusPill impStatusPillNew">New</span>
-                          )}
-                        </td>
-                        <td><strong>{r.ready.title}</strong></td>
-                        <td>{r.ready.type}</td>
-                        <td className="muted" style={{ fontSize: 12 }}>
-                          {r.ready.description ? (
-                            r.ready.description.length > 80
-                              ? r.ready.description.slice(0, 80) + "…"
-                              : r.ready.description
-                          ) : (
-                            <em>—</em>
-                          )}
-                        </td>
-                        <td className="muted" style={{ fontSize: 12 }}>
-                          {r.ready.course_url ? (
-                            <a href={r.ready.course_url} target="_blank" rel="noopener">
-                              {r.ready.course_url.replace(/^https?:\/\//, "").slice(0, 40)}…
-                            </a>
-                          ) : (
-                            <em>—</em>
-                          )}
-                        </td>
+              <div className="impPreviewV2">
+                <div className="impPreviewHeader">Preview · {parsed.length} rows</div>
+                <div className="impPreviewScroll">
+                  <table className="impPreviewTableV2">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 90 }}>Status</th>
+                        <th>Title</th>
+                        <th style={{ width: 120 }}>Type</th>
+                        <th style={{ width: 80 }}>CE</th>
+                        <th>URL</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {parsed.map((r, i) => (
+                        <tr key={i} className={r.status === "duplicate" ? "impRowDupe" : ""}>
+                          <td>
+                            <span className={`impStatusPill ${r.status === "duplicate" ? "impStatusPillDupe" : "impStatusPillNew"}`}>
+                              {r.status === "duplicate" ? "Duplicate" : "New"}
+                            </span>
+                          </td>
+                          <td className="impCellTitle">{r.ready.title}</td>
+                          <td>
+                            <span className={`impTypePill ${r.ready.type === "Learning Path" ? "impTypePillPath" : ""}`}>
+                              {r.ready.type}
+                            </span>
+                          </td>
+                          <td className="muted">{r.ready.ce_hours || "—"}</td>
+                          <td className="muted impCellUrl">
+                            {r.ready.course_url ? (
+                              <a href={r.ready.course_url} target="_blank" rel="noopener">
+                                {r.ready.course_url.replace(/^https?:\/\//, "").slice(0, 40)}
+                                {r.ready.course_url.length > 40 ? "…" : ""}
+                              </a>
+                            ) : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
-              {/* Import action */}
-              <div className="impActions">
-                <div className="impActionsInfo muted">
+              <div className="impActionsV2">
+                <div className="impActionsInfo">
                   {importing
                     ? `Importing… ${doneCount} of ${willImportCount}`
                     : `Ready to import ${willImportCount} course${willImportCount === 1 ? "" : "s"}.`}
                 </div>
-                <button
-                  type="button"
-                  className="primaryBtn"
-                  onClick={runImport}
-                  disabled={importing || willImportCount === 0}
-                >
-                  {importing ? "Importing…" : `Import ${willImportCount} course${willImportCount === 1 ? "" : "s"}`}
-                </button>
+                <div className="impActionsBtns">
+                  <button type="button" className="ghostBtn" onClick={reset} disabled={importing}>
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="primaryBtn"
+                    onClick={runImport}
+                    disabled={importing || willImportCount === 0}
+                  >
+                    {importing ? "Importing…" : `Import ${willImportCount} course${willImportCount === 1 ? "" : "s"}`}
+                  </button>
+                </div>
               </div>
             </>
           )}
@@ -613,20 +628,27 @@ Endodontic Learning Path\tLearning Path\tMulti-course series…\thttps://…\tht
       )}
 
       {error && (
-        <pre
-          className="errMsg"
-          style={{
-            marginTop: 16,
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-            fontFamily: "inherit",
-            fontSize: 13,
-            lineHeight: 1.5,
-          }}
-        >
+        <pre className="impErrorBox">
           {error}
         </pre>
       )}
+    </div>
+  );
+}
+
+function FormatRow({ name, required, aliases, example }) {
+  return (
+    <div className="impFormatRow">
+      <div className="impFormatName">
+        {name}
+        {required && <span className="impFormatReq">Required</span>}
+      </div>
+      <div className="impFormatAliases">
+        <span className="impFormatAliasLabel">Also accepted:</span> {aliases}
+      </div>
+      <div className="impFormatExample">
+        <span className="impFormatExampleLabel">Example:</span> {example}
+      </div>
     </div>
   );
 }

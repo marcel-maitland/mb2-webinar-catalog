@@ -626,3 +626,618 @@
   color: #64748b;
   font-weight: 500;
 }
+
+/* ============================================================
+   BULK IMPORT — v2 UI (2026-07)
+   Cleaner header, big method cards, template download,
+   collapsible format reference, better drop zone.
+   ============================================================ */
+
+.impPageV2 {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 8px 0 40px;
+}
+
+/* Header */
+.impHeaderV2 {
+  padding: 0 0 24px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 24px;
+}
+.impBackLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  text-decoration: none;
+  margin-bottom: 14px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.impBackLink:hover { background: #f1f5f9; color: #0f172a; }
+.impTitleV2 {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+  margin: 0 0 6px;
+  line-height: 1.15;
+}
+.impSubtitleV2 {
+  font-size: 15px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Method cards — big, obvious choice */
+.impMethodGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+@media (max-width: 640px) {
+  .impMethodGrid { grid-template-columns: 1fr; }
+}
+.impMethodCard {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: #fff;
+  border: 2px solid #e2e8f0;
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.18s ease;
+  font-family: inherit;
+}
+.impMethodCard:hover {
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+.impMethodCard.active {
+  border-color: #2563eb;
+  background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.12);
+}
+.impMethodIcon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+.impMethodIconBlue {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+.impMethodIconGreen {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+.impMethodCardBody { flex: 1; min-width: 0; }
+.impMethodCardTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 3px;
+}
+.impMethodCardDesc {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.4;
+}
+.impMethodCardCheck {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+}
+
+/* Utility bar — template + format */
+.impUtilityBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 4px;
+  margin-bottom: 8px;
+}
+.impUtilityLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+.impUtilityLink:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #e2e8f0;
+}
+.impUtilityLink:first-child {
+  color: #2563eb;
+}
+.impUtilityLink:first-child:hover {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+/* Format reference card */
+.impFormatCard {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.impFormatIntro {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.55;
+}
+.impFormatGrid {
+  display: grid;
+  gap: 10px;
+}
+.impFormatRow {
+  display: grid;
+  grid-template-columns: 180px 1fr 1fr;
+  gap: 16px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+@media (max-width: 720px) {
+  .impFormatRow {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+.impFormatName {
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.impFormatReq {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #fee2e2;
+  color: #b91c1c;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.impFormatAliasLabel,
+.impFormatExampleLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+  margin-right: 6px;
+}
+.impFormatAliases,
+.impFormatExample {
+  color: #475569;
+  font-size: 12.5px;
+}
+
+/* Drop zone v2 */
+.impDropV2 {
+  border: 2px dashed #cbd5e1;
+  border-radius: 16px;
+  background: #f8fafc;
+  padding: 48px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+.impDropV2:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+.impDropV2.dragOver {
+  border-color: #2563eb;
+  background: #dbeafe;
+  transform: scale(1.005);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
+}
+.impDropIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2563eb;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+.impDropV2.dragOver .impDropIcon {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+.impDropHeadline {
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+.impDropSub {
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+.impDropLink {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+.impDropAccepts {
+  font-size: 12px;
+  color: #94a3b8;
+  padding: 4px 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  font-weight: 500;
+}
+
+/* Paste zone v2 */
+.impPasteZoneV2 {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+}
+.impPasteHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.impPasteHeaderTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+.impPasteHeaderSub {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+}
+.impPasteHeaderSub kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #334155;
+}
+.impPasteLineCount {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  background: #f1f5f9;
+  border-radius: 999px;
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.impPasteTextareaV2 {
+  width: 100%;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  background: #fafafa;
+  color: #0f172a;
+  resize: vertical;
+  min-height: 180px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.impPasteTextareaV2:focus {
+  outline: none;
+  border-color: #2563eb;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+.impPasteFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f5f9;
+}
+.impPasteActionsV2 {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Inline checkboxes (skip-desc, skip-dupes) */
+.impInlineCheckbox {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.5;
+  max-width: 520px;
+}
+.impInlineCheckbox input[type="checkbox"] {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  accent-color: #2563eb;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.impInlineCheckboxHint {
+  color: #64748b;
+}
+.impInlineCheckboxCard {
+  display: flex;
+  padding: 12px 14px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  max-width: none;
+}
+
+/* File header after upload */
+.impFileHeaderV2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+.impFileHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.impFileIcon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Stats v2 */
+.impStatsV2 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.impStat {
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+.impStatValue {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.impStatLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.impStatOk {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+.impStatOk .impStatValue { color: #047857; }
+.impStatWarn {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+.impStatWarn .impStatValue { color: #b45309; }
+
+/* Preview v2 */
+.impPreviewV2 {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.impPreviewHeader {
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.impPreviewScroll {
+  max-height: 420px;
+  overflow-y: auto;
+}
+.impPreviewTableV2 {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.impPreviewTableV2 thead th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  border-bottom: 1px solid #e2e8f0;
+}
+.impPreviewTableV2 tbody td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  vertical-align: middle;
+}
+.impPreviewTableV2 tbody tr:last-child td { border-bottom: none; }
+.impPreviewTableV2 tbody tr:hover { background: #fafafa; }
+.impPreviewTableV2 .impRowDupe { background: #fffbeb; }
+.impPreviewTableV2 .impRowDupe:hover { background: #fef3c7; }
+.impCellTitle {
+  font-weight: 600;
+  color: #0f172a;
+}
+.impCellUrl { font-size: 12px; }
+.impCellUrl a { color: #2563eb; text-decoration: none; }
+.impCellUrl a:hover { text-decoration: underline; }
+
+/* Status + type pills */
+.impStatusPill {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.impStatusPillNew {
+  background: #dcfce7;
+  color: #166534;
+}
+.impStatusPillDupe {
+  background: #fef3c7;
+  color: #92400e;
+}
+.impTypePill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 11px;
+  font-weight: 700;
+}
+.impTypePillPath {
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+
+/* Action bar */
+.impActionsV2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  position: sticky;
+  bottom: 16px;
+  z-index: 5;
+  box-shadow: 0 -2px 12px rgba(15, 23, 42, 0.06);
+}
+.impActionsInfo {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+}
+.impActionsBtns {
+  display: flex;
+  gap: 8px;
+}
+
+/* Error box */
+.impErrorBox {
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  color: #991b1b;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
