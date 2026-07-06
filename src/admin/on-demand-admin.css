@@ -1465,3 +1465,23 @@
   background: #f97316;
   box-shadow: 0 2px 4px rgba(249, 115, 22, 0.3);
 }
+
+/* Import options strip — global settings above the input method */
+.impOptions {
+  padding: 14px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.impOptionsLabel {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  margin-bottom: 2px;
+}

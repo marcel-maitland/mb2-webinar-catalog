@@ -153,7 +153,7 @@ export default function OnDemandImport() {
   const [drag, setDrag] = useState(false);
   const [showFormatRef, setShowFormatRef] = useState(false);
   const [dupeAction, setDupeAction] = useState("skip"); // "skip" | "update" | "insert"
-  const [ignoreDescription, setIgnoreDescription] = useState(true);
+  const [ignoreDescription, setIgnoreDescription] = useState(false);
   const [columnDiag, setColumnDiag] = useState(null); // { mapped, unmapped }
   const fileRef = useRef(null);
 
@@ -521,6 +521,22 @@ export default function OnDemandImport() {
             </div>
           )}
 
+          {/* Import options — applies to BOTH file and paste modes */}
+          <div className="impOptions">
+            <div className="impOptionsLabel">Import options</div>
+            <label className="impInlineCheckbox">
+              <input
+                type="checkbox"
+                checked={ignoreDescription}
+                onChange={(e) => setIgnoreDescription(e.target.checked)}
+              />
+              <span>
+                Ignore <strong>Description</strong> column
+                <span className="impInlineCheckboxHint"> — turn on only if descriptions with line breaks cause parse errors.</span>
+              </span>
+            </label>
+          </div>
+
           {/* Method-specific input */}
           {mode === "file" && (
             <div
@@ -594,17 +610,10 @@ Endodontic Learning Path\tLearning Path\t4\thttps://…\thttps://…`}
               />
 
               <div className="impPasteFooter">
-                <label className="impInlineCheckbox">
-                  <input
-                    type="checkbox"
-                    checked={ignoreDescription}
-                    onChange={(e) => setIgnoreDescription(e.target.checked)}
-                  />
-                  <span>
-                    Ignore <strong>Description</strong> column
-                    <span className="impInlineCheckboxHint"> — safer when descriptions have line breaks. Add them later per course.</span>
-                  </span>
-                </label>
+                <span className="muted" style={{ fontSize: 12 }}>
+                  Descriptions with line breaks may cause parse errors. Toggle the
+                  "Ignore Description" option above if you hit issues.
+                </span>
                 <div className="impPasteActionsV2">
                   {pasteText && (
                     <button
