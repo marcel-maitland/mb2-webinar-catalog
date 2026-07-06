@@ -857,3 +857,29 @@
     padding: 3px 6px !important;
   }
 }
+
+/* ---- Inline search inside the filter bar (embedded/unified mode) ----
+   Sits on the same row as the filter chips. Grows to fill available
+   space up to a comfortable max width, then the filter chips and
+   count push flush right of it. */
+.filterBarInner .filterBarSearch {
+  flex: 1 1 240px;
+  min-width: 200px;
+  max-width: 380px;
+  padding: 8px 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 13px;
+  font-family: inherit;
+  color: #0f172a;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.filterBarInner .filterBarSearch:focus {
+  outline: none;
+  border-color: #1dbfc9;
+  box-shadow: 0 0 0 3px rgba(29, 191, 201, 0.15);
+}
+.filterBarInner .filterBarSearch::placeholder {
+  color: #94a3b8;
+}

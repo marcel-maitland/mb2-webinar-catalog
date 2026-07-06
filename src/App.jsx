@@ -461,17 +461,10 @@ export default function App({ embedded = false, slugOverride = null }) {
         </header>
       )}
 
-      {embedded && (
-        <input
-          className="search searchEmbedded"
-          placeholder="Search events, vendors, categories…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-      )}
-
       {/* Horizontal filter bar — sticks below the header. Popover dropdowns
-          keep their scrolling internal so the page never gets pushed. */}
+          keep their scrolling internal so the page never gets pushed.
+          In embedded mode, search input renders INSIDE the bar on the
+          same row as the filter chips. */}
       <FilterBar
         clientName={clientName}
         isExclusiveMode={isExclusiveMode}
@@ -485,6 +478,10 @@ export default function App({ embedded = false, slugOverride = null }) {
         toggle={toggle}
         clearFilters={clearFilters}
         filteredCount={filtered.length}
+        showSearch={embedded}
+        query={query}
+        setQuery={setQuery}
+        searchPlaceholder="Search events, vendors, categories…"
       />
 
       <div className="layoutTop">
@@ -537,6 +534,7 @@ function FilterBar(props) {
     vendors, vendorSelected, setVendorSelected,
     ceHours, ceSelected, setCeSelected,
     toggle, clearFilters, filteredCount,
+    showSearch, query, setQuery, searchPlaceholder,
   } = props;
 
   const hasAnyFilter =
@@ -552,6 +550,15 @@ function FilterBar(props) {
   return (
     <div className="filterBar" role="toolbar" aria-label="Event filters">
       <div className="filterBarInner">
+        {showSearch && (
+          <input
+            className="filterBarSearch"
+            type="search"
+            placeholder={searchPlaceholder || "Search…"}
+            value={query || ""}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        )}
         {!isExclusiveMode && (
           <button
             type="button"

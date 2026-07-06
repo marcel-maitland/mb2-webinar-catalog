@@ -115,16 +115,10 @@ export default function OnDemand({ embedded = false }) {
         </header>
       )}
 
-      {embedded && (
-        <input
-          className="search searchEmbedded"
-          placeholder="Search on-demand courses…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-      )}
-
-      {/* Horizontal filter bar — same pattern as the events catalog */}
+      {/* Horizontal filter bar — same pattern as the events catalog.
+          In embedded mode the search input lives INSIDE the filter bar,
+          on the same row as the filter chips, so we don't need a
+          separate row above. */}
       <OdFilterBar
         types={types} typeSelected={typeSelected} setTypeSelected={setTypeSelected}
         ceHours={ceHours} ceSelected={ceSelected} setCeSelected={setCeSelected}
@@ -132,6 +126,10 @@ export default function OnDemand({ embedded = false }) {
         toggle={toggle}
         clearFilters={clearFilters}
         filteredCount={filtered.length}
+        showSearch={embedded}
+        query={query}
+        setQuery={setQuery}
+        searchPlaceholder="Search on-demand courses…"
       />
 
       <div className="layoutTop">
@@ -289,6 +287,7 @@ function OdFilterBar(props) {
     ceHours, ceSelected, setCeSelected,
     roles, rolesSelected, setRolesSelected,
     toggle, clearFilters, filteredCount,
+    showSearch, query, setQuery, searchPlaceholder,
   } = props;
 
   const hasAnyFilter =
@@ -298,6 +297,15 @@ function OdFilterBar(props) {
   return (
     <div className="filterBar" role="toolbar" aria-label="Course filters">
       <div className="filterBarInner">
+        {showSearch && (
+          <input
+            className="filterBarSearch"
+            type="search"
+            placeholder={searchPlaceholder || "Search…"}
+            value={query || ""}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        )}
         <OdFilterPopover
           label="Type"
           options={types}

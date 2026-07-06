@@ -30,13 +30,15 @@
 .odResultsCount strong { color: #0f172a; font-weight: 700; }
 
 /* Grid — same shape as .grid (repeats desktop 3-col behavior).
-   `align-items: stretch` so cards in a row match heights based on the
-   tallest, keeping bottom bars aligned. */
+   `align-items: start` because cards have a locked aspect ratio; row
+   stretching would fight the fixed shape. Cards in the same row are
+   automatically the same size because their width is the same (1fr)
+   and their aspect ratio is the same. */
 .odGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
-  align-items: stretch;
+  align-items: start;
 }
 @media (max-width: 900px) {
   .odGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
@@ -45,16 +47,18 @@
   .odGrid { grid-template-columns: 1fr; gap: 14px; }
 }
 
-/* ---- Card layout ----
-   Cards size to their content (thumbnail + clamped title + clamped
-   description + fixed footer). No forced aspect ratio, so no dead
-   whitespace below the description. The description clamp keeps every
-   card in a row roughly the same height without needing an explicit
-   aspect-ratio lock. */
+/* ---- Card layout: locked aspect ratio, scales with browser ----
+   Every card has a fixed 6:7 shape. As the browser resizes, cards
+   grow/shrink proportionally with the grid columns, but the internal
+   proportions never drift — thumbnail:body ratio stays constant. The
+   6:7 ratio is chosen to fit the natural content need (thumbnail +
+   3-line title + 4-line description + footer) with minimal negative
+   space. Descriptions clamped at 4 lines guarantee no overflow. */
 .odCard {
   display: flex !important;
   flex-direction: column !important;
-  height: 100%;
+  aspect-ratio: 6 / 7 !important;
+  height: auto !important;
   overflow: hidden !important;
 }
 
