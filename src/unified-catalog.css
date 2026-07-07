@@ -185,3 +185,26 @@ a.unifiedTabLink:visited {
   color: #1dbfc9;
   transform: translate(1px, -1px);
 }
+
+/* Widget title bar — sits above the sticky tabs. Scrolls away with the
+   page (not sticky) so the tabs are the only element pinned to the top
+   once the user starts scrolling. Full-width, edge-to-edge to match the
+   sticky bar below it. */
+.unifiedTitleBar {
+  padding: 22px 20px 16px;
+  background: transparent;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+}
+.unifiedTitle {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  text-align: center;
+}
+@media (max-width: 700px) {
+  .unifiedTitleBar { padding: 16px 16px 12px; }
+  .unifiedTitle    { font-size: 18px; }
+}

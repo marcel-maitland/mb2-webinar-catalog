@@ -41,6 +41,14 @@ export default function UnifiedCatalog() {
 
   return (
     <div className="unifiedPage">
+      {/* Header — describes what's in the catalog. Not sticky; scrolls
+          away with the page so only the tabs stay pinned at the top. */}
+      <header className="unifiedTitleBar">
+        <h1 className="unifiedTitle">
+          On-demand Courses, Live Events, Webinars and State Requirements
+        </h1>
+      </header>
+
       {/* Big tabs — On Demand / Live Events / CE Requirements. Sticky at
           top so they persist while the user scrolls the catalog grid.
           The third one is a real external link (opens in a new tab) so
