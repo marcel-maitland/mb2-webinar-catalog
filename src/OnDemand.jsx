@@ -48,9 +48,20 @@ export default function OnDemand({ embedded = false }) {
     () => uniq(rows.map((r) => r.type)).sort((a, b) => a.localeCompare(b)),
     [rows]
   );
+  // CE Hours filter — caps at "10+". Any course with ce_hours > 10 rolls
+  // up into a single "10+" bucket instead of listing every distinct value.
+  const CE_OVER = "10+";
   const ceHours = useMemo(() => {
     const vals = rows.map((r) => r.ce_hours).filter((n) => typeof n === "number");
-    return [...new Set(vals)].sort((a, b) => a - b);
+    const lowSet = new Set();
+    let hasOver = false;
+    for (const v of vals) {
+      if (v > 10) hasOver = true;
+      else lowSet.add(v);
+    }
+    const sorted = [...lowSet].sort((a, b) => a - b);
+    if (hasOver) sorted.push(CE_OVER);
+    return sorted;
   }, [rows]);
   const roles = useMemo(() => {
     const all = rows.flatMap((r) => (Array.isArray(r.roles) ? r.roles : []));
@@ -78,7 +89,12 @@ export default function OnDemand({ embedded = false }) {
     const rolesOn = rolesSelected.size > 0;
     return rows.filter((r) => {
       if (typeOn && !typeSelected.has(r.type)) return false;
-      if (ceOn && !(typeof r.ce_hours === "number" && ceSelected.has(r.ce_hours))) return false;
+      if (ceOn) {
+        if (typeof r.ce_hours !== "number") return false;
+        const exact = ceSelected.has(r.ce_hours);
+        const overTen = r.ce_hours > 10 && ceSelected.has(CE_OVER);
+        if (!exact && !overTen) return false;
+      }
       if (rolesOn) {
         const rRoles = Array.isArray(r.roles) ? r.roles : [];
         if (!rRoles.some((rr) => rolesSelected.has(rr))) return false;
@@ -326,7 +342,7 @@ function OdFilterBar(props) {
           selected={ceSelected}
           onToggle={(v) => toggle(setCeSelected, v)}
           onClear={() => setCeSelected(new Set())}
-          formatOption={(o) => `${o} CE`}
+          formatOption={(o) => (typeof o === "string" ? o : `${o} CE`)}
         />
 
         <div className="filterBarSpacer" />

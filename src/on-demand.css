@@ -64,15 +64,15 @@
   overflow: hidden !important;
 }
 
-/* Thumbnail — LOCKED at 16:9. As the card resizes with the browser,
-   the thumbnail scales proportionally (width follows card, height
-   follows 16:9 of that width). The aspect ratio itself never changes;
-   only the pixel size does. Placeholder background covers the frame
-   at all sizes so cards without a thumbnail still hold the same shape. */
+/* Thumbnail — LOCKED at 2:1 (slightly wider than 16:9). As the card
+   resizes with the browser, the thumbnail scales proportionally (width
+   follows card, height is exactly half). The aspect ratio itself never
+   changes; only the pixel size does. Placeholder background covers the
+   frame at all sizes so cards without a thumbnail still hold shape. */
 .odCard .odThumb {
   position: relative;
   width: 100% !important;
-  aspect-ratio: 16 / 9 !important;
+  aspect-ratio: 2 / 1 !important;
   height: auto !important;
   min-height: 0 !important;
   overflow: hidden !important;

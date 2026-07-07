@@ -559,13 +559,13 @@
 }
 .filterExclBtn:hover { border-color: #cbd5e1; background: #f8fafc; }
 .filterExclBtn.active {
-  background: linear-gradient(135deg, #ecfeff, #ffedd5);
+  background: #ffedd5;   /* solid warm orange, no gradient */
   border-color: #fdba74;
   color: #9a3412;
-  box-shadow: 0 2px 6px rgba(29, 191, 201, 0.15);
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.20);
 }
-.filterExclStar { color: #1dbfc9; font-size: 14px; }
-.filterExclBtn.active .filterExclStar { color: #0e94a3; }
+.filterExclStar { color: #f97316; font-size: 14px; }
+.filterExclBtn.active .filterExclStar { color: #c2410c; }
 .filterExclLabel { white-space: nowrap; }
 
 /* Chip-style buttons for each filter category */

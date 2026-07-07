@@ -349,9 +349,20 @@ export default function App({ embedded = false, slugOverride = null }) {
     () => uniq(rows.map((r) => r.vendor)).sort((a, b) => a.localeCompare(b)),
     [rows]
   );
+  // CE Hours filter — caps at "10+". Any course with ce > 10 rolls up
+  // into a single "10+" bucket instead of listing every distinct value.
+  const CE_OVER = "10+";
   const ceHours = useMemo(() => {
     const vals = rows.map((r) => r.ce).filter((n) => typeof n === "number");
-    return [...new Set(vals)].sort((a, b) => a - b);
+    const lowSet = new Set();
+    let hasOver = false;
+    for (const v of vals) {
+      if (v > 10) hasOver = true;
+      else lowSet.add(v);
+    }
+    const sorted = [...lowSet].sort((a, b) => a - b);
+    if (hasOver) sorted.push(CE_OVER);
+    return sorted;
   }, [rows]);
   const formats = useMemo(
     () => uniq(rows.map((r) => r.format)).sort((a, b) => a.localeCompare(b)),
@@ -393,7 +404,15 @@ export default function App({ embedded = false, slugOverride = null }) {
       .filter((r) => (r.date ? endOfDay(r.date) >= now : true))
       .filter((r) => (catOn ? catSelected.has(r.category) : true))
       .filter((r) => (vendorOn ? vendorSelected.has(r.vendor) : true))
-      .filter((r) => (ceOn ? typeof r.ce === "number" && ceSelected.has(r.ce) : true))
+      .filter((r) => {
+        if (!ceOn) return true;
+        if (typeof r.ce !== "number") return false;
+        // Exact-value match
+        if (ceSelected.has(r.ce)) return true;
+        // 10+ bucket match: any course with more than 10 CE hours
+        if (r.ce > 10 && ceSelected.has(CE_OVER)) return true;
+        return false;
+      })
       .filter((r) => (formatOn ? formatSelected.has(r.format) : true))
       .filter((r) => (mb2ExclusiveOnly ? r.mb2Exclusive === true : true))
       .filter((r) => {
@@ -568,7 +587,11 @@ function FilterBar(props) {
             title={`Only show ${clientName || "your organization"} Exclusive events`}
           >
             <span className="filterExclStar" aria-hidden="true">★</span>
-            <span className="filterExclLabel">{clientName || "MB2"} Exclusive</span>
+            <span className="filterExclLabel">
+              {/* Strip trailing "Dental" so "MB2 Dental" → "MB2 Exclusive",
+                  not "MB2 Dental Exclusive". Other clients keep their full name. */}
+              {(clientName || "MB2").replace(/\s+Dental\s*$/i, "").trim()} Exclusive
+            </span>
           </button>
         )}
 

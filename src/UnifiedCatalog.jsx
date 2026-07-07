@@ -72,7 +72,7 @@ export default function UnifiedCatalog() {
         <TabLink
           href="https://learn.dentlogics.com/pages/state-requirements"
           label="CE Requirements"
-          sub="State-by-state rules · required topics"
+          sub="State by state required courses for credentialing"
           icon={
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <path d="M6 2h9l5 5v13a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
