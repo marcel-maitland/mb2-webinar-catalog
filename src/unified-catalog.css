@@ -186,25 +186,45 @@ a.unifiedTabLink:visited {
   transform: translate(1px, -1px);
 }
 
-/* Widget title bar — sits above the sticky tabs. Scrolls away with the
-   page (not sticky) so the tabs are the only element pinned to the top
-   once the user starts scrolling. Full-width, edge-to-edge to match the
-   sticky bar below it. */
+/* Widget title bar — big bold centered heading with a teal accent
+   underline, matching the "Required Courses" style on learn.dentlogics.
+   Not sticky; scrolls away with the page. */
 .unifiedTitleBar {
-  padding: 22px 20px 16px;
+  padding: 32px 20px 26px;
   background: transparent;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
-}
-.unifiedTitle {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 800;
-  color: #0f172a;
-  letter-spacing: -0.02em;
-  line-height: 1.25;
   text-align: center;
 }
-@media (max-width: 700px) {
-  .unifiedTitleBar { padding: 16px 16px 12px; }
-  .unifiedTitle    { font-size: 18px; }
+.unifiedTitle {
+  display: inline-block;
+  margin: 0 auto;
+  font-size: 40px;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  position: relative;
+  padding-bottom: 18px;
+}
+.unifiedTitle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 90px;
+  height: 4px;
+  background: #1dbfc9;
+  border-radius: 2px;
+}
+
+/* Responsive scaling — keep the title:underline proportion consistent */
+@media (max-width: 900px) {
+  .unifiedTitleBar { padding: 26px 20px 22px; }
+  .unifiedTitle    { font-size: 32px; padding-bottom: 15px; }
+  .unifiedTitle::after { width: 74px; height: 3.5px; }
+}
+@media (max-width: 640px) {
+  .unifiedTitleBar { padding: 20px 16px 16px; }
+  .unifiedTitle    { font-size: 24px; padding-bottom: 12px; }
+  .unifiedTitle::after { width: 58px; height: 3px; }
 }
