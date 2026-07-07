@@ -11,28 +11,25 @@
   background: transparent;
 }
 
-/* Sticky top strip — tabs + filter bar visually merge into ONE
+/* Sticky top block — TITLE + TABS + filter bar all merge into ONE
    continuous frosted panel that spans the full width of the widget.
-   No grey slivers on the left/right; no seam between the tabs and
-   the filter bar. */
-.unifiedTabs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  padding: 14px 20px 10px;
-  margin: 0;
-}
-.unifiedTabsSticky {
+   The wrapper is what's actually sticky; tabs and title inside just
+   contribute their heights. */
+.unifiedStickyHeader {
   position: sticky;
   top: 0;
   z-index: 40;
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(16px) saturate(1.2);
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
-  /* No border-radius — bottom is flush with the filter bar below.
-     Bottom border is intentionally omitted so the filter bar's own
-     background continues the surface seamlessly. */
   border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+}
+.unifiedTabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 4px 20px 12px;
+  margin: 0;
 }
 @media (max-width: 960px) {
   .unifiedTabs { grid-template-columns: repeat(2, 1fr); }
@@ -139,7 +136,7 @@
    single continuous edge-to-edge header. Its top offset matches the
    height of the tabs bar so both stay pinned as the user scrolls. */
 .unifiedBody .filterBar {
-  top: 92px !important;
+  top: 148px !important;   /* sits below the sticky title + tabs */
   z-index: 30 !important;
   border: none !important;
   border-radius: 0 !important;
@@ -151,9 +148,8 @@
   padding: 12px 20px !important;
   border-bottom: 1px solid rgba(15, 23, 42, 0.06) !important;
 }
-@media (max-width: 700px) {
-  .unifiedBody .filterBar { top: 156px !important; }
-}
+@media (max-width: 900px) { .unifiedBody .filterBar { top: 138px !important; } }
+@media (max-width: 700px) { .unifiedBody .filterBar { top: 220px !important; } }
 
 /* Give the grid + cards their own inner padding, since the page
    container no longer has side padding (that space is now used by
@@ -186,24 +182,25 @@ a.unifiedTabLink:visited {
   transform: translate(1px, -1px);
 }
 
-/* Widget title bar — big bold centered heading with a teal accent
-   underline, matching the "Required Courses" style on learn.dentlogics.
-   Not sticky; scrolls away with the page. */
+/* Widget title bar — bold centered heading with a teal accent
+   underline. Sized to match the "Required Courses" title on
+   learn.dentlogics — deliberately more compact so the whole sticky
+   header (title + tabs) stays a reasonable height when pinned. */
 .unifiedTitleBar {
-  padding: 32px 20px 26px;
+  padding: 16px 20px 10px;
   background: transparent;
   text-align: center;
 }
 .unifiedTitle {
   display: inline-block;
   margin: 0 auto;
-  font-size: 40px;
+  font-size: 26px;
   font-weight: 900;
   color: #0f172a;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
   position: relative;
-  padding-bottom: 18px;
+  padding-bottom: 12px;
 }
 .unifiedTitle::after {
   content: "";
@@ -211,20 +208,20 @@ a.unifiedTabLink:visited {
   left: 50%;
   bottom: 0;
   transform: translateX(-50%);
-  width: 90px;
-  height: 4px;
+  width: 70px;
+  height: 3px;
   background: #1dbfc9;
   border-radius: 2px;
 }
 
 /* Responsive scaling — keep the title:underline proportion consistent */
 @media (max-width: 900px) {
-  .unifiedTitleBar { padding: 26px 20px 22px; }
-  .unifiedTitle    { font-size: 32px; padding-bottom: 15px; }
-  .unifiedTitle::after { width: 74px; height: 3.5px; }
+  .unifiedTitleBar { padding: 14px 20px 8px; }
+  .unifiedTitle    { font-size: 22px; padding-bottom: 10px; }
+  .unifiedTitle::after { width: 60px; height: 2.5px; }
 }
 @media (max-width: 640px) {
-  .unifiedTitleBar { padding: 20px 16px 16px; }
-  .unifiedTitle    { font-size: 24px; padding-bottom: 12px; }
-  .unifiedTitle::after { width: 58px; height: 3px; }
+  .unifiedTitleBar { padding: 12px 16px 8px; }
+  .unifiedTitle    { font-size: 18px; padding-bottom: 8px; }
+  .unifiedTitle::after { width: 48px; height: 2.5px; }
 }

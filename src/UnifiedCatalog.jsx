@@ -41,19 +41,18 @@ export default function UnifiedCatalog() {
 
   return (
     <div className="unifiedPage">
-      {/* Header — describes what's in the catalog. Not sticky; scrolls
-          away with the page so only the tabs stay pinned at the top. */}
-      <header className="unifiedTitleBar">
-        <h1 className="unifiedTitle">
-          On-demand Courses, Live Events, Webinars and State Requirements
-        </h1>
-      </header>
+      {/* Sticky header block — title + tabs stick together at the top of
+          the widget. Below them, the filter bar (from inside the child
+          catalog) docks flush and stays pinned too. */}
+      <div className="unifiedStickyHeader">
+        <header className="unifiedTitleBar">
+          <h1 className="unifiedTitle">
+            On-demand Courses, Live Events, Webinars and State Requirements
+          </h1>
+        </header>
 
-      {/* Big tabs — On Demand / Live Events / CE Requirements. Sticky at
-          top so they persist while the user scrolls the catalog grid.
-          The third one is a real external link (opens in a new tab) so
-          it doesn't try to render inside this iframe. */}
-      <nav className="unifiedTabs unifiedTabsSticky" role="tablist" aria-label="Catalog type">
+        {/* Big tabs — On Demand / Live Events / CE Requirements. */}
+        <nav className="unifiedTabs" role="tablist" aria-label="Catalog type">
         <TabButton
           active={tab === "on-demand"}
           onClick={() => switchTab("on-demand")}
@@ -88,7 +87,8 @@ export default function UnifiedCatalog() {
             </svg>
           }
         />
-      </nav>
+        </nav>
+      </div>
 
       {/* Body — mount whichever catalog is active. Keep the inactive one
           unmounted so its filter/search state doesn't linger. */}
