@@ -29,16 +29,14 @@
 }
 .odResultsCount strong { color: #0f172a; font-weight: 700; }
 
-/* Grid — same shape as .grid (repeats desktop 3-col behavior).
-   `align-items: start` because cards have a locked aspect ratio; row
-   stretching would fight the fixed shape. Cards in the same row are
-   automatically the same size because their width is the same (1fr)
-   and their aspect ratio is the same. */
+/* Grid — 3 columns on desktop, reflowing on smaller viewports.
+   `align-items: stretch` so cards in a row share the same height and
+   the CE + button footers line up flush across the row. */
 .odGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
-  align-items: start;
+  align-items: stretch;
 }
 @media (max-width: 900px) {
   .odGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
@@ -47,44 +45,47 @@
   .odGrid { grid-template-columns: 1fr; gap: 14px; }
 }
 
-/* ---- Card layout: locked aspect ratio, scales with browser ----
-   Every card has a fixed shape. As the browser resizes, cards
-   grow/shrink proportionally with the grid columns, but the internal
-   proportions never drift — thumbnail:body ratio stays constant.
-
-   The aspect ratio is chosen to match content EXACTLY:
-     • Thumbnail 16:9  → ~56% of width in height
-     • Title      2 lines (locked min + max)
-     • Description 4 lines (locked min + max)
-     • CE + button footer
-   No negative space between description and footer because content
-   height matches the card's fixed height. */
+/* ---- Card layout: locked content, no forced aspect ratio ----
+   Card sizes to its content exactly:
+     • Thumbnail 16:9  → locked ratio scales with card width
+     • Title      exactly 2 lines (min + max)
+     • Description exactly 4 lines (min + max)
+     • CE + button footer (fixed height)
+   Because every card's internal content sizes are LOCKED to identical
+   heights, every card in the grid has the exact same overall size —
+   without needing an artificial aspect-ratio that would create blank
+   space when content is shorter than the ratio dictates.
+   The zoom breakpoints below keep the whole card proportional as the
+   browser resizes. */
 .odCard {
   display: flex !important;
   flex-direction: column !important;
-  aspect-ratio: 5 / 6 !important;
   height: auto !important;
   overflow: hidden !important;
 }
 
-/* Thumbnail — 16:9 frame at the top of the card.
-   Taller than the old 800:385 so more of each course thumbnail shows
-   without cropping the top or bottom edges. `object-fit: cover` fills
-   the frame edge-to-edge. Images taller than 16:9 still get their
-   top/bottom trimmed to keep the width flush — standardizing your
-   source thumbnails to 16:9 (e.g. 1280×720) will eliminate any crop. */
+/* Thumbnail — LOCKED at 16:9. As the card resizes with the browser,
+   the thumbnail scales proportionally (width follows card, height
+   follows 16:9 of that width). The aspect ratio itself never changes;
+   only the pixel size does. Placeholder background covers the frame
+   at all sizes so cards without a thumbnail still hold the same shape. */
 .odCard .odThumb {
   position: relative;
-  width: 100%;
+  width: 100% !important;
   aspect-ratio: 16 / 9 !important;
+  height: auto !important;
+  min-height: 0 !important;
   overflow: hidden !important;
-  background: #f1f5f9;
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
   padding: 0 !important;
   margin: 0 !important;
   display: block;
   flex-shrink: 0;
+  flex-grow: 0;
 }
 .odCard .odThumb > img {
+  position: absolute;
+  inset: 0;
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;

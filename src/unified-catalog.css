@@ -12,23 +12,30 @@
 }
 
 /* Sticky tabs bar — persists at the top of the page as the user scrolls.
-   Three tabs on desktop → 2 → 1 as the viewport narrows. */
+   Three tabs on desktop → 2 → 1 as the viewport narrows.
+   The container has soft rounded top corners so it reads as an
+   intentional widget header rather than a hard flush edge, and a
+   subtle inner-padding buffer so the tabs never crowd the container. */
 .unifiedTabs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  padding: 12px 0;
+  gap: 10px;
+  padding: 14px 16px 12px;
   margin: 0;
 }
 .unifiedTabsSticky {
   position: sticky;
   top: 0;
   z-index: 40;
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-top: none;
+  border-radius: 0 0 16px 16px;
+  box-shadow:
+    0 6px 20px rgba(15, 23, 42, 0.06),
+    0 1px 0 rgba(255, 255, 255, 0.6) inset;
 }
 @media (max-width: 960px) {
   .unifiedTabs { grid-template-columns: repeat(2, 1fr); }
@@ -131,10 +138,19 @@
 }
 
 /* Override the filter bar's default sticky top so it docks BELOW the
-   sticky tabs bar (~86px tall) instead of below the removed header. */
+   sticky tabs bar. Softer visual treatment so the two sticky bars
+   feel like one continuous header rather than two stacked slabs. */
 .unifiedBody .filterBar {
-  top: 86px !important;
+  top: 92px !important;
   z-index: 30 !important;
+  border: 1px solid rgba(15, 23, 42, 0.06) !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  backdrop-filter: blur(14px) saturate(1.2) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.2) !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05) !important;
+  margin: 10px 0 0 !important;
+  padding: 12px 16px !important;
 }
 @media (max-width: 700px) {
   .unifiedBody .filterBar { top: 156px !important; }
