@@ -11,10 +11,11 @@
   background: transparent;
 }
 
-/* Sticky tabs bar — persists at the top of the page as the user scrolls */
+/* Sticky tabs bar — persists at the top of the page as the user scrolls.
+   Three tabs on desktop → 2 → 1 as the viewport narrows. */
 .unifiedTabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   padding: 12px 0;
   margin: 0;
@@ -28,6 +29,9 @@
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid rgba(15, 23, 42, 0.06);
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+}
+@media (max-width: 960px) {
+  .unifiedTabs { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 640px) {
   .unifiedTabs { grid-template-columns: 1fr; }
@@ -134,4 +138,25 @@
 }
 @media (max-width: 700px) {
   .unifiedBody .filterBar { top: 156px !important; }
+}
+
+/* External-link tab (CE Requirements) — visually consistent with the
+   other tabs but marked with a little arrow. Never has the "active"
+   teal border because clicking it navigates away rather than swapping
+   the body content. */
+a.unifiedTabLink,
+a.unifiedTabLink:visited {
+  text-decoration: none;
+  color: inherit;
+}
+.unifiedTabExternal {
+  margin-left: 6px;
+  color: #64748b;
+  vertical-align: -1px;
+  opacity: 0.8;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+.unifiedTabLink:hover .unifiedTabExternal {
+  color: #1dbfc9;
+  transform: translate(1px, -1px);
 }

@@ -41,8 +41,10 @@ export default function UnifiedCatalog() {
 
   return (
     <div className="unifiedPage">
-      {/* Big tabs — On Demand / Live Events. Sticky at top so they persist
-          while the user scrolls through the catalog grid. */}
+      {/* Big tabs — On Demand / Live Events / CE Requirements. Sticky at
+          top so they persist while the user scrolls the catalog grid.
+          The third one is a real external link (opens in a new tab) so
+          it doesn't try to render inside this iframe. */}
       <nav className="unifiedTabs unifiedTabsSticky" role="tablist" aria-label="Catalog type">
         <TabButton
           active={tab === "on-demand"}
@@ -64,6 +66,17 @@ export default function UnifiedCatalog() {
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2"/>
               <path d="M3 9h18M8 2v4M16 2v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          }
+        />
+        <TabLink
+          href="https://learn.dentlogics.com/pages/state-requirements"
+          label="CE Requirements"
+          sub="State-by-state rules · required topics"
+          icon={
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M6 2h9l5 5v13a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+              <path d="M14 2v6h6M8 13h8M8 17h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           }
         />
@@ -97,5 +110,44 @@ function TabButton({ active, onClick, label, sub, icon }) {
         <span className="unifiedTabSub">{sub}</span>
       </span>
     </button>
+  );
+}
+
+/* External-link variant of TabButton — opens a URL in a new tab.
+   Used for the CE Requirements tab which lives on the marketing site.
+   `target="_blank"` + `rel="noopener"` ensures it escapes the iframe
+   cleanly and doesn't hand any window reference back to the opener. */
+function TabLink({ href, label, sub, icon }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener"
+      className="unifiedTab unifiedTabLink"
+    >
+      <span className="unifiedTabIcon" aria-hidden="true">{icon}</span>
+      <span className="unifiedTabText">
+        <span className="unifiedTabLabel">
+          {label}
+          <svg
+            className="unifiedTabExternal"
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M14 4h6v6M20 4L10 14M6 6h4M6 6v12h12v-4"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+        <span className="unifiedTabSub">{sub}</span>
+      </span>
+    </a>
   );
 }
