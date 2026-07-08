@@ -15,6 +15,7 @@ export default function OnDemand({ embedded = false }) {
   const [typeSelected, setTypeSelected] = useState(new Set());
   const [ceSelected, setCeSelected] = useState(new Set());
   const [rolesSelected, setRolesSelected] = useState(new Set());
+  const [catSelected, setCatSelected] = useState(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -67,6 +68,10 @@ export default function OnDemand({ embedded = false }) {
     const all = rows.flatMap((r) => (Array.isArray(r.roles) ? r.roles : []));
     return uniq(all).sort((a, b) => a.localeCompare(b));
   }, [rows]);
+  const categories = useMemo(() => {
+    const all = rows.flatMap((r) => (Array.isArray(r.categories) ? r.categories : []));
+    return uniq(all).sort((a, b) => a.localeCompare(b));
+  }, [rows]);
 
   const toggle = (setFn, value) =>
     setFn((prev) => {
@@ -80,6 +85,7 @@ export default function OnDemand({ embedded = false }) {
     setTypeSelected(new Set());
     setCeSelected(new Set());
     setRolesSelected(new Set());
+    setCatSelected(new Set());
   };
 
   const filtered = useMemo(() => {
@@ -87,6 +93,7 @@ export default function OnDemand({ embedded = false }) {
     const typeOn = typeSelected.size > 0;
     const ceOn = ceSelected.size > 0;
     const rolesOn = rolesSelected.size > 0;
+    const catOn = catSelected.size > 0;
     return rows.filter((r) => {
       if (typeOn && !typeSelected.has(r.type)) return false;
       if (ceOn) {
@@ -99,14 +106,19 @@ export default function OnDemand({ embedded = false }) {
         const rRoles = Array.isArray(r.roles) ? r.roles : [];
         if (!rRoles.some((rr) => rolesSelected.has(rr))) return false;
       }
+      if (catOn) {
+        const rCats = Array.isArray(r.categories) ? r.categories : [];
+        if (!rCats.some((c) => catSelected.has(c))) return false;
+      }
       if (q) {
         const rolesHay = Array.isArray(r.roles) ? r.roles.join(" ") : "";
-        const hay = `${safe(r.title)} ${safe(r.description)} ${safe(r.type)} ${rolesHay}`.toLowerCase();
+        const catsHay = Array.isArray(r.categories) ? r.categories.join(" ") : "";
+        const hay = `${safe(r.title)} ${safe(r.description)} ${safe(r.type)} ${rolesHay} ${catsHay}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [rows, query, typeSelected, ceSelected, rolesSelected]);
+  }, [rows, query, typeSelected, ceSelected, rolesSelected, catSelected]);
 
   return (
     <div className={`page ${embedded ? "pageEmbedded" : ""}`}>
@@ -139,6 +151,7 @@ export default function OnDemand({ embedded = false }) {
         types={types} typeSelected={typeSelected} setTypeSelected={setTypeSelected}
         ceHours={ceHours} ceSelected={ceSelected} setCeSelected={setCeSelected}
         roles={roles} rolesSelected={rolesSelected} setRolesSelected={setRolesSelected}
+        categories={categories} catSelected={catSelected} setCatSelected={setCatSelected}
         toggle={toggle}
         clearFilters={clearFilters}
         filteredCount={filtered.length}
@@ -302,12 +315,16 @@ function OdFilterBar(props) {
     types, typeSelected, setTypeSelected,
     ceHours, ceSelected, setCeSelected,
     roles, rolesSelected, setRolesSelected,
+    categories, catSelected, setCatSelected,
     toggle, clearFilters, filteredCount,
     showSearch, query, setQuery, searchPlaceholder,
   } = props;
 
   const hasAnyFilter =
-    typeSelected.size > 0 || ceSelected.size > 0 || rolesSelected.size > 0;
+    typeSelected.size > 0 ||
+    ceSelected.size > 0 ||
+    rolesSelected.size > 0 ||
+    (catSelected && catSelected.size > 0);
   const courseLabel = filteredCount === 1 ? "course" : "courses";
 
   return (
@@ -328,6 +345,13 @@ function OdFilterBar(props) {
           selected={typeSelected}
           onToggle={(v) => toggle(setTypeSelected, v)}
           onClear={() => setTypeSelected(new Set())}
+        />
+        <OdFilterPopover
+          label="Category"
+          options={categories}
+          selected={catSelected}
+          onToggle={(v) => toggle(setCatSelected, v)}
+          onClear={() => setCatSelected(new Set())}
         />
         <OdFilterPopover
           label="Role"

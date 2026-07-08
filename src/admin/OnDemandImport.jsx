@@ -38,6 +38,10 @@ const HEADER_ALIASES = {
     "job role", "job roles", "staff role", "staff roles",
     "practice role", "practice roles",
   ],
+  categories: [
+    "categories", "category", "topic", "topics", "subject", "subjects",
+    "tag", "tags", "type of course", "course category", "course categories",
+  ],
 };
 
 // Auto-detect the real header row inside a 2D matrix of cells and return
@@ -145,6 +149,7 @@ function normalizeRow(raw, opts = {}) {
     thumbnail_url: "",
     ce_hours: "",
     roles: [],
+    categories: [],
   };
   const map = {};
   for (const [k, v] of Object.entries(raw || {})) {
@@ -190,9 +195,13 @@ function normalizeRow(raw, opts = {}) {
       }
     }
   }
-  // Roles came in as a raw string (comma/pipe separated). Split into array.
+  // Roles + Categories came in as a raw string (comma/pipe separated).
+  // Split into arrays using the same delimiter logic.
   if (typeof out.roles === "string") {
     out.roles = parseRoles(out.roles);
+  }
+  if (typeof out.categories === "string") {
+    out.categories = parseRoles(out.categories);
   }
   const t = out.type.toLowerCase();
   if (t.includes("learning") || t.includes("path")) out.type = "Learning Path";
@@ -474,6 +483,7 @@ export default function OnDemandImport() {
         const ceRaw = (r.ready.ce_hours || "").toString().trim();
         const ceNumber = ceRaw ? Number(ceRaw) : null;
         const rolesArr = Array.isArray(r.ready.roles) ? r.ready.roles : [];
+        const catsArr = Array.isArray(r.ready.categories) ? r.ready.categories : [];
         const fullPayload = {
           title: r.ready.title,
           type: r.ready.type,
@@ -482,6 +492,7 @@ export default function OnDemandImport() {
           thumbnail_url: r.ready.thumbnail_url || null,
           ce_hours: Number.isFinite(ceNumber) ? ceNumber : null,
           roles: rolesArr,
+          categories: catsArr,
         };
 
         if (r.status === "duplicate" && dupeAction === "update" && r.existingId) {
@@ -495,6 +506,7 @@ export default function OnDemandImport() {
           if (fullPayload.thumbnail_url != null) updatePayload.thumbnail_url = fullPayload.thumbnail_url;
           if (fullPayload.ce_hours != null) updatePayload.ce_hours = fullPayload.ce_hours;
           if (rolesArr.length > 0) updatePayload.roles = rolesArr;
+          if (catsArr.length > 0) updatePayload.categories = catsArr;
           const { error } = await supabase
             .from("on_demand_courses")
             .update(updatePayload)
@@ -645,6 +657,7 @@ export default function OnDemandImport() {
                 <FormatRow name="URL" aliases="url, course url, link" example="https://learn.example.com/…" />
                 <FormatRow name="Thumbnail URL" aliases="thumbnail, image, image url" example="https://…/image.jpg" />
                 <FormatRow name="Roles" aliases="roles, role, audience, for, target audience" example="Dentist, Hygienist, Assistant" />
+                <FormatRow name="Categories" aliases="categories, category, topic, tag" example="Regulatory Compliance and Safety, Front Office" />
                 <FormatRow name="Description" aliases="description, desc, summary" example="Short summary shown on the card." />
               </div>
             </div>
@@ -1026,6 +1039,7 @@ const FIELD_LABELS = {
   type: "Type",
   ce_hours: "CE Hours",
   roles: "Roles",
+  categories: "Categories",
   course_url: "URL",
   thumbnail_url: "Thumbnail URL",
   description: "Description",

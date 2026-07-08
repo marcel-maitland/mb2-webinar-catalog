@@ -10,11 +10,23 @@ const BLANK = {
   thumbnail_url: "",
   course_url: "",
   ce_hours: "",
+  categories: [],
   sort_order: 0,
   is_published: false,
 };
 
 const COURSE_TYPES = ["Course", "Learning Path"];
+
+// Starting category taxonomy for on-demand courses. Custom categories
+// added by super admins get merged with these at edit time; the fixed
+// list here just gives every course a consistent starting palette.
+const PRESET_CATEGORIES = [
+  "Regulatory Compliance and Safety",
+  "Clinical Excellence and Medical Knowledge",
+  "Front Office",
+  "Leadership and Practice Management",
+  "Professional Development",
+];
 
 export default function OnDemandForm({ mode = "edit" }) {
   const { id } = useParams();
@@ -95,6 +107,7 @@ export default function OnDemandForm({ mode = "edit" }) {
       thumbnail_url: form.thumbnail_url || null,
       course_url: form.course_url || null,
       ce_hours: form.ce_hours === "" || form.ce_hours == null ? null : Number(form.ce_hours),
+      categories: Array.isArray(form.categories) ? form.categories : [],
       sort_order: Number(form.sort_order) || 0,
       is_published: !!form.is_published,
     };
@@ -229,6 +242,16 @@ export default function OnDemandForm({ mode = "edit" }) {
                 placeholder=""
               />
             </Field>
+
+            <Field
+              label="Categories"
+              hint="Pick one or more categories. Click Add custom to create a new tag not in the list."
+            >
+              <CategoryPicker
+                value={Array.isArray(form.categories) ? form.categories : []}
+                onChange={(next) => set("categories", next)}
+              />
+            </Field>
           </Section>
 
           <Section title="Thumbnail" subtitle="The image visitors see in the catalog grid.">
@@ -314,6 +337,92 @@ function Field({ label, hint, children }) {
       {children}
       {hint && <span className="fieldHint muted">{hint}</span>}
     </label>
+  );
+}
+
+/* Multi-select category chip picker. Shows the 5 preset categories PLUS
+   any custom values already saved on the course. A little "+ Add custom"
+   button opens a text field so super admins can invent new categories
+   on the fly. Value is a string[] managed by the parent form. */
+function CategoryPicker({ value, onChange }) {
+  const [addingCustom, setAddingCustom] = useState(false);
+  const [customText, setCustomText] = useState("");
+  const selected = Array.isArray(value) ? value : [];
+
+  // Merge presets with any already-saved values so custom tags render too.
+  const merged = [...new Set([...PRESET_CATEGORIES, ...selected])];
+
+  const toggle = (cat) => {
+    if (selected.includes(cat)) {
+      onChange(selected.filter((c) => c !== cat));
+    } else {
+      onChange([...selected, cat]);
+    }
+  };
+  const commitCustom = () => {
+    const v = customText.trim();
+    if (!v) { setAddingCustom(false); setCustomText(""); return; }
+    if (!selected.includes(v)) onChange([...selected, v]);
+    setCustomText("");
+    setAddingCustom(false);
+  };
+
+  return (
+    <div className="odCatPicker">
+      <div className="odCatChips">
+        {merged.map((cat) => {
+          const active = selected.includes(cat);
+          return (
+            <button
+              key={cat}
+              type="button"
+              className={`odCatChip ${active ? "active" : ""}`}
+              onClick={() => toggle(cat)}
+              aria-pressed={active}
+            >
+              {active && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ marginRight: 4 }}>
+                  <path d="M5 12l4 4L19 6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+              {cat}
+            </button>
+          );
+        })}
+      </div>
+      {addingCustom ? (
+        <div className="odCatCustomRow">
+          <input
+            className="odCatCustomInput"
+            type="text"
+            autoFocus
+            value={customText}
+            placeholder="New category name"
+            onChange={(e) => setCustomText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); commitCustom(); }
+              if (e.key === "Escape") { setAddingCustom(false); setCustomText(""); }
+            }}
+          />
+          <button type="button" className="primaryBtn" onClick={commitCustom}>Add</button>
+          <button
+            type="button"
+            className="ghostBtn"
+            onClick={() => { setAddingCustom(false); setCustomText(""); }}
+          >
+            Cancel
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="odCatAddCustom"
+          onClick={() => setAddingCustom(true)}
+        >
+          + Add custom category
+        </button>
+      )}
+    </div>
   );
 }
 
