@@ -11,6 +11,7 @@ const BLANK = {
   course_url: "",
   ce_hours: "",
   categories: [],
+  release_date: "",
   sort_order: 0,
   is_published: false,
 };
@@ -108,6 +109,7 @@ export default function OnDemandForm({ mode = "edit" }) {
       course_url: form.course_url || null,
       ce_hours: form.ce_hours === "" || form.ce_hours == null ? null : Number(form.ce_hours),
       categories: Array.isArray(form.categories) ? form.categories : [],
+      release_date: form.release_date || null,
       sort_order: Number(form.sort_order) || 0,
       is_published: !!form.is_published,
     };
@@ -250,6 +252,18 @@ export default function OnDemandForm({ mode = "edit" }) {
               <CategoryPicker
                 value={Array.isArray(form.categories) ? form.categories : []}
                 onChange={(next) => set("categories", next)}
+              />
+            </Field>
+
+            <Field
+              label="Release date"
+              hint="Optional. Used for sorting the public catalog by newest first."
+            >
+              <input
+                type="date"
+                value={form.release_date || ""}
+                onChange={(e) => set("release_date", e.target.value)}
+                style={{ maxWidth: 200 }}
               />
             </Field>
           </Section>

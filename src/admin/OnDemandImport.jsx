@@ -42,6 +42,11 @@ const HEADER_ALIASES = {
     "categories", "category", "topic", "topics", "subject", "subjects",
     "tag", "tags", "type of course", "course category", "course categories",
   ],
+  release_date: [
+    "release date", "release_date", "released", "release", "publish date",
+    "published", "publish", "date released", "date published", "date",
+    "available date", "available since",
+  ],
 };
 
 // Auto-detect the real header row inside a 2D matrix of cells and return
@@ -109,6 +114,42 @@ function matrixToObjects(matrix) {
     out.push(obj);
   }
   return out;
+}
+
+// Coerce a raw cell value into an ISO date string (YYYY-MM-DD) that
+// Postgres will accept, or null if it's not parseable. Handles:
+//   • ISO strings: "2025-06-01"
+//   • US style: "6/1/2025" or "06/01/2025"
+//   • Excel serial numbers (days since 1899-12-30)
+//   • JS Date objects (some XLSX parsers return Date instances)
+function normalizeReleaseDate(v) {
+  if (v == null || v === "") return null;
+  // JS Date instance
+  if (v instanceof Date && !isNaN(v)) {
+    return v.toISOString().slice(0, 10);
+  }
+  const s = String(v).trim();
+  if (!s) return null;
+  // ISO — already in the right shape
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  // US style M/D/YYYY or MM/DD/YYYY
+  const us = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (us) {
+    const [, m, d, y] = us;
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+  // Excel serial number
+  const num = Number(s);
+  if (Number.isFinite(num) && num > 20000 && num < 60000) {
+    // Excel epoch is 1899-12-30 (accounting for the 1900 leap-year bug)
+    const epoch = new Date(Date.UTC(1899, 11, 30));
+    const d = new Date(epoch.getTime() + num * 86400000);
+    return d.toISOString().slice(0, 10);
+  }
+  // Last-resort: let JS parse it
+  const parsed = new Date(s);
+  if (!isNaN(parsed)) return parsed.toISOString().slice(0, 10);
+  return null;
 }
 
 // Split a raw roles value into a cleaned string[]. Separators are comma,
@@ -484,6 +525,10 @@ export default function OnDemandImport() {
         const ceNumber = ceRaw ? Number(ceRaw) : null;
         const rolesArr = Array.isArray(r.ready.roles) ? r.ready.roles : [];
         const catsArr = Array.isArray(r.ready.categories) ? r.ready.categories : [];
+        // Normalize release_date — accept ISO (2025-06-01), US style
+        // (6/1/2025), and Excel serial numbers. Postgres will do the
+        // final validation; blank strings become null.
+        const releaseDate = normalizeReleaseDate(r.ready.release_date);
         const fullPayload = {
           title: r.ready.title,
           type: r.ready.type,
@@ -493,6 +538,7 @@ export default function OnDemandImport() {
           ce_hours: Number.isFinite(ceNumber) ? ceNumber : null,
           roles: rolesArr,
           categories: catsArr,
+          release_date: releaseDate,
         };
 
         if (r.status === "duplicate" && dupeAction === "update" && r.existingId) {
@@ -507,6 +553,7 @@ export default function OnDemandImport() {
           if (fullPayload.ce_hours != null) updatePayload.ce_hours = fullPayload.ce_hours;
           if (rolesArr.length > 0) updatePayload.roles = rolesArr;
           if (catsArr.length > 0) updatePayload.categories = catsArr;
+          if (releaseDate) updatePayload.release_date = releaseDate;
           const { error } = await supabase
             .from("on_demand_courses")
             .update(updatePayload)
@@ -658,6 +705,7 @@ export default function OnDemandImport() {
                 <FormatRow name="Thumbnail URL" aliases="thumbnail, image, image url" example="https://…/image.jpg" />
                 <FormatRow name="Roles" aliases="roles, role, audience, for, target audience" example="Dentist, Hygienist, Assistant" />
                 <FormatRow name="Categories" aliases="categories, category, topic, tag" example="Regulatory Compliance and Safety, Front Office" />
+                <FormatRow name="Release Date" aliases="release date, released, publish date, date" example="2025-06-01 or 6/1/2025" />
                 <FormatRow name="Description" aliases="description, desc, summary" example="Short summary shown on the card." />
               </div>
             </div>
@@ -1040,6 +1088,7 @@ const FIELD_LABELS = {
   ce_hours: "CE Hours",
   roles: "Roles",
   categories: "Categories",
+  release_date: "Release Date",
   course_url: "URL",
   thumbnail_url: "Thumbnail URL",
   description: "Description",

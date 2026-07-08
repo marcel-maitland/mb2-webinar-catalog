@@ -16,6 +16,7 @@ export default function OnDemand({ embedded = false }) {
   const [ceSelected, setCeSelected] = useState(new Set());
   const [rolesSelected, setRolesSelected] = useState(new Set());
   const [catSelected, setCatSelected] = useState(new Set());
+  const [sortBy, setSortBy] = useState("newest"); // newest | oldest | name | ce_desc | ce_asc
 
   useEffect(() => {
     let cancelled = false;
@@ -94,7 +95,7 @@ export default function OnDemand({ embedded = false }) {
     const ceOn = ceSelected.size > 0;
     const rolesOn = rolesSelected.size > 0;
     const catOn = catSelected.size > 0;
-    return rows.filter((r) => {
+    const matched = rows.filter((r) => {
       if (typeOn && !typeSelected.has(r.type)) return false;
       if (ceOn) {
         if (typeof r.ce_hours !== "number") return false;
@@ -118,7 +119,35 @@ export default function OnDemand({ embedded = false }) {
       }
       return true;
     });
-  }, [rows, query, typeSelected, ceSelected, rolesSelected, catSelected]);
+
+    // Apply the current sort. Clone so we don't mutate the filter result.
+    const sorted = [...matched];
+    const dateVal = (r) => {
+      if (!r.release_date) return -Infinity;
+      const t = new Date(r.release_date).getTime();
+      return Number.isNaN(t) ? -Infinity : t;
+    };
+    switch (sortBy) {
+      case "newest":
+        sorted.sort((a, b) => dateVal(b) - dateVal(a));
+        break;
+      case "oldest":
+        sorted.sort((a, b) => dateVal(a) - dateVal(b));
+        break;
+      case "name":
+        sorted.sort((a, b) => safe(a.title).localeCompare(safe(b.title)));
+        break;
+      case "ce_desc":
+        sorted.sort((a, b) => (b.ce_hours ?? -1) - (a.ce_hours ?? -1));
+        break;
+      case "ce_asc":
+        sorted.sort((a, b) => (a.ce_hours ?? Infinity) - (b.ce_hours ?? Infinity));
+        break;
+      default:
+        break;
+    }
+    return sorted;
+  }, [rows, query, typeSelected, ceSelected, rolesSelected, catSelected, sortBy]);
 
   return (
     <div className={`page ${embedded ? "pageEmbedded" : ""}`}>
@@ -159,6 +188,8 @@ export default function OnDemand({ embedded = false }) {
         query={query}
         setQuery={setQuery}
         searchPlaceholder="Search on-demand courses…"
+        sortBy={sortBy}
+        setSortBy={setSortBy}
       />
 
       <div className="layoutTop">
@@ -318,6 +349,7 @@ function OdFilterBar(props) {
     categories, catSelected, setCatSelected,
     toggle, clearFilters, filteredCount,
     showSearch, query, setQuery, searchPlaceholder,
+    sortBy, setSortBy,
   } = props;
 
   const hasAnyFilter =
@@ -371,6 +403,22 @@ function OdFilterBar(props) {
 
         <div className="filterBarSpacer" />
 
+        {setSortBy && (
+          <label className="filterBarSort">
+            <span className="filterBarSortLabel">Sort by</span>
+            <select
+              className="filterBarSortSelect"
+              value={sortBy || "newest"}
+              onChange={(e) => setSortBy(e.target.value)}
+            >
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="name">Name (A → Z)</option>
+              <option value="ce_desc">CE hours (high → low)</option>
+              <option value="ce_asc">CE hours (low → high)</option>
+            </select>
+          </label>
+        )}
         {hasAnyFilter && (
           <button
             type="button"
