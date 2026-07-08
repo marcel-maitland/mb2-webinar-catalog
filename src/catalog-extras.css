@@ -365,15 +365,17 @@
   object-fit: contain !important;
 }
 
-/* Pill sizing — defaults */
+/* Pill sizing — defaults. Made noticeably larger so "2 CE" and "Webinar"
+   read at a glance across the grid. */
 .cardElevated .soonChip,
 .cardElevated .ceBadge,
 .cardElevated .formatBadge {
   white-space: nowrap;
-  font-size: 11px;
-  padding: 3px 8px;
+  font-size: 13px;
+  padding: 5px 12px;
   border-radius: 999px;
   line-height: 1.2;
+  font-weight: 700;
 }
 
 /* When the grid moves into tighter 3-column territory, scale down pills
@@ -382,8 +384,8 @@
   .cardElevated .soonChip,
   .cardElevated .ceBadge,
   .cardElevated .formatBadge {
-    font-size: 10px !important;
-    padding: 3px 7px !important;
+    font-size: 12px !important;
+    padding: 4px 10px !important;
   }
   .cardElevated .vendorLogo {
     max-height: 28px !important;
@@ -852,9 +854,9 @@
     gap: 4px !important;
   }
   .cardElevated .formatBadge {
-    /* keep visible, just slightly smaller */
-    font-size: 9.5px !important;
-    padding: 3px 6px !important;
+    /* keep visible, slightly smaller than the wider viewport */
+    font-size: 11.5px !important;
+    padding: 4px 9px !important;
   }
 }
 
