@@ -21,14 +21,16 @@ import "./unified-catalog.css";
  * The default is "on-demand" per the product requirements.
  */
 const DEFAULT_SLUG = "mb2";
-const DEFAULT_TAB = "on-demand";
+const DEFAULT_TAB = "events";
 
 export default function UnifiedCatalog() {
   const { slug: routeSlug } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const slug = (routeSlug || DEFAULT_SLUG).toLowerCase();
-  const initialTab = searchParams.get("tab") === "events" ? "events" : DEFAULT_TAB;
+  const tabParam = searchParams.get("tab");
+  const initialTab =
+    tabParam === "on-demand" || tabParam === "events" ? tabParam : DEFAULT_TAB;
   const [tab, setTab] = useState(initialTab);
 
   const switchTab = (nextTab) => {
@@ -54,17 +56,6 @@ export default function UnifiedCatalog() {
         {/* Big tabs — On Demand / Live Events / CE Requirements. */}
         <nav className="unifiedTabs" role="tablist" aria-label="Catalog type">
         <TabButton
-          active={tab === "on-demand"}
-          onClick={() => switchTab("on-demand")}
-          label="On Demand Courses"
-          sub="Learn anytime · self-paced"
-          icon={
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M8 5v14l11-7z" fill="currentColor"/>
-            </svg>
-          }
-        />
-        <TabButton
           active={tab === "events"}
           onClick={() => switchTab("events")}
           label="Live Events & Webinars"
@@ -73,6 +64,17 @@ export default function UnifiedCatalog() {
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2"/>
               <path d="M3 9h18M8 2v4M16 2v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          }
+        />
+        <TabButton
+          active={tab === "on-demand"}
+          onClick={() => switchTab("on-demand")}
+          label="On Demand Courses"
+          sub="Learn anytime · self-paced"
+          icon={
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M8 5v14l11-7z" fill="currentColor"/>
             </svg>
           }
         />
