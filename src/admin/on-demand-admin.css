@@ -1578,3 +1578,101 @@
   border-color: #1dbfc9;
   box-shadow: 0 0 0 3px rgba(29, 191, 201, 0.15);
 }
+
+/* ============================================================
+   Category picker actions row (Add custom + Manage categories)
+   ============================================================ */
+.odCatPickerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.odCatManageBtn {
+  display: inline-flex;
+  align-items: center;
+  color: #64748b;
+}
+.odCatManageBtn:hover { color: #0f172a; }
+
+/* ============================================================
+   Category manager modal
+   ============================================================ */
+.odCatMgrModal { max-width: 560px; }
+.odCatMgrIntro { margin: 0 0 12px; font-size: 13px; }
+.odCatMgrErr { margin: 0 0 12px; }
+.odCatMgrList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.odCatMgrRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+  background: #fff;
+}
+.odCatMgrRow:last-child { border-bottom: none; }
+.odCatMgrRow:hover { background: #f8fafc; }
+.odCatMgrReorder {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.odCatMgrArrow {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 9px;
+  line-height: 1;
+  padding: 2px 4px;
+  color: #94a3b8;
+  border-radius: 4px;
+}
+.odCatMgrArrow:hover:not(:disabled) { color: #0f172a; background: #e2e8f0; }
+.odCatMgrArrow:disabled { opacity: 0.3; cursor: default; }
+.odCatMgrName {
+  flex: 1;
+  font-weight: 600;
+  font-size: 14px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.odCatMgrCount {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.odCatMgrActions { display: flex; gap: 6px; }
+.odCatMgrEditWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.odCatMgrEditInput {
+  flex: 1;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 14px;
+  min-width: 0;
+}
+.odCatMgrEditInput:focus {
+  outline: none;
+  border-color: #1dbfc9;
+  box-shadow: 0 0 0 3px rgba(29, 191, 201, 0.15);
+}
+.odCatMgrSmallBtn { padding: 7px 12px; font-size: 13px; }
+.odCatMgrEmpty { padding: 14px 12px; font-size: 13px; }
+.odCatMgrAddRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}

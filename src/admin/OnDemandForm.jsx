@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
+import CategoryManagerModal, {
+  fetchCategoryNames,
+  saveCategoryName,
+} from "./CategoryManager.jsx";
 import "./admin.css";
+import "./on-demand-admin.css";
 
 const BLANK = {
   title: "",
@@ -18,16 +23,9 @@ const BLANK = {
 
 const COURSE_TYPES = ["Course", "Learning Path"];
 
-// Starting category taxonomy for on-demand courses. Custom categories
-// added by super admins get merged with these at edit time; the fixed
-// list here just gives every course a consistent starting palette.
-const PRESET_CATEGORIES = [
-  "Regulatory Compliance and Safety",
-  "Clinical Excellence and Medical Knowledge",
-  "Front Office",
-  "Leadership and Practice Management",
-  "Professional Development",
-];
+// Category options now live in the `on_demand_categories` table
+// (see supabase/on_demand_categories.sql) so custom categories persist
+// as reusable options and can be managed via the "Manage" button.
 
 export default function OnDemandForm({ mode = "edit" }) {
   const { id } = useParams();
@@ -39,7 +37,19 @@ export default function OnDemandForm({ mode = "edit" }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [justSaved, setJustSaved] = useState(false);
+  const [catOptions, setCatOptions] = useState([]);
+  const [showCatMgr, setShowCatMgr] = useState(false);
   const thumbInput = useRef(null);
+
+  // Load the saved category options (falls back to the classic presets
+  // if the on_demand_categories table hasn't been created yet).
+  useEffect(() => {
+    let cancelled = false;
+    fetchCategoryNames().then((names) => {
+      if (!cancelled) setCatOptions(names);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (mode !== "edit") { setOriginal(BLANK); return; }
@@ -247,11 +257,21 @@ export default function OnDemandForm({ mode = "edit" }) {
 
             <Field
               label="Categories"
-              hint="Pick one or more categories. Click Add custom to create a new tag not in the list."
+              hint="Pick one or more categories. Custom categories are saved as options for future courses."
             >
               <CategoryPicker
+                options={catOptions}
                 value={Array.isArray(form.categories) ? form.categories : []}
                 onChange={(next) => set("categories", next)}
+                onAddCustom={async (name) => {
+                  await saveCategoryName(name);
+                  setCatOptions((prev) =>
+                    prev.some((c) => c.toLowerCase() === name.toLowerCase())
+                      ? prev
+                      : [...prev, name]
+                  );
+                }}
+                onManage={() => setShowCatMgr(true)}
               />
             </Field>
 
@@ -326,6 +346,24 @@ export default function OnDemandForm({ mode = "edit" }) {
           </p>
         </aside>
       </div>
+
+      <CategoryManagerModal
+        open={showCatMgr}
+        onClose={() => setShowCatMgr(false)}
+        onApplied={(event) => {
+          if (event.type === "rename") {
+            const mapCats = (arr) =>
+              [...new Set((Array.isArray(arr) ? arr : []).map((c) => (c === event.from ? event.to : c)))];
+            setForm((f) => ({ ...f, categories: mapCats(f.categories) }));
+            setOriginal((f) => ({ ...f, categories: mapCats(f.categories) }));
+          } else if (event.type === "delete") {
+            const strip = (arr) => (Array.isArray(arr) ? arr : []).filter((c) => c !== event.name);
+            setForm((f) => ({ ...f, categories: strip(f.categories) }));
+            setOriginal((f) => ({ ...f, categories: strip(f.categories) }));
+          }
+          fetchCategoryNames().then(setCatOptions);
+        }}
+      />
     </div>
   );
 }
@@ -354,17 +392,18 @@ function Field({ label, hint, children }) {
   );
 }
 
-/* Multi-select category chip picker. Shows the 5 preset categories PLUS
-   any custom values already saved on the course. A little "+ Add custom"
-   button opens a text field so super admins can invent new categories
-   on the fly. Value is a string[] managed by the parent form. */
-function CategoryPicker({ value, onChange }) {
+/* Multi-select category chip picker. Shows every saved category option
+   (from the on_demand_categories table) PLUS any values already saved on
+   the course. "+ Add custom" persists the new category as a reusable
+   option; "Manage" opens the full add/rename/delete manager.
+   Value is a string[] managed by the parent form. */
+function CategoryPicker({ options = [], value, onChange, onAddCustom, onManage }) {
   const [addingCustom, setAddingCustom] = useState(false);
   const [customText, setCustomText] = useState("");
   const selected = Array.isArray(value) ? value : [];
 
-  // Merge presets with any already-saved values so custom tags render too.
-  const merged = [...new Set([...PRESET_CATEGORIES, ...selected])];
+  // Merge saved options with any already-saved values so stray tags render too.
+  const merged = [...new Set([...options, ...selected])];
 
   const toggle = (cat) => {
     if (selected.includes(cat)) {
@@ -377,6 +416,7 @@ function CategoryPicker({ value, onChange }) {
     const v = customText.trim();
     if (!v) { setAddingCustom(false); setCustomText(""); return; }
     if (!selected.includes(v)) onChange([...selected, v]);
+    if (typeof onAddCustom === "function") onAddCustom(v); // persist as a reusable option
     setCustomText("");
     setAddingCustom(false);
   };
@@ -428,13 +468,28 @@ function CategoryPicker({ value, onChange }) {
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          className="odCatAddCustom"
-          onClick={() => setAddingCustom(true)}
-        >
-          + Add custom category
-        </button>
+        <div className="odCatPickerActions">
+          <button
+            type="button"
+            className="odCatAddCustom"
+            onClick={() => setAddingCustom(true)}
+          >
+            + Add custom category
+          </button>
+          {typeof onManage === "function" && (
+            <button
+              type="button"
+              className="odCatAddCustom odCatManageBtn"
+              onClick={onManage}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ marginRight: 4 }}>
+                <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" strokeWidth="2"/>
+                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h.09a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51h.09a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.09a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" strokeWidth="1.6"/>
+              </svg>
+              Manage categories
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

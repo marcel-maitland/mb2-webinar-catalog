@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
+import CategoryManagerModal from "./CategoryManager.jsx";
 import "./admin.css";
 import "./on-demand-admin.css";
 
@@ -13,6 +14,7 @@ export default function OnDemandList() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all"); // 'all' | 'published' | 'draft' | 'course' | 'path'
+  const [showCatMgr, setShowCatMgr] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -111,6 +113,16 @@ export default function OnDemandList() {
           </p>
         </div>
         <div className="odAdminHeaderActions">
+          <button
+            type="button"
+            className="odAdminSecondaryBtn"
+            onClick={() => setShowCatMgr(true)}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path d="M7 7h10M4 12h16M7 17h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            Manage categories
+          </button>
           <Link to="/admin/on-demand/import" className="odAdminSecondaryBtn">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
               <path d="M12 3v12m0-12l-4 4m4-4l4 4M4 15v4a2 2 0 002 2h12a2 2 0 002-2v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -237,6 +249,15 @@ export default function OnDemandList() {
           ))}
         </div>
       )}
+
+      <CategoryManagerModal
+        open={showCatMgr}
+        onClose={() => setShowCatMgr(false)}
+        onApplied={(event) => {
+          // Renames/deletes touch course rows — refresh so cards stay accurate.
+          if (event.type === "rename" || event.type === "delete") load();
+        }}
+      />
     </div>
   );
 }
