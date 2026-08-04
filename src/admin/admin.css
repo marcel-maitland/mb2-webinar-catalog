@@ -149,14 +149,14 @@
 
 /* Super admin badge */
 .superBadge {
-  background: linear-gradient(135deg, #f59e0b, #1dbfc9);
+  background: #10b981;
   color: #fff;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
   padding: 3px 8px;
   border-radius: 999px;
-  box-shadow: 0 2px 6px rgba(29,191,201,.4);
+  box-shadow: 0 2px 6px rgba(16,185,129,.35);
 }
 
 .adminNavLinks { display:flex; gap:18px; flex:1; }
@@ -1841,16 +1841,19 @@
   position: relative;
   display: flex; align-items: center;
   background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 0 14px;
-  height: 44px;
-  transition: border-color .12s, box-shadow .12s;
+  border: 1.5px solid #dbe3ec;
+  border-radius: 999px;
+  padding: 0 18px;
+  height: 48px;
+  box-shadow: 0 1px 3px rgba(15,23,42,.06);
+  transition: border-color .12s, box-shadow .12s, color .12s;
   color: var(--muted);
 }
+.elSearch:hover { border-color: #b9c6d4; }
 .elSearch:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(29,191,201,.16);
+  color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(29,191,201,.16), 0 2px 10px rgba(15,23,42,.06);
 }
 .elSearch input {
   flex: 1;
