@@ -903,7 +903,66 @@ function CatalogElevatedStyles() {
         align-items: center;
         gap: 6px;
         white-space: nowrap;
+        border: none;
+        cursor: pointer;
+        font: inherit;
       }
+      /* Register-by-email popup */
+      .emailRegBackdrop {
+        position: fixed; inset: 0;
+        background: rgba(15,23,42,.5);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 1000; padding: 20px;
+      }
+      .emailRegModal {
+        position: relative;
+        background: #fff;
+        border-radius: 16px;
+        max-width: 400px; width: 100%;
+        padding: 26px 24px 22px;
+        box-shadow: 0 24px 60px rgba(15,23,42,.3);
+        text-align: center;
+      }
+      .emailRegModalClose {
+        position: absolute; top: 10px; right: 12px;
+        background: none; border: none; cursor: pointer;
+        font-size: 22px; line-height: 1; color: #94a3b8;
+        padding: 4px;
+      }
+      .emailRegModalClose:hover { color: #0f172a; }
+      .emailRegModalIcon {
+        width: 44px; height: 44px;
+        margin: 0 auto 10px;
+        border-radius: 50%;
+        background: #ecfeff; border: 1px solid #a5f3fc; color: #0e7490;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .emailRegModalTitle { margin: 0 0 6px; font-size: 18px; font-weight: 800; color: #0f172a; }
+      .emailRegModalText { margin: 0 0 10px; font-size: 13.5px; color: #64748b; }
+      .emailRegModalAddress {
+        font-weight: 700; font-size: 15px; color: #0e7490;
+        background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+        padding: 10px 12px; margin-bottom: 16px;
+        word-break: break-all;
+        user-select: all;
+      }
+      .emailRegModalActions {
+        display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+      }
+      .emailRegModalCopy {
+        background: #1dbfc9; border: none; color: #fff;
+        font: inherit; font-weight: 700; font-size: 14px;
+        padding: 10px 16px; border-radius: 10px; cursor: pointer;
+        box-shadow: 0 4px 12px rgba(29,191,201,.35);
+      }
+      .emailRegModalCopy:hover { filter: brightness(1.05); }
+      .emailRegModalOpen {
+        display: inline-flex; align-items: center;
+        background: #fff; border: 1px solid #e2e8f0; color: #475569;
+        font-weight: 600; font-size: 14px; text-decoration: none;
+        padding: 10px 16px; border-radius: 10px;
+      }
+      .emailRegModalOpen:hover { background: #f8fafc; color: #0f172a; }
 
       @media (max-width: 700px) {
         .discountBanner { flex-direction: column; align-items: flex-start; gap: 4px; }
@@ -914,22 +973,88 @@ function CatalogElevatedStyles() {
 
 /* Renders an "Email to Register" button in place of the Register button
    when an event has an email-based registration but no URL. Clicking it
-   opens the visitor's mail app addressed to the registration email —
-   the address itself is not shown on the card (hover reveals it). */
+   opens a small popup showing the registration address with Copy and
+   Open-email-app options — this works even inside the TI iframe or when
+   the visitor has no mail app configured (where a bare mailto: link
+   silently does nothing). */
 function EmailReg({ email }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   if (!isEmail(email)) return null;
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(email);
+      setCopied(true);
+    } catch {
+      // Fallback for older browsers / restricted iframes
+      const ta = document.createElement("textarea");
+      ta.value = email;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); setCopied(true); } catch {}
+      document.body.removeChild(ta);
+    }
+    setTimeout(() => setCopied(false), 2500);
+  };
+
   return (
-    <a
-      className="sessionBtn emailRegBtn"
-      href={`mailto:${email}`}
-      title={`Email ${email}`}
-    >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
-        <path d="M3.5 6.5l8.5 6 8.5-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-      Email to Register
-    </a>
+    <>
+      <button
+        type="button"
+        className="sessionBtn emailRegBtn"
+        onClick={() => { setOpen(true); setCopied(false); }}
+        title={`Email ${email}`}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
+          <path d="M3.5 6.5l8.5 6 8.5-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        Email to Register
+      </button>
+
+      {open && (
+        <div className="emailRegBackdrop" onClick={() => setOpen(false)} role="presentation">
+          <div
+            className="emailRegModal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Register by email"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="emailRegModalClose"
+              onClick={() => setOpen(false)}
+              aria-label="Close"
+            >×</button>
+            <div className="emailRegModalIcon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
+                <path d="M3.5 6.5l8.5 6 8.5-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <h3 className="emailRegModalTitle">Register by email</h3>
+            <p className="emailRegModalText">Send your registration request to:</p>
+            <div className="emailRegModalAddress">{email}</div>
+            <div className="emailRegModalActions">
+              <button type="button" className="emailRegModalCopy" onClick={copy}>
+                {copied ? "✓ Copied!" : "Copy email address"}
+              </button>
+              <a
+                className="emailRegModalOpen"
+                href={`mailto:${email}`}
+                target="_top"
+              >
+                Open email app
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
