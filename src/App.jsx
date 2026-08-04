@@ -852,9 +852,9 @@ function CatalogElevatedStyles() {
         display: flex;
         align-items: center;
         gap: 10px;
-        background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);
-        border: 1px solid #67e8f9;
-        border-left: 4px solid #1dbfc9;
+        background: #B7C7D3;
+        border: 1px solid #9DB2C2;
+        border-left: 4px solid #64798B;
         padding: 8px 12px;
         border-radius: 8px;
         margin-bottom: 10px;
@@ -870,7 +870,7 @@ function CatalogElevatedStyles() {
         font-weight: 800;
         letter-spacing: 0.14em;
         text-transform: uppercase;
-        color: #0e7490;
+        color: #33475A;
         opacity: 0.85;
       }
       .discountBannerCodeValue {
@@ -878,16 +878,16 @@ function CatalogElevatedStyles() {
         font-size: 13px;
         font-weight: 800;
         letter-spacing: 0.08em;
-        color: #0e7490;
+        color: #33475A;
         background: #fff;
         padding: 3px 8px;
         border-radius: 6px;
-        border: 1px dashed #67e8f9;
+        border: 1px dashed #9DB2C2;
         text-transform: uppercase;
       }
       .discountBannerDesc {
         font-size: 12.5px;
-        color: #0e4f5a;
+        color: #2E3F4E;
         line-height: 1.4;
         font-weight: 500;
         min-width: 0;
