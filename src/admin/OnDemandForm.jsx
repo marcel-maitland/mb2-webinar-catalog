@@ -26,6 +26,7 @@ const BLANK = {
   vendor_logo_url: "",
   release_date: "",
   sort_order: 0,
+  mb2_exclusive: false,
   is_published: false,
 };
 
@@ -172,6 +173,7 @@ export default function OnDemandForm({ mode = "edit" }) {
       vendor_logo_url: form.vendor_logo_url || null,
       release_date: form.release_date || null,
       sort_order: Number(form.sort_order) || 0,
+      mb2_exclusive: !!form.mb2_exclusive,
       is_published: !!form.is_published,
     };
     try {
@@ -235,6 +237,15 @@ export default function OnDemandForm({ mode = "edit" }) {
           </div>
         </div>
         <div className="evToolbarRight">
+          <label className={`evSwitch evSwitch-gold ${form.mb2_exclusive ? "on" : ""}`}>
+            <input
+              type="checkbox"
+              checked={!!form.mb2_exclusive}
+              onChange={(e) => set("mb2_exclusive", e.target.checked)}
+            />
+            <span className="evSwitchSlider" />
+            <span className="evSwitchLabel">MB2 Exclusive</span>
+          </label>
           <label className={`evSwitch evSwitch-success ${form.is_published ? "on" : ""}`}>
             <input
               type="checkbox"
@@ -572,6 +583,7 @@ function PreviewCard({ course }) {
   return (
     <article className="card cardElevated evPreviewCard odCard">
       <div className={`thumb odThumb ${thumbOk ? "" : "thumbNoImg"}`}>
+        {course.mb2_exclusive ? <span className="mb2Badge">Exclusive</span> : null}
         {thumbOk ? (
           <img src={course.thumbnail_url} alt="" />
         ) : (

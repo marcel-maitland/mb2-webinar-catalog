@@ -4,6 +4,12 @@ import "./catalog-extras.css";
 import "./on-demand.css";
 
 const safe = (v) => (typeof v === "string" ? v.trim() : v == null ? "" : String(v));
+
+// ?exclusive=1 locks the catalog to MB2 Exclusive courses (same behavior
+// as the live events catalog's exclusive mode).
+const isExclusiveMode =
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).get("exclusive") === "1";
 const isUrl = (u) => safe(u).startsWith("http");
 const uniq = (arr) => [...new Set(arr.filter((v) => v !== null && v !== undefined && v !== ""))];
 
@@ -17,6 +23,7 @@ export default function OnDemand({ embedded = false }) {
   const [rolesSelected, setRolesSelected] = useState(new Set());
   const [catSelected, setCatSelected] = useState(new Set());
   const [vendorSelected, setVendorSelected] = useState(new Set());
+  const [mb2ExclusiveOnly, setMb2ExclusiveOnly] = useState(isExclusiveMode);
   const [sortBy, setSortBy] = useState("newest"); // newest | oldest | name | ce_desc | ce_asc
 
   useEffect(() => {
@@ -93,6 +100,7 @@ export default function OnDemand({ embedded = false }) {
     setRolesSelected(new Set());
     setCatSelected(new Set());
     setVendorSelected(new Set());
+    setMb2ExclusiveOnly(isExclusiveMode);
   };
 
   const filtered = useMemo(() => {
@@ -103,6 +111,7 @@ export default function OnDemand({ embedded = false }) {
     const catOn = catSelected.size > 0;
     const vendorOn = vendorSelected.size > 0;
     const matched = rows.filter((r) => {
+      if (mb2ExclusiveOnly && !r.mb2_exclusive) return false;
       if (typeOn && !typeSelected.has(r.type)) return false;
       if (vendorOn && !vendorSelected.has(safe(r.vendor))) return false;
       if (ceOn) {
@@ -155,7 +164,7 @@ export default function OnDemand({ embedded = false }) {
         break;
     }
     return sorted;
-  }, [rows, query, typeSelected, ceSelected, rolesSelected, catSelected, vendorSelected, sortBy]);
+  }, [rows, query, typeSelected, ceSelected, rolesSelected, catSelected, vendorSelected, mb2ExclusiveOnly, sortBy]);
 
   return (
     <div className={`page ${embedded ? "pageEmbedded" : ""}`}>
@@ -190,6 +199,7 @@ export default function OnDemand({ embedded = false }) {
         roles={roles} rolesSelected={rolesSelected} setRolesSelected={setRolesSelected}
         categories={categories} catSelected={catSelected} setCatSelected={setCatSelected}
         vendorOptions={vendorOptions} vendorSelected={vendorSelected} setVendorSelected={setVendorSelected}
+        mb2ExclusiveOnly={mb2ExclusiveOnly} setMb2ExclusiveOnly={setMb2ExclusiveOnly}
         toggle={toggle}
         clearFilters={clearFilters}
         filteredCount={filtered.length}
@@ -287,6 +297,7 @@ function OnDemandCard({ course }) {
   const cardInner = (
     <>
       <div className={`thumb odThumb ${thumbOk ? "" : "thumbNoImg"}`}>
+        {course.mb2_exclusive ? <span className="mb2Badge">Exclusive</span> : null}
         {thumbOk ? (
           <img
             src={course.thumbnail_url}
@@ -369,12 +380,14 @@ function OdFilterBar(props) {
     roles, rolesSelected, setRolesSelected,
     categories, catSelected, setCatSelected,
     vendorOptions, vendorSelected, setVendorSelected,
+    mb2ExclusiveOnly, setMb2ExclusiveOnly,
     toggle, clearFilters, filteredCount,
     showSearch, query, setQuery, searchPlaceholder,
     sortBy, setSortBy,
   } = props;
 
   const hasAnyFilter =
+    (!isExclusiveMode && mb2ExclusiveOnly) ||
     typeSelected.size > 0 ||
     ceSelected.size > 0 ||
     rolesSelected.size > 0 ||
@@ -394,6 +407,19 @@ function OdFilterBar(props) {
             onChange={(e) => setQuery(e.target.value)}
           />
         )}
+        {!isExclusiveMode && (
+          <button
+            type="button"
+            className={`filterExclBtn ${mb2ExclusiveOnly ? "active" : ""}`}
+            onClick={() => setMb2ExclusiveOnly(!mb2ExclusiveOnly)}
+            aria-pressed={mb2ExclusiveOnly}
+            title="Only show MB2 Exclusive courses"
+          >
+            <span className="filterExclStar" aria-hidden="true">★</span>
+            <span className="filterExclLabel">MB2 Exclusive</span>
+          </button>
+        )}
+
         <OdFilterPopover
           label="Type"
           options={types}

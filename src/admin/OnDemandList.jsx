@@ -43,10 +43,14 @@ export default function OnDemandList() {
   const [typeFilter, setTypeFilter] = useState(
     () => localStorage.getItem("odTypeFilter") || "all"
   );
+  const [exclusiveOnly, setExclusiveOnly] = useState(
+    () => localStorage.getItem("odExclusiveOnly") === "1"
+  );
   const [showCatMgr, setShowCatMgr] = useState(false);
 
   useEffect(() => { localStorage.setItem("odStatusFilter", statusFilter); }, [statusFilter]);
   useEffect(() => { localStorage.setItem("odTypeFilter", typeFilter); }, [typeFilter]);
+  useEffect(() => { localStorage.setItem("odExclusiveOnly", exclusiveOnly ? "1" : "0"); }, [exclusiveOnly]);
 
   const load = async () => {
     setLoading(true);
@@ -98,6 +102,19 @@ export default function OnDemandList() {
     }
   };
 
+  const toggleMb2 = async (row) => {
+    const next = !row.mb2_exclusive;
+    setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, mb2_exclusive: next } : r)));
+    const { error } = await supabase
+      .from("on_demand_courses")
+      .update({ mb2_exclusive: next })
+      .eq("id", row.id);
+    if (error) {
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, mb2_exclusive: !next } : r)));
+      alert("Failed: " + error.message);
+    }
+  };
+
   const remove = async (row) => {
     if (!confirm(`Delete "${row.title}"? This cannot be undone.`)) return;
     const { error } = await supabase.from("on_demand_courses").delete().eq("id", row.id);
@@ -123,12 +140,13 @@ export default function OnDemandList() {
   };
 
   const counts = useMemo(() => {
-    const c = { all: rows.length, published: 0, drafts: 0, courses: 0, paths: 0 };
+    const c = { all: rows.length, published: 0, drafts: 0, courses: 0, paths: 0, mb2: 0 };
     for (const r of rows) {
       if (r.is_published) c.published++;
       else c.drafts++;
       if (r.type === "Learning Path") c.paths++;
       else c.courses++;
+      if (r.mb2_exclusive) c.mb2++;
     }
     return c;
   }, [rows]);
@@ -148,6 +166,8 @@ export default function OnDemandList() {
         if (typeFilter === "path")   return r.type === "Learning Path";
         return true;
       })
+      // Exclusive toggle
+      .filter((r) => !exclusiveOnly || r.mb2_exclusive)
       // Search
       .filter((r) => {
         if (!q) return true;
@@ -156,7 +176,7 @@ export default function OnDemandList() {
           .toLowerCase()
           .includes(q);
       });
-  }, [rows, query, statusFilter, typeFilter]);
+  }, [rows, query, statusFilter, typeFilter, exclusiveOnly]);
 
   return (
     <section className="elPage">
@@ -191,6 +211,7 @@ export default function OnDemandList() {
           <Stat label="Total"          value={counts.all}       tone="neutral" />
           <Stat label="Published"      value={counts.published} tone="accent" />
           <Stat label="Drafts"         value={counts.drafts}    tone="muted" />
+          <Stat label="MB2 Exclusive"  value={counts.mb2}       tone="gold" />
           <Stat label="Courses"        value={counts.courses}   tone="green" />
           <Stat label="Learning paths" value={counts.paths}     tone="blue" />
         </div>
@@ -198,6 +219,22 @@ export default function OnDemandList() {
 
       {/* ============================== TOOLBAR ============================== */}
       <div className="elToolbar elToolbarStacked">
+        <div className="elToolbarRowExclusive">
+          <button
+            type="button"
+            className={`elExclusiveToggle ${exclusiveOnly ? "active" : ""}`}
+            aria-pressed={exclusiveOnly}
+            onClick={() => setExclusiveOnly((v) => !v)}
+            title="Show only courses flagged as MB2 Exclusive"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+              <path d="M12 2l2.9 6 6.6.6-5 4.5 1.5 6.4L12 16.8 5.9 19.5 7.5 13.1 2.5 8.6l6.6-.6L12 2z" fill="currentColor"/>
+            </svg>
+            Only MB2 Exclusive
+            <span className="elFilterCount">{counts.mb2}</span>
+          </button>
+        </div>
+
         <div className="elToolbarRowFilters">
           <div className="elFilterGroup" role="group" aria-label="Status">
             <span className="elFilterGroupLabel">Status</span>
@@ -273,11 +310,12 @@ export default function OnDemandList() {
       ) : visible.length === 0 ? (
         <EmptyState
           query={query}
-          filtered={statusFilter !== "all" || typeFilter !== "all"}
+          filtered={statusFilter !== "all" || typeFilter !== "all" || exclusiveOnly}
           onClear={() => {
             setQuery("");
             setStatusFilter("all");
             setTypeFilter("all");
+            setExclusiveOnly(false);
           }}
         />
       ) : (
@@ -287,6 +325,7 @@ export default function OnDemandList() {
             <div className="elColDate">Release date</div>
             <div className="elColVendor">Vendor</div>
             <div className="elColFormat">Type</div>
+            <div className="elColStar" title="MB2 Exclusive">Exclusive</div>
             <div className="elColPublish">Publish</div>
             <div className="elColActions" />
           </div>
@@ -334,6 +373,16 @@ export default function OnDemandList() {
                   <span className={`elFmtPill ${typePillClass(r.type)}`}>
                     {r.type === "Learning Path" ? "Learning Path" : "Course"}
                   </span>
+                </div>
+
+                <div className="elColStar">
+                  <button
+                    type="button"
+                    className={`mb2Star ${r.mb2_exclusive ? "mb2StarOn" : ""}`}
+                    onClick={() => toggleMb2(r)}
+                    title={r.mb2_exclusive ? "Remove MB2 Exclusive flag" : "Mark as MB2 Exclusive"}
+                    aria-label="Toggle MB2 Exclusive"
+                  >★</button>
                 </div>
 
                 <div className="elColPublish">
