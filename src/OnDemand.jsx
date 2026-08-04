@@ -248,7 +248,8 @@ export default function OnDemand({ embedded = false }) {
 /* CreditBadge — clean, professional CE credit label. Small check-in-circle
    icon + bold number + "CE Credit(s)" text. Emerald tone for accreditation
    feel without visual noise. */
-function CreditBadge({ ce }) {
+function CreditBadge({ ce, hidden = false }) {
+  if (hidden) return <span aria-hidden="true" />;
   if (ce == null || Number.isNaN(ce)) {
     return (
       <span className="odCreditFallback" aria-label="Available anytime">
@@ -312,16 +313,20 @@ function OnDemandCard({ course }) {
       </div>
 
       <div className="body">
-        {isUrl(course.vendor_logo_url) ? (
+        {ce != null || isUrl(course.vendor_logo_url) ? (
           <div className="topRow odVendorRow">
-            <div className="metaRow" />
-            <img
-              className="vendorLogo"
-              src={course.vendor_logo_url}
-              alt="Vendor logo"
-              loading="lazy"
-              onError={(e) => { e.currentTarget.style.display = "none"; }}
-            />
+            <div className="metaRow">
+              {ce != null ? <span className="ceBadge">{ce} CE</span> : null}
+            </div>
+            {isUrl(course.vendor_logo_url) ? (
+              <img
+                className="vendorLogo"
+                src={course.vendor_logo_url}
+                alt="Vendor logo"
+                loading="lazy"
+                onError={(e) => { e.currentTarget.style.display = "none"; }}
+              />
+            ) : null}
           </div>
         ) : null}
         <h3 className="title" title={course.title}>{course.title}</h3>
@@ -335,7 +340,7 @@ function OnDemandCard({ course }) {
         <div className="sessions">
           <div className="sessionGroup">
             <div className="session odSessionRow">
-              <CreditBadge ce={ce} />
+              <CreditBadge ce={null} hidden={ce != null} />
               {canRegister ? (
                 <span className="sessionBtn odCardCta" aria-hidden="true">
                   Go To Course →

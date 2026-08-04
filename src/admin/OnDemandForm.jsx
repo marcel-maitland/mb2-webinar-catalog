@@ -597,10 +597,14 @@ function PreviewCard({ course }) {
         )}
       </div>
       <div className="body">
-        {/^https?:\/\//.test(course.vendor_logo_url || "") ? (
+        {ceOk || /^https?:\/\//.test(course.vendor_logo_url || "") ? (
           <div className="topRow odVendorRow">
-            <div className="metaRow" />
-            <img className="vendorLogo" src={course.vendor_logo_url} alt="Vendor logo" />
+            <div className="metaRow">
+              {ceOk ? <span className="ceBadge">{ce} CE</span> : null}
+            </div>
+            {/^https?:\/\//.test(course.vendor_logo_url || "") ? (
+              <img className="vendorLogo" src={course.vendor_logo_url} alt="Vendor logo" />
+            ) : null}
           </div>
         ) : null}
         <h3 className="title">{course.title || "Untitled course"}</h3>
@@ -611,15 +615,7 @@ function PreviewCard({ course }) {
           <div className="sessionGroup">
             <div className="session odSessionRow">
               {ceOk ? (
-                <span className="odCredit" aria-label={`${ce} CE ${ce === 1 ? "credit" : "credits"}`}>
-                  <svg className="odCreditIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.12"/>
-                    <path d="M8 12l3 3 5-6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  <span className="odCreditText">
-                    <strong>{ce}</strong> CE Credit{ce === 1 ? "" : "s"}
-                  </span>
-                </span>
+                <span aria-hidden="true" />
               ) : (
                 <span className="odCreditFallback">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
