@@ -346,7 +346,6 @@ export default function OnDemandList() {
           </div>
 
           {visible.map((r) => {
-            const cats = Array.isArray(r.categories) ? r.categories : [];
             const readOnly = !!r.is_locked && !isSuperAdmin;
             return (
               <article key={r.id} className={`elRow odTableRow ${readOnly ? "odRowLocked" : ""}`}>
@@ -366,14 +365,6 @@ export default function OnDemandList() {
                             <path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" strokeWidth="2.4"/>
                           </svg>
                           Locked
-                        </span>
-                      )}
-                      {cats.slice(0, 2).map((c) => (
-                        <span key={c} className="elCategory">{c}</span>
-                      ))}
-                      {cats.length > 2 && (
-                        <span className="elCategory" title={cats.slice(2).join(", ")}>
-                          +{cats.length - 2} more
                         </span>
                       )}
                       {r.ce_hours != null && r.ce_hours !== "" && (
