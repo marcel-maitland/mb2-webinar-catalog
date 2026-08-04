@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
+import { useClient } from "./AdminApp.jsx";
+import { VendorCombobox } from "./EventForm.jsx";
 import CategoryManagerModal, {
   fetchCategoryNames,
   saveCategoryName,
@@ -16,6 +18,8 @@ const BLANK = {
   course_url: "",
   ce_hours: "",
   categories: [],
+  vendor: "",
+  vendor_logo_url: "",
   release_date: "",
   sort_order: 0,
   is_published: false,
@@ -30,6 +34,7 @@ const COURSE_TYPES = ["Course", "Learning Path"];
 export default function OnDemandForm({ mode = "edit" }) {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { currentClientId } = useClient();
   const [form, setForm] = useState(BLANK);
   const [original, setOriginal] = useState(BLANK);
   const [loading, setLoading] = useState(mode === "edit");
@@ -111,6 +116,29 @@ export default function OnDemandForm({ mode = "edit" }) {
     if (!form.title.trim()) { setError("Course title is required."); return; }
     setSaving(true);
     setError("");
+
+    // Auto-provision the vendor row if the typed name doesn't match an
+    // existing vendor for this client — same behavior as the events form,
+    // so both catalogs share one vendors list.
+    const vendorName = (form.vendor || "").trim();
+    if (vendorName && currentClientId) {
+      const { data: match } = await supabase
+        .from("vendors")
+        .select("id")
+        .eq("client_id", currentClientId)
+        .ilike("name", vendorName)
+        .limit(1);
+      if (!match || match.length === 0) {
+        await supabase
+          .from("vendors")
+          .insert({
+            name: vendorName,
+            logo_url: form.vendor_logo_url || null,
+            client_id: currentClientId,
+          });
+      }
+    }
+
     const payload = {
       title: form.title.trim(),
       type: form.type || "Course",
@@ -119,6 +147,8 @@ export default function OnDemandForm({ mode = "edit" }) {
       course_url: form.course_url || null,
       ce_hours: form.ce_hours === "" || form.ce_hours == null ? null : Number(form.ce_hours),
       categories: Array.isArray(form.categories) ? form.categories : [],
+      vendor: vendorName || null,
+      vendor_logo_url: form.vendor_logo_url || null,
       release_date: form.release_date || null,
       sort_order: Number(form.sort_order) || 0,
       is_published: !!form.is_published,
@@ -285,6 +315,28 @@ export default function OnDemandForm({ mode = "edit" }) {
                 onChange={(e) => set("release_date", e.target.value)}
                 style={{ maxWidth: 200 }}
               />
+            </Field>
+          </Section>
+
+          <Section title="Presenter" subtitle="Who's teaching this course. Shares the same vendors list as live events.">
+            <Field label="Presenter / Vendor">
+              <VendorCombobox
+                value={form.vendor ?? ""}
+                onChange={(name, logo, defaultThumb) => {
+                  set("vendor", name);
+                  if (logo !== undefined) set("vendor_logo_url", logo);
+                  // Apply the vendor's default thumbnail only when the course
+                  // has no thumbnail of its own — never overwrite a custom
+                  // thumbnail that the admin already set.
+                  if (defaultThumb && !form.thumbnail_url) {
+                    set("thumbnail_url", defaultThumb);
+                  }
+                }}
+              />
+              <p className="evHint">
+                Manage vendors, logos, and default thumbnails on the{" "}
+                <Link to="/admin/vendors">Vendors page</Link>.
+              </p>
             </Field>
           </Section>
 
@@ -585,6 +637,12 @@ function PreviewCard({ course }) {
         )}
       </div>
       <div className="body">
+        {/^https?:\/\//.test(course.vendor_logo_url || "") ? (
+          <div className="topRow odVendorRow">
+            <div className="metaRow" />
+            <img className="vendorLogo" src={course.vendor_logo_url} alt="Vendor logo" />
+          </div>
+        ) : null}
         <h3 className="title">{course.title || "Untitled course"}</h3>
         {course.description ? (
           <p className="descFull">{course.description}</p>

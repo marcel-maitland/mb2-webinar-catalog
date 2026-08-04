@@ -260,3 +260,19 @@ a.odCardClickable:hover .odCardCta {
 @media (max-width: 1000px) and (min-width: 901px) {
   .odCard { zoom: 0.70; }
 }
+
+/* Vendor logo row at the top of on-demand cards — mirrors the events
+   card layout (logo pinned to the top-right of the card body). */
+.odCard .odVendorRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  min-height: 0;
+}
+.odCard .odVendorRow .vendorLogo {
+  max-height: 30px;
+  max-width: 110px;
+  object-fit: contain;
+  margin-left: auto;
+}

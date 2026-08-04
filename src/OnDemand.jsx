@@ -16,6 +16,7 @@ export default function OnDemand({ embedded = false }) {
   const [ceSelected, setCeSelected] = useState(new Set());
   const [rolesSelected, setRolesSelected] = useState(new Set());
   const [catSelected, setCatSelected] = useState(new Set());
+  const [vendorSelected, setVendorSelected] = useState(new Set());
   const [sortBy, setSortBy] = useState("newest"); // newest | oldest | name | ce_desc | ce_asc
 
   useEffect(() => {
@@ -73,6 +74,10 @@ export default function OnDemand({ embedded = false }) {
     const all = rows.flatMap((r) => (Array.isArray(r.categories) ? r.categories : []));
     return uniq(all).sort((a, b) => a.localeCompare(b));
   }, [rows]);
+  const vendorOptions = useMemo(
+    () => uniq(rows.map((r) => safe(r.vendor))).sort((a, b) => a.localeCompare(b)),
+    [rows]
+  );
 
   const toggle = (setFn, value) =>
     setFn((prev) => {
@@ -87,6 +92,7 @@ export default function OnDemand({ embedded = false }) {
     setCeSelected(new Set());
     setRolesSelected(new Set());
     setCatSelected(new Set());
+    setVendorSelected(new Set());
   };
 
   const filtered = useMemo(() => {
@@ -95,8 +101,10 @@ export default function OnDemand({ embedded = false }) {
     const ceOn = ceSelected.size > 0;
     const rolesOn = rolesSelected.size > 0;
     const catOn = catSelected.size > 0;
+    const vendorOn = vendorSelected.size > 0;
     const matched = rows.filter((r) => {
       if (typeOn && !typeSelected.has(r.type)) return false;
+      if (vendorOn && !vendorSelected.has(safe(r.vendor))) return false;
       if (ceOn) {
         if (typeof r.ce_hours !== "number") return false;
         const exact = ceSelected.has(r.ce_hours);
@@ -114,7 +122,7 @@ export default function OnDemand({ embedded = false }) {
       if (q) {
         const rolesHay = Array.isArray(r.roles) ? r.roles.join(" ") : "";
         const catsHay = Array.isArray(r.categories) ? r.categories.join(" ") : "";
-        const hay = `${safe(r.title)} ${safe(r.description)} ${safe(r.type)} ${rolesHay} ${catsHay}`.toLowerCase();
+        const hay = `${safe(r.title)} ${safe(r.description)} ${safe(r.type)} ${safe(r.vendor)} ${rolesHay} ${catsHay}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -147,7 +155,7 @@ export default function OnDemand({ embedded = false }) {
         break;
     }
     return sorted;
-  }, [rows, query, typeSelected, ceSelected, rolesSelected, catSelected, sortBy]);
+  }, [rows, query, typeSelected, ceSelected, rolesSelected, catSelected, vendorSelected, sortBy]);
 
   return (
     <div className={`page ${embedded ? "pageEmbedded" : ""}`}>
@@ -181,6 +189,7 @@ export default function OnDemand({ embedded = false }) {
         ceHours={ceHours} ceSelected={ceSelected} setCeSelected={setCeSelected}
         roles={roles} rolesSelected={rolesSelected} setRolesSelected={setRolesSelected}
         categories={categories} catSelected={catSelected} setCatSelected={setCatSelected}
+        vendorOptions={vendorOptions} vendorSelected={vendorSelected} setVendorSelected={setVendorSelected}
         toggle={toggle}
         clearFilters={clearFilters}
         filteredCount={filtered.length}
@@ -292,6 +301,18 @@ function OnDemandCard({ course }) {
       </div>
 
       <div className="body">
+        {isUrl(course.vendor_logo_url) ? (
+          <div className="topRow odVendorRow">
+            <div className="metaRow" />
+            <img
+              className="vendorLogo"
+              src={course.vendor_logo_url}
+              alt="Vendor logo"
+              loading="lazy"
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
+            />
+          </div>
+        ) : null}
         <h3 className="title" title={course.title}>{course.title}</h3>
 
         {safe(course.description) ? (
@@ -347,6 +368,7 @@ function OdFilterBar(props) {
     ceHours, ceSelected, setCeSelected,
     roles, rolesSelected, setRolesSelected,
     categories, catSelected, setCatSelected,
+    vendorOptions, vendorSelected, setVendorSelected,
     toggle, clearFilters, filteredCount,
     showSearch, query, setQuery, searchPlaceholder,
     sortBy, setSortBy,
@@ -356,7 +378,8 @@ function OdFilterBar(props) {
     typeSelected.size > 0 ||
     ceSelected.size > 0 ||
     rolesSelected.size > 0 ||
-    (catSelected && catSelected.size > 0);
+    (catSelected && catSelected.size > 0) ||
+    (vendorSelected && vendorSelected.size > 0);
   const courseLabel = filteredCount === 1 ? "course" : "courses";
 
   return (
@@ -385,6 +408,15 @@ function OdFilterBar(props) {
           onToggle={(v) => toggle(setCatSelected, v)}
           onClear={() => setCatSelected(new Set())}
         />
+        {Array.isArray(vendorOptions) && vendorOptions.length > 0 && (
+          <OdFilterPopover
+            label="Vendor"
+            options={vendorOptions}
+            selected={vendorSelected}
+            onToggle={(v) => toggle(setVendorSelected, v)}
+            onClear={() => setVendorSelected(new Set())}
+          />
+        )}
         <OdFilterPopover
           label="Role"
           options={roles}

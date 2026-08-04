@@ -1301,8 +1301,10 @@ function SecondTimeSlot({ label, url, email, onLabel, onUrl, onEmail }) {
 
 /* =====================================================================
    VENDOR COMBOBOX  (unchanged behavior, polished labels)
+   Exported so OnDemandForm can reuse the exact same picker and the
+   same shared vendors list.
 ===================================================================== */
-function VendorCombobox({ value, onChange }) {
+export function VendorCombobox({ value, onChange }) {
   const { currentClientId } = useClient();
   const [vendors, setVendors] = useState([]);
   const [open, setOpen] = useState(false);
