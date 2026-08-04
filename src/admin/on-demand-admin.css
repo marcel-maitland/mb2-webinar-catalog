@@ -1676,3 +1676,40 @@
   gap: 8px;
   margin-top: 12px;
 }
+
+/* ============================================================
+   Course thumbnail preview in the edit form — render at roughly
+   the same size + 2:1 crop the catalog card uses, instead of the
+   image's full natural size.
+   ============================================================ */
+.evThumbDrop .evThumbPreview {
+  max-width: 390px;
+}
+.evThumbDrop .evThumbPreview img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 12px;
+  border: 1px solid var(--border, #e2e8f0);
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+}
+
+/* ============================================================
+   On-demand admin list — events-style table, minus the
+   Exclusive column (6 columns instead of 7), plus hero actions.
+   ============================================================ */
+.odHeroActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.elTableHead.odTableHead,
+.elRow.odTableRow {
+  grid-template-columns: minmax(260px, 1.8fr) 110px minmax(160px, 1fr) 130px 70px 116px;
+}
+@media (max-width: 900px) {
+  .elTableHead.odTableHead { display: none; }
+}
