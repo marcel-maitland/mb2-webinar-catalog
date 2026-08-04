@@ -25,6 +25,7 @@ export default function OnDemand({ embedded = false }) {
   const [vendorSelected, setVendorSelected] = useState(new Set());
   const [mb2ExclusiveOnly, setMb2ExclusiveOnly] = useState(isExclusiveMode);
   const [sortBy, setSortBy] = useState("newest"); // newest | oldest | name | ce_desc | ce_asc
+  const [externalCourse, setExternalCourse] = useState(null); // course pending external-link confirmation
 
   useEffect(() => {
     let cancelled = false;
@@ -235,11 +236,66 @@ export default function OnDemand({ embedded = false }) {
           {!loading && !loadError && filtered.length > 0 && (
             <div className="odGrid">
               {filtered.map((c) => (
-                <OnDemandCard key={c.id} course={c} />
+                <OnDemandCard key={c.id} course={c} onExternalClick={setExternalCourse} />
               ))}
             </div>
           )}
         </main>
+      </div>
+
+      <ExternalCourseModal
+        course={externalCourse}
+        onClose={() => setExternalCourse(null)}
+      />
+    </div>
+  );
+}
+
+/* Confirmation popup shown before leaving for an external course. */
+function ExternalCourseModal({ course, onClose }) {
+  useEffect(() => {
+    if (!course) return;
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [course, onClose]);
+
+  if (!course) return null;
+
+  const proceed = () => {
+    window.open(course.course_url, "_blank", "noopener");
+    onClose();
+  };
+
+  return (
+    <div className="odExtBackdrop" onClick={onClose} role="presentation">
+      <div
+        className="odExtModal"
+        role="alertdialog"
+        aria-modal="true"
+        aria-label="Leaving MB2 Shield"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="odExtIcon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M14 4h6v6M20 4l-9 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M19 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+        <h3 className="odExtTitle">You're leaving MB2 Shield</h3>
+        <p className="odExtText">
+          You are about to leave the MB2 Shield platform to go to a course on an
+          external platform. Course completion and certificates will not be
+          recorded within MB2 Shield.
+        </p>
+        <div className="odExtActions">
+          <button type="button" className="odExtCancel" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="button" className="odExtConfirm" onClick={proceed}>
+            I understand — Go to course
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -290,7 +346,7 @@ function CreditBadge({ ce, hidden = false }) {
   );
 }
 
-function OnDemandCard({ course }) {
+function OnDemandCard({ course, onExternalClick }) {
   const thumbOk = isUrl(course.thumbnail_url);
   const canRegister = isUrl(course.course_url);
   const ce = typeof course.ce_hours === "number" ? course.ce_hours : null;
@@ -356,6 +412,25 @@ function OnDemandCard({ course }) {
       </div>
     </>
   );
+
+  if (canRegister && course.is_external) {
+    // External course: intercept the click with a confirmation popup.
+    return (
+      <a
+        className="card cardElevated odCard odCardClickable"
+        href={course.course_url}
+        target="_blank"
+        rel="noopener"
+        aria-label={`Open course: ${course.title}`}
+        onClick={(e) => {
+          e.preventDefault();
+          if (typeof onExternalClick === "function") onExternalClick(course);
+        }}
+      >
+        {cardInner}
+      </a>
+    );
+  }
 
   return canRegister ? (
     <a

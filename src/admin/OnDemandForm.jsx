@@ -28,6 +28,7 @@ const BLANK = {
   sort_order: 0,
   mb2_exclusive: false,
   is_locked: false,
+  is_external: false,
   is_published: false,
 };
 
@@ -189,6 +190,7 @@ export default function OnDemandForm({ mode = "edit" }) {
       sort_order: Number(form.sort_order) || 0,
       mb2_exclusive: !!form.mb2_exclusive,
       is_locked: !!form.is_locked,
+      is_external: !!form.is_external,
       is_published: !!form.is_published,
       };
       if (mode === "new") {
@@ -464,6 +466,21 @@ export default function OnDemandForm({ mode = "edit" }) {
                 placeholder=""
               />
             </Field>
+            <label className="odExternalCheck">
+              <input
+                type="checkbox"
+                checked={!!form.is_external}
+                onChange={(e) => set("is_external", e.target.checked)}
+              />
+              <span>
+                <strong>External Link</strong>
+                <span className="muted odExternalCheckHint">
+                  This course lives on an outside platform. Visitors will see a
+                  warning that completion and certificates won't be recorded in
+                  MB2 Shield before they're taken to the link.
+                </span>
+              </span>
+            </label>
           </Section>
 
           <Section title="Ordering" subtitle="Controls how courses appear on the public catalog.">

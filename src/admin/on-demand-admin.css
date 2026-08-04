@@ -1899,3 +1899,30 @@
 .odFormFieldset:disabled .evThumbDropZone,
 .odFormFieldset:disabled .odTagSelectControl,
 .odFormFieldset:disabled .odCatAddCustom { pointer-events: none; }
+
+/* External Link checkbox on the course edit page */
+.odExternalCheck {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 10px;
+  background: #f8fafc;
+  cursor: pointer;
+}
+.odExternalCheck input[type="checkbox"] {
+  margin-top: 2px;
+  accent-color: #1dbfc9;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.odExternalCheck strong { display: block; font-size: 14px; }
+.odExternalCheckHint {
+  display: block;
+  font-size: 12.5px;
+  margin-top: 2px;
+  line-height: 1.45;
+}
