@@ -508,7 +508,7 @@
 }
 .discountBlock {
   margin-top: 12px;
-  background: linear-gradient(180deg, #ecfeff 0%, #fffbeb 100%);
+  background: linear-gradient(180deg, #fffbeb 0%, #fff7ed 100%);
   border: 1px solid #fed7aa;
   border-radius: 12px;
   padding: 14px 16px;
