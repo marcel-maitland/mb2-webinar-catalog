@@ -895,37 +895,15 @@ function CatalogElevatedStyles() {
       .sessionGroup { display: flex; flex-direction: column; gap: 0; }
       .sessionGroup + .sessionGroup { margin-top: 8px; }
 
-      /* Email-based registration display (replaces the Register button when
-         an event has no URL but does have a registration email) */
-      .emailReg {
+      /* Email-based registration button (replaces the Register button when
+         an event has no URL but does have a registration email). Styled
+         like the Register button, with an envelope icon. */
+      .emailRegBtn {
         display: inline-flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 2px;
-        padding: 8px 14px;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        min-width: 0;
-        max-width: 100%;
-      }
-      .emailRegLabel {
-        font-size: 11px;
-        font-weight: 600;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
+        align-items: center;
+        gap: 6px;
         white-space: nowrap;
       }
-      .emailRegAddr {
-        font-size: 14px;
-        font-weight: 700;
-        color: #0F766E;
-        text-decoration: none;
-        word-break: break-all;
-        line-height: 1.2;
-      }
-      .emailRegAddr:hover { text-decoration: underline; }
 
       @media (max-width: 700px) {
         .discountBanner { flex-direction: column; align-items: flex-start; gap: 4px; }
@@ -934,16 +912,24 @@ function CatalogElevatedStyles() {
   );
 }
 
-/* Renders "For registration, email <addr>" in place of the Register button
-   when an event has an email-based registration but no URL. The address
-   is a clickable mailto: link. */
+/* Renders an "Email to Register" button in place of the Register button
+   when an event has an email-based registration but no URL. Clicking it
+   opens the visitor's mail app addressed to the registration email —
+   the address itself is not shown on the card (hover reveals it). */
 function EmailReg({ email }) {
   if (!isEmail(email)) return null;
   return (
-    <div className="emailReg">
-      <span className="emailRegLabel">For registration, email</span>
-      <a className="emailRegAddr" href={`mailto:${email}`}>{email}</a>
-    </div>
+    <a
+      className="sessionBtn emailRegBtn"
+      href={`mailto:${email}`}
+      title={`Email ${email}`}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="2"/>
+        <path d="M3.5 6.5l8.5 6 8.5-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+      Email to Register
+    </a>
   );
 }
 
