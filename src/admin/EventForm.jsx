@@ -3,6 +3,13 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { AddVendorModal } from "./Vendors.jsx";
 import { useClient } from "./AdminApp.jsx";
+import TagSelect from "./TagSelect.jsx";
+import {
+  fetchCategoryNames,
+  saveCategoryName,
+  fetchRoleNames,
+  saveRoleName,
+} from "./CategoryManager.jsx";
 
 const BLANK = {
   title: "",
@@ -174,8 +181,23 @@ export default function EventForm({ mode }) {
         Object.entries(counts)
           .map(([name, count]) => ({ name, count }))
           .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-      setCategorySuggestions(toSorted(catCounts));
-      setRoleSuggestions(toSorted(roleCounts));
+
+      // Merge in the GLOBAL shared lists (same ones on-demand courses use)
+      // so both catalogs offer identical category + role options.
+      const [globalCats, globalRoles] = await Promise.all([
+        fetchCategoryNames(),
+        fetchRoleNames(),
+      ]);
+      const mergeGlobal = (sorted, globals) => {
+        const seen = new Set(sorted.map((s) => s.name.toLowerCase()));
+        const extras = (globals || [])
+          .filter((name) => !seen.has(name.toLowerCase()))
+          .map((name) => ({ name, count: "" }));
+        return [...sorted, ...extras];
+      };
+      if (cancelled) return;
+      setCategorySuggestions(mergeGlobal(toSorted(catCounts), globalCats));
+      setRoleSuggestions(mergeGlobal(toSorted(roleCounts), globalRoles));
     })();
     return () => { cancelled = true; };
   }, [currentClientId]);
@@ -290,6 +312,14 @@ export default function EventForm({ mode }) {
       // existing vendor for this client. This handles the case where the
       // admin typed a new vendor name in the combobox without explicitly
       // clicking "+ Add new vendor".
+      // Persist the category + any roles to the shared GLOBAL lists so
+      // they appear as options on on-demand courses too.
+      const evCategory = (form.category || "").trim();
+      if (evCategory) await saveCategoryName(evCategory);
+      for (const role of Array.isArray(form.roles) ? form.roles : []) {
+        await saveRoleName(role);
+      }
+
       const vendorName = (form.vendor || "").trim();
       if (vendorName && currentClientId) {
         const { data: existingVendor } = await supabase
@@ -511,13 +541,21 @@ export default function EventForm({ mode }) {
                   suggestions={categorySuggestions}
                 />
               </Field>
-              <Field label="Roles" hint="Pick from the dropdown or type a new role.">
-                <ChipInput
-                  value={form.roles}
+              <Field label="Roles" hint="Select every role that applies. The list is shared with on-demand courses.">
+                <TagSelect
+                  options={roleSuggestions.map((s) => s.name)}
+                  value={Array.isArray(form.roles) ? form.roles : []}
                   onChange={(next) => set("roles", next)}
-                  suggestions={roleSuggestions}
-                  placeholder=""
-                  createLabel="role"
+                  placeholder="Select roles…"
+                  addLabel="role"
+                  onAddNew={async (name) => {
+                    await saveRoleName(name);
+                    setRoleSuggestions((prev) =>
+                      prev.some((s) => s.name.toLowerCase() === name.toLowerCase())
+                        ? prev
+                        : [...prev, { name, count: "" }]
+                    );
+                  }}
                 />
               </Field>
             </div>
@@ -985,7 +1023,7 @@ function CostInput({ value, onChange }) {
   );
 }
 
-function ChipInput({ value, onChange, placeholder, suggestions = [], createLabel = "item" }) {
+export function ChipInput({ value, onChange, placeholder, suggestions = [], createLabel = "item" }) {
   const [draft, setDraft] = useState("");
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);

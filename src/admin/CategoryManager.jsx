@@ -42,22 +42,44 @@ export async function fetchCategoryNames() {
 }
 
 export async function saveCategoryName(name) {
+  return saveTagName("on_demand_categories", name);
+}
+
+/* ---------- shared global roles (catalog_roles table) ----------
+   One global list of role options shared by live events and
+   on-demand courses. See supabase/shared_roles_categories.sql. */
+
+export async function fetchRoleNames() {
+  const { data, error } = await supabase
+    .from("catalog_roles")
+    .select("name, sort_order")
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+  if (error || !data) return [];
+  return data.map((r) => r.name);
+}
+
+export async function saveRoleName(name) {
+  return saveTagName("catalog_roles", name);
+}
+
+async function saveTagName(table, name) {
   const v = (name || "").trim();
   if (!v) return;
   // Case-insensitive duplicate check, then insert at the end.
   const { data: existing } = await supabase
-    .from("on_demand_categories")
+    .from(table)
     .select("id, name")
     .ilike("name", v)
     .limit(1);
   if (existing && existing.length > 0) return;
   const { data: maxRow } = await supabase
-    .from("on_demand_categories")
+    .from(table)
     .select("sort_order")
     .order("sort_order", { ascending: false })
     .limit(1);
   const nextOrder = (maxRow?.[0]?.sort_order ?? 90) + 10;
-  await supabase.from("on_demand_categories").insert({ name: v, sort_order: nextOrder });
+  await supabase.from(table).insert({ name: v, sort_order: nextOrder });
 }
 
 /* ---------- propagation helpers ---------- */
