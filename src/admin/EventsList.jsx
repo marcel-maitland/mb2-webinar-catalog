@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { useClient } from "./AdminApp.jsx";
+import "./on-demand-admin.css";
 
 const TIME_FILTERS = [
   { id: "all",      label: "All time" },
@@ -223,9 +224,14 @@ export default function EventsList() {
               Manage every webinar, hands-on, and exclusive that visitors see across the public catalog.
             </p>
           </div>
-          <Link to="/admin/events/new" className="elPrimaryBtn">
-            <span className="elPlus">+</span> New event
-          </Link>
+          <div className="odHeroActions">
+            <Link to="/admin/import" className="ghostBtn">
+              Bulk import
+            </Link>
+            <Link to="/admin/events/new" className="elPrimaryBtn">
+              <span className="elPlus">+</span> New event
+            </Link>
+          </div>
         </div>
 
         <div className="elStats">

@@ -297,10 +297,9 @@ function Nav({ email }) {
       </div>
 
       <nav className="adminNavLinks">
-        <NavLink to="/admin" end>Events</NavLink>
-        <NavLink to="/admin/vendors">Vendors</NavLink>
-        <NavLink to="/admin/import">Import</NavLink>
+        <NavLink to="/admin" end>Live Events</NavLink>
         {isSuperAdmin && <NavLink to="/admin/on-demand">On Demand</NavLink>}
+        <NavLink to="/admin/vendors">Vendors</NavLink>
         {isSuperAdmin && <NavLink to="/admin/clients">Clients</NavLink>}
         <ViewCatalogMenu currentClient={currentClient} isSuperAdmin={isSuperAdmin} />
       </nav>
