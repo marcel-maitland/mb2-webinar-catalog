@@ -402,27 +402,28 @@ function OdFilterBar(props) {
           onClear={() => setTypeSelected(new Set())}
         />
         <OdFilterPopover
-          label="Category"
-          options={categories}
-          selected={catSelected}
-          onToggle={(v) => toggle(setCatSelected, v)}
-          onClear={() => setCatSelected(new Set())}
-        />
-        {Array.isArray(vendorOptions) && vendorOptions.length > 0 && (
-          <OdFilterPopover
-            label="Vendor"
-            options={vendorOptions}
-            selected={vendorSelected}
-            onToggle={(v) => toggle(setVendorSelected, v)}
-            onClear={() => setVendorSelected(new Set())}
-          />
-        )}
-        <OdFilterPopover
           label="Role"
           options={roles}
           selected={rolesSelected}
           onToggle={(v) => toggle(setRolesSelected, v)}
           onClear={() => setRolesSelected(new Set())}
+          searchable={roles.length > 10}
+        />
+        <OdFilterPopover
+          label="Category"
+          options={categories}
+          selected={catSelected}
+          onToggle={(v) => toggle(setCatSelected, v)}
+          onClear={() => setCatSelected(new Set())}
+          searchable={categories.length > 10}
+        />
+        <OdFilterPopover
+          label="Vendor"
+          options={vendorOptions || []}
+          selected={vendorSelected}
+          onToggle={(v) => toggle(setVendorSelected, v)}
+          onClear={() => setVendorSelected(new Set())}
+          searchable
         />
         <OdFilterPopover
           label="CE Hours"
@@ -469,8 +470,9 @@ function OdFilterBar(props) {
   );
 }
 
-function OdFilterPopover({ label, options, selected, onToggle, onClear, formatOption }) {
+function OdFilterPopover({ label, options, selected, onToggle, onClear, searchable = false, formatOption }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const ref = useRef(null);
 
   useEffect(() => {
@@ -485,6 +487,14 @@ function OdFilterPopover({ label, options, selected, onToggle, onClear, formatOp
       document.removeEventListener("keydown", onKey);
     };
   }, []);
+
+  useEffect(() => { if (!open) setSearch(""); }, [open]);
+
+  const visibleOptions = useMemo(() => {
+    if (!search) return options;
+    const q = search.toLowerCase();
+    return options.filter((o) => String(o).toLowerCase().includes(q));
+  }, [options, search]);
 
   const count = selected.size;
   const disabled = options.length === 0;
@@ -508,11 +518,23 @@ function OdFilterPopover({ label, options, selected, onToggle, onClear, formatOp
 
       {open && (
         <div className="filterPopMenu" role="listbox" aria-label={label}>
+          {searchable && (
+            <div className="filterPopSearchWrap">
+              <input
+                type="text"
+                className="filterPopSearch"
+                placeholder={`Search ${label.toLowerCase()}…`}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+          )}
           <div className="filterPopList">
-            {options.length === 0 ? (
-              <div className="filterPopEmpty">No options</div>
+            {visibleOptions.length === 0 ? (
+              <div className="filterPopEmpty">No matches</div>
             ) : (
-              options.map((opt) => {
+              visibleOptions.map((opt) => {
                 const key = String(opt);
                 const displayLabel = formatOption ? formatOption(opt) : String(opt);
                 const isSel = selected.has(opt);
