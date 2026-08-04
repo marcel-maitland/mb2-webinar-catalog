@@ -207,10 +207,10 @@ function AdminShell() {
           <Route path="vendors" element={<Vendors />} />
           <Route path="import" element={<ImportCsv />} />
           {isSuperAdmin && <Route path="clients" element={<Clients />} />}
-          {isSuperAdmin && <Route path="on-demand" element={<OnDemandList />} />}
+          <Route path="on-demand" element={<OnDemandList />} />
           {isSuperAdmin && <Route path="on-demand/import" element={<OnDemandImport />} />}
           {isSuperAdmin && <Route path="on-demand/new" element={<OnDemandForm mode="new" />} />}
-          {isSuperAdmin && <Route path="on-demand/:id" element={<OnDemandForm mode="edit" />} />}
+          <Route path="on-demand/:id" element={<OnDemandForm mode="edit" />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </main>
@@ -298,7 +298,7 @@ function Nav({ email }) {
 
       <nav className="adminNavLinks">
         <NavLink to="/admin" end>Live Events</NavLink>
-        {isSuperAdmin && <NavLink to="/admin/on-demand">On Demand</NavLink>}
+        <NavLink to="/admin/on-demand">On Demand</NavLink>
         <NavLink to="/admin/vendors">Vendors</NavLink>
         {isSuperAdmin && <NavLink to="/admin/clients">Clients</NavLink>}
         <ViewCatalogMenu currentClient={currentClient} isSuperAdmin={isSuperAdmin} />

@@ -1852,3 +1852,50 @@
   padding: 2px 6px 2px 2px;
 }
 .odBackLink:hover { color: #0e7490; background: #ecfeff; }
+
+/* ============================================================
+   Lock feature — locked courses are view-only for client admins
+   ============================================================ */
+.odLockChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.odRowLocked { background: #fafbfc; }
+.odRowLocked .elTitleLink { color: #475569; }
+.odLockBtn.isLocked { color: #b45309; background: #fffbeb; border-color: #fde68a; }
+.switch.switchDisabled { opacity: 0.45; cursor: not-allowed; }
+.switch.switchDisabled .switchSlider { cursor: not-allowed; }
+.mb2Star:disabled { opacity: 0.35; cursor: not-allowed; }
+.odLockedBanner {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 14px 0 0;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.odFormFieldset {
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.odFormFieldset:disabled { opacity: 0.75; }
+.odFormFieldset:disabled .evThumbDropZone,
+.odFormFieldset:disabled .odTagSelectControl,
+.odFormFieldset:disabled .odCatAddCustom { pointer-events: none; }

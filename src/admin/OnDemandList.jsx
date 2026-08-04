@@ -31,7 +31,7 @@ const typePillClass = (type) =>
   type === "Learning Path" ? "elFmtHybrid" : "elFmtWebinar";
 
 export default function OnDemandList() {
-  const { currentClientId } = useClient();
+  const { currentClientId, isSuperAdmin } = useClient();
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -115,6 +115,19 @@ export default function OnDemandList() {
     }
   };
 
+  const toggleLock = async (row) => {
+    const next = !row.is_locked;
+    setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, is_locked: next } : r)));
+    const { error } = await supabase
+      .from("on_demand_courses")
+      .update({ is_locked: next })
+      .eq("id", row.id);
+    if (error) {
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, is_locked: !next } : r)));
+      alert("Failed: " + error.message);
+    }
+  };
+
   const remove = async (row) => {
     if (!confirm(`Delete "${row.title}"? This cannot be undone.`)) return;
     const { error } = await supabase.from("on_demand_courses").delete().eq("id", row.id);
@@ -190,21 +203,23 @@ export default function OnDemandList() {
               Manage your on-demand continuing education library. Published items appear on the public on-demand catalog.
             </p>
           </div>
-          <div className="odHeroActions">
-            <button
-              type="button"
-              className="ghostBtn"
-              onClick={() => setShowCatMgr(true)}
-            >
-              Manage categories
-            </button>
-            <Link to="/admin/on-demand/import" className="ghostBtn">
-              Bulk import
-            </Link>
-            <Link to="/admin/on-demand/new" className="elPrimaryBtn">
-              <span className="elPlus">+</span> New course
-            </Link>
-          </div>
+          {isSuperAdmin && (
+            <div className="odHeroActions">
+              <button
+                type="button"
+                className="ghostBtn"
+                onClick={() => setShowCatMgr(true)}
+              >
+                Manage categories
+              </button>
+              <Link to="/admin/on-demand/import" className="ghostBtn">
+                Bulk import
+              </Link>
+              <Link to="/admin/on-demand/new" className="elPrimaryBtn">
+                <span className="elPlus">+</span> New course
+              </Link>
+            </div>
+          )}
         </div>
 
         <div className="elStats">
@@ -332,8 +347,9 @@ export default function OnDemandList() {
 
           {visible.map((r) => {
             const cats = Array.isArray(r.categories) ? r.categories : [];
+            const readOnly = !!r.is_locked && !isSuperAdmin;
             return (
-              <article key={r.id} className="elRow odTableRow">
+              <article key={r.id} className={`elRow odTableRow ${readOnly ? "odRowLocked" : ""}`}>
                 <div className="elColTitle">
                   <Link to={`/admin/on-demand/${r.id}`} className="elThumb">
                     {r.thumbnail_url
@@ -343,6 +359,15 @@ export default function OnDemandList() {
                   <div className="elTitleWrap">
                     <Link to={`/admin/on-demand/${r.id}`} className="elTitleLink">{r.title || "(untitled)"}</Link>
                     <div className="elTitleMeta">
+                      {r.is_locked && (
+                        <span className="odLockChip" title={isSuperAdmin ? "Locked — clients can view but not edit" : "Locked by MB2 — view only"}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="2.4"/>
+                            <path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" strokeWidth="2.4"/>
+                          </svg>
+                          Locked
+                        </span>
+                      )}
                       {cats.slice(0, 2).map((c) => (
                         <span key={c} className="elCategory">{c}</span>
                       ))}
@@ -379,53 +404,101 @@ export default function OnDemandList() {
                   <button
                     type="button"
                     className={`mb2Star ${r.mb2_exclusive ? "mb2StarOn" : ""}`}
-                    onClick={() => toggleMb2(r)}
-                    title={r.mb2_exclusive ? "Remove MB2 Exclusive flag" : "Mark as MB2 Exclusive"}
+                    onClick={() => !readOnly && toggleMb2(r)}
+                    disabled={readOnly}
+                    title={readOnly ? "Locked by MB2" : r.mb2_exclusive ? "Remove MB2 Exclusive flag" : "Mark as MB2 Exclusive"}
                     aria-label="Toggle MB2 Exclusive"
                   >★</button>
                 </div>
 
                 <div className="elColPublish">
-                  <label className="switch" title={r.is_published ? "Click to unpublish" : "Click to publish"}>
-                    <input type="checkbox" checked={!!r.is_published} onChange={() => togglePublish(r)} />
+                  <label
+                    className={`switch ${readOnly ? "switchDisabled" : ""}`}
+                    title={readOnly ? "Locked by MB2" : r.is_published ? "Click to unpublish" : "Click to publish"}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!!r.is_published}
+                      disabled={readOnly}
+                      onChange={() => !readOnly && togglePublish(r)}
+                    />
                     <span className="switchSlider" />
                   </label>
                 </div>
 
                 <div className="elColActions">
-                  <Link
-                    to={`/admin/on-demand/${r.id}`}
-                    className="elIconBtn"
-                    title="Edit"
-                    aria-label="Edit course"
-                  >
-                    <svg viewBox="0 0 24 24" width="16" height="16">
-                      <path d="M4 20h4l10-10-4-4L4 16v4z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </Link>
-                  <button
-                    type="button"
-                    className="elIconBtn"
-                    onClick={() => duplicate(r)}
-                    title="Duplicate (creates a draft copy you can edit)"
-                    aria-label="Duplicate course"
-                  >
-                    <svg viewBox="0 0 24 24" width="16" height="16">
-                      <rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-                      <path d="M5 15V6a2 2 0 0 1 2-2h9" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    className="elIconBtn elIconBtnDanger"
-                    onClick={() => remove(r)}
-                    title="Delete"
-                    aria-label="Delete course"
-                  >
-                    <svg viewBox="0 0 24 24" width="16" height="16">
-                      <path d="M6 7h12M9 7V4h6v3m-7 0v13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </button>
+                  {isSuperAdmin && (
+                    <button
+                      type="button"
+                      className={`elIconBtn odLockBtn ${r.is_locked ? "isLocked" : ""}`}
+                      onClick={() => toggleLock(r)}
+                      title={r.is_locked ? "Unlock (lets clients edit this course)" : "Lock (clients can view but not edit)"}
+                      aria-label="Toggle lock"
+                    >
+                      {r.is_locked ? (
+                        <svg viewBox="0 0 24 24" width="16" height="16">
+                          <rect x="5" y="10" width="14" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="2"/>
+                          <path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" strokeWidth="2"/>
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" width="16" height="16">
+                          <rect x="5" y="10" width="14" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="2"/>
+                          <path d="M8 10V7a4 4 0 0 1 7.5-2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
+                      )}
+                    </button>
+                  )}
+                  {readOnly ? (
+                    <Link
+                      to={`/admin/on-demand/${r.id}`}
+                      className="elIconBtn"
+                      title="View (locked by MB2)"
+                      aria-label="View course"
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16">
+                        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+                        <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="2"/>
+                      </svg>
+                    </Link>
+                  ) : (
+                    <Link
+                      to={`/admin/on-demand/${r.id}`}
+                      className="elIconBtn"
+                      title="Edit"
+                      aria-label="Edit course"
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16">
+                        <path d="M4 20h4l10-10-4-4L4 16v4z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </Link>
+                  )}
+                  {isSuperAdmin && (
+                    <button
+                      type="button"
+                      className="elIconBtn"
+                      onClick={() => duplicate(r)}
+                      title="Duplicate (creates a draft copy you can edit)"
+                      aria-label="Duplicate course"
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16">
+                        <rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+                        <path d="M5 15V6a2 2 0 0 1 2-2h9" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                  )}
+                  {isSuperAdmin && (
+                    <button
+                      type="button"
+                      className="elIconBtn elIconBtnDanger"
+                      onClick={() => remove(r)}
+                      title="Delete"
+                      aria-label="Delete course"
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16">
+                        <path d="M6 7h12M9 7V4h6v3m-7 0v13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </article>
             );

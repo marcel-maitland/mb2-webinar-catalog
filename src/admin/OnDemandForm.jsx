@@ -27,6 +27,7 @@ const BLANK = {
   release_date: "",
   sort_order: 0,
   mb2_exclusive: false,
+  is_locked: false,
   is_published: false,
 };
 
@@ -39,7 +40,7 @@ const COURSE_TYPES = ["Course", "Learning Path"];
 export default function OnDemandForm({ mode = "edit" }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { currentClientId } = useClient();
+  const { currentClientId, isSuperAdmin } = useClient();
   const [form, setForm] = useState(BLANK);
   const [original, setOriginal] = useState(BLANK);
   const [loading, setLoading] = useState(mode === "edit");
@@ -89,6 +90,9 @@ export default function OnDemandForm({ mode = "edit" }) {
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(original), [form, original]);
+
+  // Locked courses are view-only for client admins.
+  const readOnly = !!form.is_locked && !isSuperAdmin;
 
   // Warn on close if dirty
   useEffect(() => {
@@ -184,6 +188,7 @@ export default function OnDemandForm({ mode = "edit" }) {
       release_date: form.release_date || null,
       sort_order: Number(form.sort_order) || 0,
       mb2_exclusive: !!form.mb2_exclusive,
+      is_locked: !!form.is_locked,
       is_published: !!form.is_published,
       };
       if (mode === "new") {
@@ -247,11 +252,26 @@ export default function OnDemandForm({ mode = "edit" }) {
           </div>
         </div>
         <div className="evToolbarRight">
+          {isSuperAdmin && (
+            <label
+              className={`evSwitch evSwitch-accent ${form.is_locked ? "on" : ""}`}
+              title={form.is_locked ? "Locked — clients can view but not edit" : "Unlocked — clients can edit"}
+            >
+              <input
+                type="checkbox"
+                checked={!!form.is_locked}
+                onChange={(e) => set("is_locked", e.target.checked)}
+              />
+              <span className="evSwitchSlider" />
+              <span className="evSwitchLabel">Locked</span>
+            </label>
+          )}
           <label className={`evSwitch evSwitch-gold ${form.mb2_exclusive ? "on" : ""}`}>
             <input
               type="checkbox"
               checked={!!form.mb2_exclusive}
-              onChange={(e) => set("mb2_exclusive", e.target.checked)}
+              disabled={readOnly}
+              onChange={(e) => !readOnly && set("mb2_exclusive", e.target.checked)}
             />
             <span className="evSwitchSlider" />
             <span className="evSwitchLabel">MB2 Exclusive</span>
@@ -260,25 +280,38 @@ export default function OnDemandForm({ mode = "edit" }) {
             <input
               type="checkbox"
               checked={!!form.is_published}
-              onChange={(e) => set("is_published", e.target.checked)}
+              disabled={readOnly}
+              onChange={(e) => !readOnly && set("is_published", e.target.checked)}
             />
             <span className="evSwitchSlider" />
             <span className="evSwitchLabel">Published</span>
           </label>
           <button type="button" className="ghostBtn" onClick={cancel}>Cancel</button>
-          <button
-            type="button"
-            className="primaryBtn"
-            onClick={save}
-            disabled={saving || !dirty}
-          >
-            {saving ? "Saving…" : "Save changes"}
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              className="primaryBtn"
+              onClick={save}
+              disabled={saving || !dirty}
+            >
+              {saving ? "Saving…" : "Save changes"}
+            </button>
+          )}
         </div>
       </div>
 
+      {readOnly && (
+        <div className="odLockedBanner" role="note">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="2"/>
+            <path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" strokeWidth="2"/>
+          </svg>
+          This course is locked by MB2 Dental. You can view it, but changes can't be saved.
+        </div>
+      )}
+
       <div className="evBody" style={{ gridTemplateColumns: "1fr 380px" }}>
-        <div>
+        <fieldset disabled={readOnly} className="odFormFieldset">
           <Section title="Course details" subtitle="What visitors see on the catalog.">
             <Field label="Title *">
               <input
@@ -444,7 +477,7 @@ export default function OnDemandForm({ mode = "edit" }) {
             </Field>
           </Section>
 
-          {mode === "edit" && (
+          {mode === "edit" && isSuperAdmin && (
             <Section title="Danger zone" subtitle="Permanent actions." tone="danger">
               <div className="dangerRow">
                 <div>
@@ -459,7 +492,7 @@ export default function OnDemandForm({ mode = "edit" }) {
           )}
 
           {error && <p className="errMsg" style={{ marginTop: 12 }}>{error}</p>}
-        </div>
+        </fieldset>
 
         {/* Live preview column */}
         <aside className="evPreview">
