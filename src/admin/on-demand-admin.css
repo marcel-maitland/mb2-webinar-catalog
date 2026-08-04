@@ -1834,3 +1834,21 @@
 .odTagSelectAddNew:hover { border-color: #1dbfc9; background: #f0fdfe; }
 .odTagSelectAddRow { display: flex; gap: 8px; }
 .odTagSelectAddBtn { padding: 7px 12px; font-size: 13px; flex-shrink: 0; }
+
+/* ============================================================
+   Course edit page — back link sits as a small breadcrumb-style
+   link stacked above the page title instead of a floating button.
+   ============================================================ */
+.odBackLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #64748b;
+  text-decoration: none;
+  margin-bottom: 2px;
+  border-radius: 6px;
+  padding: 2px 6px 2px 2px;
+}
+.odBackLink:hover { color: #0e7490; background: #ecfeff; }

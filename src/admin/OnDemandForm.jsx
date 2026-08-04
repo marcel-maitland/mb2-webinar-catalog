@@ -126,41 +126,51 @@ export default function OnDemandForm({ mode = "edit" }) {
     setSaving(true);
     setError("");
 
-    // Auto-provision the vendor row if the typed name doesn't match an
-    // existing vendor for this client — same behavior as the events form,
-    // so both catalogs share one vendors list.
     const vendorName = (form.vendor || "").trim();
-    if (vendorName && currentClientId) {
-      const { data: match } = await supabase
-        .from("vendors")
-        .select("id")
-        .eq("client_id", currentClientId)
-        .ilike("name", vendorName)
-        .limit(1);
-      if (!match || match.length === 0) {
-        await supabase
-          .from("vendors")
-          .insert({
-            name: vendorName,
-            logo_url: form.vendor_logo_url || null,
-            client_id: currentClientId,
-          });
-      }
-    }
-
-    // Persist any newly typed roles to the shared global roles list so
-    // they show up as options on both live events and on-demand courses.
     const formRoles = Array.isArray(form.roles) ? form.roles : [];
-    for (const role of formRoles) {
-      if (!roleOptions.some((r) => r.toLowerCase() === role.toLowerCase())) {
-        await saveRoleName(role);
-      }
-    }
-    if (formRoles.length) {
-      setRoleOptions((prev) => [...new Set([...prev, ...formRoles])]);
-    }
 
-    const payload = {
+    try {
+      // Auto-provision the vendor row if the typed name doesn't match an
+      // existing vendor for this client — same behavior as the events form.
+      // Non-fatal: a hiccup here must never block saving the course.
+      try {
+        if (vendorName && currentClientId) {
+          const { data: match } = await supabase
+            .from("vendors")
+            .select("id")
+            .eq("client_id", currentClientId)
+            .ilike("name", vendorName)
+            .limit(1);
+          if (!match || match.length === 0) {
+            await supabase
+              .from("vendors")
+              .insert({
+                name: vendorName,
+                logo_url: form.vendor_logo_url || null,
+                client_id: currentClientId,
+              });
+          }
+        }
+      } catch (vendorErr) {
+        console.warn("Vendor auto-provision skipped:", vendorErr);
+      }
+
+      // Persist any newly typed roles to the shared global roles list.
+      // Also non-fatal for the same reason.
+      try {
+        for (const role of formRoles) {
+          if (!roleOptions.some((r) => r.toLowerCase() === role.toLowerCase())) {
+            await saveRoleName(role);
+          }
+        }
+        if (formRoles.length) {
+          setRoleOptions((prev) => [...new Set([...prev, ...formRoles])]);
+        }
+      } catch (roleErr) {
+        console.warn("Role list update skipped:", roleErr);
+      }
+
+      const payload = {
       title: form.title.trim(),
       type: form.type || "Course",
       description: form.description || null,
@@ -175,8 +185,7 @@ export default function OnDemandForm({ mode = "edit" }) {
       sort_order: Number(form.sort_order) || 0,
       mb2_exclusive: !!form.mb2_exclusive,
       is_published: !!form.is_published,
-    };
-    try {
+      };
       if (mode === "new") {
         const { data, error } = await supabase
           .from("on_demand_courses").insert(payload).select().single();
@@ -193,7 +202,8 @@ export default function OnDemandForm({ mode = "edit" }) {
         setTimeout(() => setJustSaved(false), 2500);
       }
     } catch (err) {
-      setError(err.message);
+      console.error("Save failed:", err);
+      setError(err?.message || "Save failed — please try again.");
     } finally {
       setSaving(false);
     }
@@ -221,13 +231,13 @@ export default function OnDemandForm({ mode = "edit" }) {
       {/* Sticky top action bar */}
       <div className="evToolbar">
         <div className="evToolbarLeft">
-          <Link to="/admin/on-demand" className="evBack" aria-label="Back to courses">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Courses
-          </Link>
           <div>
+            <Link to="/admin/on-demand" className="odBackLink" aria-label="Back to courses">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Back to courses
+            </Link>
             <h2 className="evTitle">{mode === "new" ? "New course" : "Edit course"}</h2>
             {mode === "edit" && (
               <p className="evTitleMeta">
