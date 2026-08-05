@@ -501,7 +501,7 @@ function OdFilterBar(props) {
         )}
 
         <OdFilterPopover
-          label="Type"
+          label="Format"
           options={types}
           selected={typeSelected}
           onToggle={(v) => toggle(setTypeSelected, v)}
