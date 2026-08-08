@@ -358,6 +358,11 @@ export default function OnDemandList() {
                   <div className="elTitleWrap">
                     <Link to={`/admin/on-demand/${r.id}`} className="elTitleLink">{r.title || "(untitled)"}</Link>
                     <div className="elTitleMeta">
+                      {r.is_featured && (
+                        <span className="odFeaturedChip" title="Featured — always at the top of the public catalog">
+                          ★ Featured
+                        </span>
+                      )}
                       {r.is_locked && (
                         <span className="odLockChip" title={isSuperAdmin ? "Locked — clients can view but not edit" : "Locked by MB2 — view only"}>
                           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true">

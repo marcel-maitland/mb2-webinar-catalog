@@ -164,6 +164,9 @@ export default function OnDemand({ embedded = false }) {
       default:
         break;
     }
+    // Featured courses always float to the top, keeping the chosen
+    // sort order within the featured and non-featured groups.
+    sorted.sort((a, b) => (b.is_featured === true ? 1 : 0) - (a.is_featured === true ? 1 : 0));
     return sorted;
   }, [rows, query, typeSelected, ceSelected, rolesSelected, catSelected, vendorSelected, mb2ExclusiveOnly, sortBy]);
 

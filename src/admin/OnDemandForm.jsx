@@ -29,6 +29,7 @@ const BLANK = {
   mb2_exclusive: false,
   is_locked: false,
   is_external: false,
+  is_featured: false,
   is_published: false,
 };
 
@@ -191,6 +192,7 @@ export default function OnDemandForm({ mode = "edit" }) {
       mb2_exclusive: !!form.mb2_exclusive,
       is_locked: !!form.is_locked,
       is_external: !!form.is_external,
+      is_featured: !!form.is_featured,
       is_published: !!form.is_published,
       };
       if (mode === "new") {
@@ -484,7 +486,21 @@ export default function OnDemandForm({ mode = "edit" }) {
           </Section>
 
           <Section title="Ordering" subtitle="Controls how courses appear on the public catalog.">
-            <Field label="Sort order" hint="Lower numbers appear first">
+            <label className="odExternalCheck" style={{ marginTop: 0, marginBottom: 14 }}>
+              <input
+                type="checkbox"
+                checked={!!form.is_featured}
+                onChange={(e) => set("is_featured", e.target.checked)}
+              />
+              <span>
+                <strong>⭐ Featured</strong>
+                <span className="muted odExternalCheckHint">
+                  Featured courses automatically appear at the top of the public
+                  catalog, ahead of everything else.
+                </span>
+              </span>
+            </label>
+            <Field label="Sort order" hint="Lower numbers appear first (among non-featured courses)">
               <input
                 type="number"
                 value={form.sort_order ?? 0}

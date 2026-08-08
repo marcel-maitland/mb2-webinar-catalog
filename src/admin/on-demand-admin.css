@@ -1926,3 +1926,19 @@
   margin-top: 2px;
   line-height: 1.45;
 }
+
+/* Featured chip in the admin course list */
+.odFeaturedChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #b45309;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

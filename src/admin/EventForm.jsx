@@ -197,7 +197,10 @@ export default function EventForm({ mode }) {
       };
       if (cancelled) return;
       setCategorySuggestions(mergeGlobal(toSorted(catCounts), globalCats));
-      setRoleSuggestions(mergeGlobal(toSorted(roleCounts), globalRoles));
+      // Roles come ONLY from the shared master list (catalog_roles) so the
+      // events and on-demand forms always offer the exact same options —
+      // old roles still saved on past events no longer resurface here.
+      setRoleSuggestions((globalRoles || []).map((name) => ({ name, count: "" })));
     })();
     return () => { cancelled = true; };
   }, [currentClientId]);
