@@ -19,9 +19,12 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         {/* On-demand catalog (public, standalone) */}
         <Route path="/on-demand" element={<OnDemand />} />
 
-        {/* Public vendor course submission form — share this link
-            with vendors; submissions arrive as UNPUBLISHED drafts. */}
+        {/* Public vendor course submission form — share these links
+            with vendors; submissions arrive as UNPUBLISHED drafts.
+              /submit-course        → MB2 (default)
+              /submit-course/:slug  → a specific client's link */}
         <Route path="/submit-course" element={<VendorSubmit />} />
+        <Route path="/submit-course/:slug" element={<VendorSubmit />} />
 
         {/* UNIFIED CATALOG — tabs between On-Demand and Live Events.
             Designed for TI iframe embeds:

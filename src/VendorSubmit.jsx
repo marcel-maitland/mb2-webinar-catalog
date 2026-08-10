@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
 import { supabase } from "./lib/supabase.js";
 import "./vendor-submit.css";
 
 /* ============================================================
-   PUBLIC vendor course submission page — /submit-course
-   Share this link with vendors. Submissions create UNPUBLISHED
-   courses that the MB2 Shield team reviews and publishes.
+   PUBLIC vendor course submission page.
+     /submit-course          → MB2 (default)
+     /submit-course/:slug    → a specific client, e.g. /submit-course/acme
+   Share each client's link with their vendors. Submissions create
+   UNPUBLISHED courses, stamped with the client they came through,
+   that the MB2 Shield team reviews and publishes.
    ============================================================ */
 
 const ROLES = [
@@ -18,6 +22,10 @@ const ROLES = [
 ];
 
 export default function VendorSubmit() {
+  const { slug } = useParams();
+  const effectiveSlug = (slug || "mb2").toLowerCase();
+  const [client, setClient] = useState(null);
+  const [clientLoading, setClientLoading] = useState(true);
   const [categories, setCategories] = useState([]);
   const [form, setForm] = useState({
     vendor: "",
@@ -53,6 +61,23 @@ export default function VendorSubmit() {
       .order("name", { ascending: true })
       .then(({ data }) => setCategories((data || []).map((r) => r.name)));
   }, []);
+
+  // Resolve the client this submission link belongs to.
+  useEffect(() => {
+    let cancelled = false;
+    setClientLoading(true);
+    supabase
+      .from("clients")
+      .select("id, name, slug")
+      .eq("slug", effectiveSlug)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        setClient(data || null);
+        setClientLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [effectiveSlug]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -117,6 +142,7 @@ export default function VendorSubmit() {
 
       const { data, error: rpcErr } = await supabase.rpc("submit_vendor_course", {
         p: {
+          client_slug: effectiveSlug,
           vendor: form.vendor.trim(),
           contact_name: `${form.contact_first.trim()} ${form.contact_last.trim()}`,
           contact_email: form.contact_email.trim(),
@@ -143,6 +169,31 @@ export default function VendorSubmit() {
       setSubmitting(false);
     }
   };
+
+  if (clientLoading) {
+    return (
+      <div className="vsPage" ref={topRef}>
+        <div className="vsCard vsThanks">
+          <p>Loading…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!client) {
+    return (
+      <div className="vsPage" ref={topRef}>
+        <div className="vsCard vsThanks">
+          <h1>This link isn't valid</h1>
+          <p>
+            This course submission link doesn't match an active catalog.
+            Please double-check the link you were given, or contact the
+            team that sent it to you for an updated one.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (done) {
     return (
@@ -174,9 +225,9 @@ export default function VendorSubmit() {
         <div className="vsHeader">
           <h1>Submit an On-Demand Course</h1>
           <p>
-            Partner with MB2 Dental to feature your on-demand CE course on the
-            MB2 Shield catalog. Fill out the details below — our education team
-            reviews every submission before it's published.
+            Partner with {client.name} to feature your on-demand CE course on
+            the MB2 Shield catalog. Fill out the details below — our education
+            team reviews every submission before it's published.
           </p>
         </div>
 

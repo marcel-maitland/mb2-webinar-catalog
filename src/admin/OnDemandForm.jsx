@@ -20,6 +20,7 @@ const BLANK = {
   thumbnail_url: "",
   course_url: "",
   ce_hours: "",
+  cost: "",
   categories: [],
   roles: [],
   vendor: "",
@@ -53,7 +54,24 @@ export default function OnDemandForm({ mode = "edit" }) {
   const [catOptions, setCatOptions] = useState([]);
   const [roleOptions, setRoleOptions] = useState([]);
   const [showCatMgr, setShowCatMgr] = useState(false);
+  const [submissionClient, setSubmissionClient] = useState("");
   const thumbInput = useRef(null);
+
+  // If this course came in through the public vendor submission form,
+  // look up which client's link it was submitted through.
+  useEffect(() => {
+    if (!form.submission_client_id) { setSubmissionClient(""); return; }
+    let cancelled = false;
+    supabase
+      .from("clients")
+      .select("name")
+      .eq("id", form.submission_client_id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setSubmissionClient(data?.name || "");
+      });
+    return () => { cancelled = true; };
+  }, [form.submission_client_id]);
 
   // Load the saved category + role options. Both lists are global and
   // shared with live events (falls back gracefully if a table is missing).
@@ -183,6 +201,7 @@ export default function OnDemandForm({ mode = "edit" }) {
       thumbnail_url: form.thumbnail_url || null,
       course_url: form.course_url || null,
       ce_hours: form.ce_hours === "" || form.ce_hours == null ? null : Number(form.ce_hours),
+      cost: (form.cost || "").trim() || null,
       categories: Array.isArray(form.categories) ? form.categories : [],
       roles: Array.isArray(form.roles) ? form.roles : [],
       vendor: vendorName || null,
@@ -314,6 +333,39 @@ export default function OnDemandForm({ mode = "edit" }) {
         </div>
       )}
 
+      {(form.submission_contact || form.submission_pdf_url || form.submission_notes) && (
+        <div
+          role="note"
+          style={{
+            margin: "0 0 16px",
+            padding: "14px 18px",
+            borderRadius: 12,
+            background: "#FFFBEB",
+            border: "1px solid #FDE68A",
+            fontSize: 13.5,
+            lineHeight: 1.65,
+            color: "#78350F",
+          }}
+        >
+          <strong style={{ display: "block", marginBottom: 4 }}>
+            📥 Vendor submission{submissionClient ? ` — via ${submissionClient}'s link` : ""}
+          </strong>
+          {form.submission_contact && (
+            <div>Submitted by: {form.submission_contact}</div>
+          )}
+          {form.submission_notes && (
+            <div style={{ whiteSpace: "pre-wrap" }}>{form.submission_notes}</div>
+          )}
+          {form.submission_pdf_url && (
+            <div>
+              <a href={form.submission_pdf_url} target="_blank" rel="noreferrer" style={{ color: "#92400E", fontWeight: 700 }}>
+                View submitted flyer (PDF) ↗
+              </a>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="evBody" style={{ gridTemplateColumns: "1fr 380px" }}>
         <fieldset disabled={readOnly} className="odFormFieldset">
           <Section title="Course details" subtitle="What visitors see on the catalog.">
@@ -351,6 +403,15 @@ export default function OnDemandForm({ mode = "edit" }) {
                 value={form.ce_hours ?? ""}
                 onChange={(e) => set("ce_hours", e.target.value)}
                 placeholder="e.g. 1.5"
+                style={{ maxWidth: 200 }}
+              />
+            </Field>
+
+            <Field label="Price" hint='Optional - e.g. "FREE" or "$145". Shown as a banner on the catalog card.'>
+              <input
+                value={form.cost ?? ""}
+                onChange={(e) => set("cost", e.target.value)}
+                placeholder="FREE"
                 style={{ maxWidth: 200 }}
               />
             </Field>
@@ -686,6 +747,9 @@ function PreviewCard({ course }) {
         <h3 className="title">{course.title || "Untitled course"}</h3>
         {course.description ? (
           <p className="descFull">{course.description}</p>
+        ) : null}
+        {(course.cost || "").trim() ? (
+          <div className="odCostBanner">{course.cost}</div>
         ) : null}
         <div className="sessions">
           <div className="sessionGroup">
