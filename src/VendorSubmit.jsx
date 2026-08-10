@@ -68,7 +68,7 @@ export default function VendorSubmit() {
     setClientLoading(true);
     supabase
       .from("clients")
-      .select("id, name, slug")
+      .select("id, name, slug, logo_url")
       .eq("slug", effectiveSlug)
       .maybeSingle()
       .then(({ data }) => {
@@ -223,6 +223,14 @@ export default function VendorSubmit() {
     <div className="vsPage" ref={topRef}>
       <div className="vsCard">
         <div className="vsHeader">
+          {client.logo_url && (
+            <img
+              className="vsBrandLogo"
+              src={client.logo_url}
+              alt={`${client.name} logo`}
+            />
+          )}
+          <span className="vsBrandTag">{client.name} · MB2 Shield Education</span>
           <h1>Submit an On-Demand Course</h1>
           <p>
             Partner with {client.name} to feature your on-demand CE course on
