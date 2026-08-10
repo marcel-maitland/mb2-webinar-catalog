@@ -1,0 +1,286 @@
+/* ============================================================
+   Public vendor course submission page — /submit-course
+   ============================================================ */
+
+.vsPage {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f0f6ff 0%, #f8fafc 40%, #f8fafc 100%);
+  padding: 40px 16px 64px;
+  display: flex;
+  justify-content: center;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  color: #0f172a;
+  box-sizing: border-box;
+}
+
+.vsCard {
+  width: 100%;
+  max-width: 760px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.07);
+  padding: 36px 40px 40px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .vsPage {
+    padding: 16px 8px 40px;
+  }
+  .vsCard {
+    padding: 24px 18px 28px;
+    border-radius: 14px;
+  }
+}
+
+/* ---------- Header ---------- */
+
+.vsHeader h1 {
+  margin: 0 0 10px;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #0b3a75;
+}
+
+.vsHeader p {
+  margin: 0 0 6px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: #475569;
+}
+
+/* ---------- Sections ---------- */
+
+.vsSectionTitle {
+  margin: 30px 0 14px;
+  padding-top: 22px;
+  border-top: 1px solid #eef2f7;
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #0b3a75;
+}
+
+/* ---------- Fields ---------- */
+
+.vsRow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.vsRow2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 560px) {
+  .vsRow2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.vsField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.vsField span em {
+  font-weight: 500;
+  font-style: normal;
+  color: #94a3b8;
+}
+
+.vsField input,
+.vsField textarea {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #0f172a;
+  background: #fbfdff;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.vsField input:focus,
+.vsField textarea:focus {
+  border-color: #2f6fb3;
+  box-shadow: 0 0 0 3px rgba(47, 111, 179, 0.14);
+  background: #ffffff;
+}
+
+.vsField textarea {
+  resize: vertical;
+  min-height: 70px;
+  line-height: 1.5;
+}
+
+.vsField input[type="file"] {
+  padding: 9px 10px;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.vsField input[type="file"]::file-selector-button {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0b3a75;
+  font-weight: 600;
+  font-size: 12.5px;
+  padding: 6px 12px;
+  margin-right: 10px;
+  cursor: pointer;
+}
+
+/* ---------- Checkbox chips (roles / categories) ---------- */
+
+.vsChecks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.vsCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  background: #f8fafc;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.12s;
+}
+
+.vsCheck input {
+  accent-color: #2f6fb3;
+  margin: 0;
+  cursor: pointer;
+}
+
+.vsCheck:hover {
+  border-color: #94a3b8;
+}
+
+.vsCheck.on {
+  background: #eaf2fb;
+  border-color: #2f6fb3;
+  color: #0b3a75;
+}
+
+/* ---------- Honeypot (hidden from humans) ---------- */
+
+.vsHoney {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  height: 1px;
+  width: 1px;
+  overflow: hidden;
+}
+
+/* ---------- Error + submit ---------- */
+
+.vsError {
+  margin: 16px 0 0;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.vsPrimaryBtn {
+  border: none;
+  border-radius: 12px;
+  background: #0b3a75;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 13px 26px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.08s;
+}
+
+.vsPrimaryBtn:hover {
+  background: #124a91;
+}
+
+.vsPrimaryBtn:active {
+  transform: translateY(1px);
+}
+
+.vsPrimaryBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.vsSubmit {
+  width: 100%;
+  margin-top: 20px;
+}
+
+.vsFinePrint {
+  margin: 12px 0 0;
+  text-align: center;
+  font-size: 12.5px;
+  color: #94a3b8;
+}
+
+/* ---------- Thank-you screen ---------- */
+
+.vsThanks {
+  text-align: center;
+  padding-top: 48px;
+  padding-bottom: 48px;
+}
+
+.vsThanksIcon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: #ecfdf5;
+  border: 2px solid #34d399;
+  color: #059669;
+  font-size: 30px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vsThanks h1 {
+  margin: 0 0 12px;
+  font-size: 26px;
+  font-weight: 800;
+  color: #0b3a75;
+}
+
+.vsThanks p {
+  margin: 0 auto 24px;
+  max-width: 480px;
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: #475569;
+}

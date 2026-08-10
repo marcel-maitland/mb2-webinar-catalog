@@ -6,6 +6,7 @@ import AdminApp from "./admin/AdminApp.jsx";
 import PortalAuth from "./admin/PortalAuth.jsx";
 import OnDemand from "./OnDemand.jsx";
 import UnifiedCatalog from "./UnifiedCatalog.jsx";
+import VendorSubmit from "./VendorSubmit.jsx";
 import "./App.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -17,6 +18,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(
 
         {/* On-demand catalog (public, standalone) */}
         <Route path="/on-demand" element={<OnDemand />} />
+
+        {/* Public vendor course submission form — share this link
+            with vendors; submissions arrive as UNPUBLISHED drafts. */}
+        <Route path="/submit-course" element={<VendorSubmit />} />
 
         {/* UNIFIED CATALOG — tabs between On-Demand and Live Events.
             Designed for TI iframe embeds:
