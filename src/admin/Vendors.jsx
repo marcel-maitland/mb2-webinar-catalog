@@ -435,8 +435,8 @@ export function VendorModal({ mode = "add", vendor, onClose, onSaved, initialNam
             <div className="vdrThumbBlockLabel">
               Default catalog thumbnail
               <span className="vdrThumbBlockHint">
-                Auto-applied to new events created with this vendor. Each event
-                can override it with its own thumbnail.
+                Auto-applied to new live events AND on-demand courses created
+                with this vendor. Each one can override it with its own thumbnail.
               </span>
             </div>
             <div className="vdrThumbBlockMain">
@@ -484,6 +484,15 @@ export function VendorModal({ mode = "add", vendor, onClose, onSaved, initialNam
                 </p>
               </div>
             </div>
+            <label className="field" style={{ marginTop: 10 }}>
+              <span className="fieldLabel">Thumbnail URL (instead of uploading)</span>
+              <input
+                className="urlInput"
+                placeholder="https://…"
+                value={defaultThumbUrl}
+                onChange={(e) => setDefaultThumbUrl(e.target.value)}
+              />
+            </label>
           </div>
 
           {error && <p className="errMsg">{error}</p>}

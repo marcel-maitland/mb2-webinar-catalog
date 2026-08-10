@@ -40,7 +40,36 @@ export default function OnDemand({ embedded = false }) {
           .order("sort_order", { ascending: true })
           .order("created_at", { ascending: false });
         if (error) throw error;
-        if (!cancelled) setRows(data || []);
+
+        // Live vendor lookup — courses fall back to the vendor's CURRENT
+        // logo and default thumbnail, so vendor edits show up immediately
+        // (same behavior as the events catalog).
+        let vendorByName = {};
+        try {
+          const { data: client } = await supabase
+            .from("clients").select("id").eq("slug", "mb2").maybeSingle();
+          if (client?.id) {
+            const { data: vs } = await supabase
+              .from("vendors")
+              .select("name, logo_url, default_thumb_url")
+              .eq("client_id", client.id);
+            for (const v of vs || []) {
+              if (v.name) vendorByName[v.name.toLowerCase()] = v;
+            }
+          }
+        } catch { /* vendor fallback is best-effort */ }
+
+        const enriched = (data || []).map((r) => {
+          const vinfo = vendorByName[(r.vendor || "").toLowerCase()];
+          return {
+            ...r,
+            vendor_logo_url:
+              (r.vendor_logo_url && r.vendor_logo_url.trim()) || vinfo?.logo_url || "",
+            thumbnail_url:
+              (r.thumbnail_url && r.thumbnail_url.trim()) || vinfo?.default_thumb_url || "",
+          };
+        });
+        if (!cancelled) setRows(enriched);
       } catch (e) {
         console.error("On-demand load error:", e);
         if (!cancelled) {
