@@ -64,7 +64,7 @@ export default function OnDemandList() {
       currentClientId
         ? supabase
             .from("vendors")
-            .select("name, logo_url")
+            .select("name, logo_url, default_thumb_url")
             .eq("client_id", currentClientId)
         : Promise.resolve({ data: [] }),
     ]);
@@ -80,6 +80,10 @@ export default function OnDemandList() {
       _effective_logo_url:
         (r.vendor_logo_url && r.vendor_logo_url.trim()) ||
         vendorByName[(r.vendor || "").toLowerCase()]?.logo_url ||
+        "",
+      _effective_thumb_url:
+        (r.thumbnail_url && r.thumbnail_url.trim()) ||
+        vendorByName[(r.vendor || "").toLowerCase()]?.default_thumb_url ||
         "",
     }));
 
@@ -137,7 +141,7 @@ export default function OnDemandList() {
 
   const duplicate = async (row) => {
     // Strip server-managed + display-only fields so we can re-insert a clean copy
-    const { id, created_at, updated_at, _effective_logo_url, ...rest } = row;
+    const { id, created_at, updated_at, _effective_logo_url, _effective_thumb_url, ...rest } = row;
     const copy = {
       ...rest,
       title: `${row.title} (copy)`,
@@ -351,8 +355,8 @@ export default function OnDemandList() {
               <article key={r.id} className={`elRow odTableRow ${readOnly ? "odRowLocked" : ""}`}>
                 <div className="elColTitle">
                   <Link to={`/admin/on-demand/${r.id}`} className="elThumb">
-                    {r.thumbnail_url
-                      ? <img src={r.thumbnail_url} alt="" loading="lazy" />
+                    {r._effective_thumb_url
+                      ? <img src={r._effective_thumb_url} alt="" loading="lazy" />
                       : <span className="elThumbPh" />}
                   </Link>
                   <div className="elTitleWrap">
