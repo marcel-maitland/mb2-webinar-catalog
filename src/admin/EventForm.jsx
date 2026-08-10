@@ -494,6 +494,39 @@ export default function EventForm({ mode }) {
 
       {error && <div className="evErrorBanner">{error}</div>}
 
+      {(form.submission_contact || form.submission_pdf_url || form.submission_notes) && (
+        <div
+          role="note"
+          style={{
+            margin: "0 0 16px",
+            padding: "14px 18px",
+            borderRadius: 12,
+            background: "#FFFBEB",
+            border: "1px solid #FDE68A",
+            fontSize: 13.5,
+            lineHeight: 1.65,
+            color: "#78350F",
+          }}
+        >
+          <strong style={{ display: "block", marginBottom: 4 }}>
+            📥 Vendor submission
+          </strong>
+          {form.submission_contact && (
+            <div>Submitted by: {form.submission_contact}</div>
+          )}
+          {form.submission_notes && (
+            <div style={{ whiteSpace: "pre-wrap" }}>{form.submission_notes}</div>
+          )}
+          {form.submission_pdf_url && (
+            <div>
+              <a href={form.submission_pdf_url} target="_blank" rel="noreferrer" style={{ color: "#92400E", fontWeight: 700 }}>
+                View submitted flyer (PDF) ↗
+              </a>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Two-column body */}
       <div className="evBody">
         <form className="evMain" onSubmit={save}>

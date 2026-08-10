@@ -122,6 +122,7 @@
 }
 
 .vsField input,
+.vsField select,
 .vsField textarea {
   border: 1px solid #cbd5e1;
   border-radius: 10px;
@@ -136,7 +137,17 @@
   width: 100%;
 }
 
+.vsField select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 34px;
+}
+
 .vsField input:focus,
+.vsField select:focus,
 .vsField textarea:focus {
   border-color: #f97316;
   box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.16);
@@ -165,6 +176,60 @@
   padding: 6px 12px;
   margin-right: 10px;
   cursor: pointer;
+}
+
+/* ---------- Submission type toggle ---------- */
+
+.vsKindRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+@media (max-width: 560px) {
+  .vsKindRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.vsKind {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  border: 2px solid #cbd5e1;
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 14px 16px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.13s;
+}
+
+.vsKind strong {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.vsKind span {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.vsKind:hover {
+  border-color: #94a3b8;
+}
+
+.vsKind.on {
+  border-color: #f97316;
+  background: #fff7ed;
+}
+
+.vsKind.on strong {
+  color: #9a3412;
 }
 
 /* ---------- Checkbox chips (roles / categories) ---------- */
