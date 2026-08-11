@@ -24,6 +24,13 @@ const ROLES = [
 
 const FORMATS = ["Webinar", "In-Person", "Hybrid", "Online"];
 
+const OPEN_TO_OPTIONS = [
+  "The public",
+  "MB2 Only",
+  "MB2 & Carabelli Club",
+  "Carabelli Club Only",
+];
+
 const TIMEZONES = [
   { id: "America/New_York",    label: "Eastern (ET)" },
   { id: "America/Chicago",     label: "Central (CT)" },
@@ -56,6 +63,7 @@ export default function VendorSubmit() {
     reg_email: "",
     ideal_date: "",
     highlights: "",
+    open_to: "The public",
     // Live-event details
     start_date: "",
     start_time: "",
@@ -192,6 +200,7 @@ export default function VendorSubmit() {
       }
 
       const notes = [
+        `Open to: ${form.open_to}`,
         form.phone.trim() && `Phone: ${form.phone.trim()}`,
         form.speaker.trim() && `Speaker: ${form.speaker.trim()}`,
         !isEvent && form.ideal_date && `Ideal post date: ${form.ideal_date}`,
@@ -408,6 +417,16 @@ export default function VendorSubmit() {
             <label className="vsField">
               <span>CE credits</span>
               <input type="number" step="0.25" min="0" placeholder="Leave blank if no CE" value={form.ce_hours} onChange={(e) => set("ce_hours", e.target.value)} />
+            </label>
+          </div>
+          <div className="vsRow">
+            <label className="vsField">
+              <span>This {isEvent ? "event" : "course"} is open to *</span>
+              <select value={form.open_to} onChange={(e) => set("open_to", e.target.value)}>
+                {OPEN_TO_OPTIONS.map((o) => (
+                  <option key={o} value={o}>{o}</option>
+                ))}
+              </select>
             </label>
           </div>
 
