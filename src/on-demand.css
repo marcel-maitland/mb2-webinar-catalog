@@ -281,20 +281,23 @@ a.odCardClickable:hover .odCardCta {
    External-course confirmation popup ("You're leaving MB2 Shield")
    ============================================================ */
 .odExtBackdrop {
-  position: fixed;
-  inset: 0;
+  /* Absolute (not fixed) so it covers the whole catalog even inside the
+     TI iframe embed, where the iframe spans the entire page height and
+     fixed positioning can center the popup far off-screen. The modal
+     positions itself at the click location instead. */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  min-height: 100vh;
+  height: 100%;
   background: rgba(15, 23, 42, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   z-index: 1000;
-  padding: 20px;
 }
 .odExtModal {
   background: #fff;
   border-radius: 16px;
-  max-width: 440px;
-  width: 100%;
+  width: min(440px, calc(100vw - 40px));
   padding: 26px 26px 22px;
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3);
   text-align: center;
@@ -354,3 +357,18 @@ a.odCardClickable:hover .odCardCta {
   box-shadow: 0 4px 12px rgba(29, 191, 201, 0.35);
 }
 .odExtConfirm:hover { filter: brightness(1.05); }
+
+/* Price/cost banner on course cards — matches the light-green cost
+   banner on live event cards. */
+.odCard .odCostBanner,
+.odCostBanner {
+  background: #ECFDF5;
+  border: 1px solid #BBE8CF;
+  border-left: 4px solid #34D399;
+  color: #065F46;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin: 0 14px 10px;
+}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams } from "react-router-dom";
 import { supabase } from "./lib/supabase.js";
 import "./catalog-extras.css";
@@ -907,18 +908,23 @@ function CatalogElevatedStyles() {
         cursor: pointer;
         font: inherit;
       }
-      /* Register-by-email popup */
+      /* Register-by-email popup. Backdrop is absolute (not fixed) and the
+         modal anchors to the click position, so it stays visible inside
+         the TI iframe embed where the iframe spans the whole page height
+         and fixed positioning can land the popup off-screen. */
       .emailRegBackdrop {
-        position: fixed; inset: 0;
+        position: absolute; top: 0; left: 0; right: 0;
+        min-height: 100vh; height: 100%;
         background: rgba(15,23,42,.5);
-        display: flex; align-items: center; justify-content: center;
-        z-index: 1000; padding: 20px;
+        z-index: 1000;
       }
       .emailRegModal {
-        position: relative;
+        position: absolute;
+        left: 50%;
+        transform: translate(-50%, -50%);
         background: #fff;
         border-radius: 16px;
-        max-width: 400px; width: 100%;
+        width: min(400px, calc(100vw - 40px));
         padding: 26px 24px 22px;
         box-shadow: 0 24px 60px rgba(15,23,42,.3);
         text-align: center;
@@ -980,6 +986,7 @@ function CatalogElevatedStyles() {
 function EmailReg({ email }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [anchorY, setAnchorY] = useState(300);
   if (!isEmail(email)) return null;
 
   const copy = async () => {
@@ -1005,7 +1012,7 @@ function EmailReg({ email }) {
       <button
         type="button"
         className="sessionBtn emailRegBtn"
-        onClick={() => { setOpen(true); setCopied(false); }}
+        onClick={(e) => { setAnchorY(e.pageY); setOpen(true); setCopied(false); }}
         title={`Email ${email}`}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -1015,10 +1022,11 @@ function EmailReg({ email }) {
         Email to Register
       </button>
 
-      {open && (
+      {open && createPortal(
         <div className="emailRegBackdrop" onClick={() => setOpen(false)} role="presentation">
           <div
             className="emailRegModal"
+            style={{ top: Math.max(170, anchorY) }}
             role="dialog"
             aria-modal="true"
             aria-label="Register by email"
@@ -1052,7 +1060,8 @@ function EmailReg({ email }) {
               </a>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

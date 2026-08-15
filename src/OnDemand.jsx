@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "./lib/supabase.js";
 import "./catalog-extras.css";
 import "./on-demand.css";
@@ -276,15 +277,19 @@ export default function OnDemand({ embedded = false }) {
       </div>
 
       <ExternalCourseModal
-        course={externalCourse}
+        course={externalCourse?.course || null}
+        anchorY={externalCourse?.anchorY}
         onClose={() => setExternalCourse(null)}
       />
     </div>
   );
 }
 
-/* Confirmation popup shown before leaving for an external course. */
-function ExternalCourseModal({ course, onClose }) {
+/* Confirmation popup shown before leaving for an external course.
+   Anchored to the click position (not viewport-centered) so it stays
+   visible inside the TI iframe embed, where the iframe spans the whole
+   catalog height and "fixed" positioning can push it off-screen. */
+function ExternalCourseModal({ course, anchorY, onClose }) {
   useEffect(() => {
     if (!course) return;
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
@@ -299,10 +304,15 @@ function ExternalCourseModal({ course, onClose }) {
     onClose();
   };
 
-  return (
+  // Center the popup on the click position, clamped so it never renders
+  // above the top of the page.
+  const top = Math.max(180, (typeof anchorY === "number" ? anchorY : 300));
+
+  return createPortal(
     <div className="odExtBackdrop" onClick={onClose} role="presentation">
       <div
         className="odExtModal"
+        style={{ position: "absolute", top, left: "50%", transform: "translate(-50%, -50%)" }}
         role="alertdialog"
         aria-modal="true"
         aria-label="Leaving MB2 Shield"
@@ -329,7 +339,8 @@ function ExternalCourseModal({ course, onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -425,6 +436,10 @@ function OnDemandCard({ course, onExternalClick }) {
           </p>
         ) : null}
 
+        {safe(course.cost) ? (
+          <div className="odCostBanner">{course.cost}</div>
+        ) : null}
+
         <div className="sessions">
           <div className="sessionGroup">
             <div className="session odSessionRow">
@@ -456,7 +471,12 @@ function OnDemandCard({ course, onExternalClick }) {
         aria-label={`Open course: ${course.title}`}
         onClick={(e) => {
           e.preventDefault();
-          if (typeof onExternalClick === "function") onExternalClick(course);
+          // Pass the click's page position so the popup can appear next to
+          // where the user clicked. Inside the TI iframe embed the iframe is
+          // as tall as the whole catalog, so a viewport-centered (fixed)
+          // popup can land far off-screen — anchoring to the click fixes it.
+          if (typeof onExternalClick === "function")
+            onExternalClick({ course, anchorY: e.pageY });
         }}
       >
         {cardInner}
