@@ -7,7 +7,12 @@ import PortalAuth from "./admin/PortalAuth.jsx";
 import OnDemand from "./OnDemand.jsx";
 import UnifiedCatalog from "./UnifiedCatalog.jsx";
 import VendorSubmit from "./VendorSubmit.jsx";
+import { initEmbedAutoHeight } from "./embedAutoHeight.js";
 import "./App.css";
+
+// When embedded in an iframe (TI / MB2 Shield), report our height to the
+// parent page so the iframe can auto-resize and the page scrolls as one.
+initEmbedAutoHeight();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

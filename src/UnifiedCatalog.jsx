@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import App from "./App.jsx";
 import OnDemand from "./OnDemand.jsx";
@@ -32,6 +32,13 @@ export default function UnifiedCatalog() {
   const initialTab =
     tabParam === "on-demand" || tabParam === "events" ? tabParam : DEFAULT_TAB;
   const [tab, setTab] = useState(initialTab);
+  const headerRef = useRef(null);
+
+  const backToFilters = () => {
+    // scrollIntoView propagates to the parent page even from inside an
+    // iframe, so this works in the TI embed as well as standalone.
+    headerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const switchTab = (nextTab) => {
     setTab(nextTab);
@@ -46,7 +53,7 @@ export default function UnifiedCatalog() {
       {/* Sticky header block — title + tabs stick together at the top of
           the widget. Below them, the filter bar (from inside the child
           catalog) docks flush and stays pinned too. */}
-      <div className="unifiedStickyHeader">
+      <div className="unifiedStickyHeader" ref={headerRef}>
         <header className="unifiedTitleBar">
           <h1 className="unifiedTitle">
             On-demand Courses, Live Events, Webinars and State Requirements
@@ -100,6 +107,15 @@ export default function UnifiedCatalog() {
         ) : (
           <App embedded slugOverride={slug} />
         )}
+      </div>
+
+      {/* End-of-catalog helper — one tap back to the search + filters.
+          Rendered in normal flow (not fixed) because viewport-pinned UI
+          can't work inside the auto-sized TI iframe. */}
+      <div className="unifiedBackRow">
+        <button type="button" className="unifiedBackBtn" onClick={backToFilters}>
+          ↑ Back to search &amp; filters
+        </button>
       </div>
     </div>
   );

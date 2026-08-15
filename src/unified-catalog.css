@@ -225,3 +225,34 @@ a.unifiedTabLink:visited {
   .unifiedTitle    { font-size: 18px; padding-bottom: 8px; }
   .unifiedTitle::after { width: 48px; height: 2.5px; }
 }
+
+/* ============================================================
+   "Back to search & filters" row — shown at the end of the
+   catalog. In the auto-sized TI embed the page scrolls as one,
+   so this gives a quick way back up after a long browse.
+   ============================================================ */
+.unifiedBackRow {
+  display: flex;
+  justify-content: center;
+  padding: 26px 0 34px;
+}
+
+.unifiedBackBtn {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  padding: 11px 22px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  transition: all 0.15s;
+}
+
+.unifiedBackBtn:hover {
+  border-color: #94a3b8;
+  color: #0f172a;
+  transform: translateY(-1px);
+}
