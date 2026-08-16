@@ -986,7 +986,7 @@ function CatalogElevatedStyles() {
 function EmailReg({ email }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [anchorY, setAnchorY] = useState(300);
+  const [anchor, setAnchor] = useState({ y: 300, x: null });
   if (!isEmail(email)) return null;
 
   const copy = async () => {
@@ -1012,7 +1012,15 @@ function EmailReg({ email }) {
       <button
         type="button"
         className="sessionBtn emailRegBtn"
-        onClick={(e) => { setAnchorY(e.pageY); setOpen(true); setCopied(false); }}
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          setAnchor({
+            y: r.top + window.scrollY,
+            x: r.left + r.width / 2 + window.scrollX,
+          });
+          setOpen(true);
+          setCopied(false);
+        }}
         title={`Email ${email}`}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -1026,7 +1034,19 @@ function EmailReg({ email }) {
         <div className="emailRegBackdrop" onClick={() => setOpen(false)} role="presentation">
           <div
             className="emailRegModal"
-            style={{ top: Math.max(170, anchorY) }}
+            style={(() => {
+              // Hover just above the clicked button, centered on it; if
+              // too close to the top of the page, open below it instead.
+              const pageW = document.documentElement.clientWidth || 1200;
+              const half = Math.min(400, pageW - 40) / 2;
+              const x = Math.min(
+                Math.max(anchor.x ?? pageW / 2, half + 20),
+                pageW - half - 20
+              );
+              return anchor.y > 340
+                ? { top: anchor.y - 12, left: x, transform: "translate(-50%, -100%)" }
+                : { top: anchor.y + 44, left: x, transform: "translate(-50%, 0)" };
+            })()}
             role="dialog"
             aria-modal="true"
             aria-label="Register by email"

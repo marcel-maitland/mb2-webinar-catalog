@@ -279,6 +279,8 @@ export default function OnDemand({ embedded = false }) {
       <ExternalCourseModal
         course={externalCourse?.course || null}
         anchorY={externalCourse?.anchorY}
+        cardTop={externalCourse?.cardTop}
+        cardCenterX={externalCourse?.cardCenterX}
         onClose={() => setExternalCourse(null)}
       />
     </div>
@@ -286,10 +288,11 @@ export default function OnDemand({ embedded = false }) {
 }
 
 /* Confirmation popup shown before leaving for an external course.
-   Anchored to the click position (not viewport-centered) so it stays
-   visible inside the TI iframe embed, where the iframe spans the whole
-   catalog height and "fixed" positioning can push it off-screen. */
-function ExternalCourseModal({ course, anchorY, onClose }) {
+   Hovers right above the clicked card (not viewport-centered) so it's
+   always in view — including inside the TI iframe embed, where the
+   iframe spans the whole catalog height and "fixed" positioning can
+   push it off-screen. */
+function ExternalCourseModal({ course, anchorY, cardTop, cardCenterX, onClose }) {
   useEffect(() => {
     if (!course) return;
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
@@ -304,15 +307,26 @@ function ExternalCourseModal({ course, anchorY, onClose }) {
     onClose();
   };
 
-  // Center the popup on the click position, clamped so it never renders
-  // above the top of the page.
-  const top = Math.max(180, (typeof anchorY === "number" ? anchorY : 300));
+  // Hover the popup right above the clicked card, centered on it.
+  // If the card is too close to the top of the page for the popup to
+  // fit above it, drop it just below the card's top edge instead.
+  const y = typeof cardTop === "number" ? cardTop : (typeof anchorY === "number" ? anchorY : 300);
+  const fitsAbove = y > 340;
+  const pageW = document.documentElement.clientWidth || 1200;
+  const half = Math.min(440, pageW - 40) / 2;
+  const x = Math.min(
+    Math.max(typeof cardCenterX === "number" ? cardCenterX : pageW / 2, half + 20),
+    pageW - half - 20
+  );
+  const modalStyle = fitsAbove
+    ? { position: "absolute", top: y - 14, left: x, transform: "translate(-50%, -100%)" }
+    : { position: "absolute", top: y + 14, left: x, transform: "translate(-50%, 0)" };
 
   return createPortal(
     <div className="odExtBackdrop" onClick={onClose} role="presentation">
       <div
         className="odExtModal"
-        style={{ position: "absolute", top, left: "50%", transform: "translate(-50%, -50%)" }}
+        style={modalStyle}
         role="alertdialog"
         aria-modal="true"
         aria-label="Leaving MB2 Shield"
@@ -471,12 +485,18 @@ function OnDemandCard({ course, onExternalClick }) {
         aria-label={`Open course: ${course.title}`}
         onClick={(e) => {
           e.preventDefault();
-          // Pass the click's page position so the popup can appear next to
-          // where the user clicked. Inside the TI iframe embed the iframe is
-          // as tall as the whole catalog, so a viewport-centered (fixed)
-          // popup can land far off-screen — anchoring to the click fixes it.
-          if (typeof onExternalClick === "function")
-            onExternalClick({ course, anchorY: e.pageY });
+          // Pass the clicked card's position so the popup can hover right
+          // above it. (Viewport-centered "fixed" positioning breaks inside
+          // the TI iframe embed, where the iframe spans the whole catalog.)
+          if (typeof onExternalClick === "function") {
+            const r = e.currentTarget.getBoundingClientRect();
+            onExternalClick({
+              course,
+              anchorY: e.pageY,
+              cardTop: r.top + window.scrollY,
+              cardCenterX: r.left + r.width / 2 + window.scrollX,
+            });
+          }
         }}
       >
         {cardInner}
