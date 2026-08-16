@@ -58,6 +58,11 @@ export function initEmbedAutoHeight() {
     const d = e.data || {};
     if (d.type !== "mb2-embed-scroll" || typeof d.top !== "number") return;
 
+    // Remember how far the visitor has scrolled past the top of the
+    // catalog — popups use this to position themselves within the
+    // currently-visible part of the page.
+    window.__mb2EmbedScrollOff = Math.max(0, -d.top);
+
     const header = document.querySelector(".unifiedStickyHeader");
     if (!header) return;
     const bar = document.querySelector(".unifiedBody .filterBar");

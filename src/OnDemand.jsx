@@ -293,12 +293,49 @@ export default function OnDemand({ embedded = false }) {
    iframe spans the whole catalog height and "fixed" positioning can
    push it off-screen. */
 function ExternalCourseModal({ course, anchorY, cardTop, cardCenterX, onClose }) {
+  const boxRef = useRef(null);
+  const [placed, setPlaced] = useState(null);
+
   useEffect(() => {
     if (!course) return;
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [course, onClose]);
+
+  // Position after first paint, once the popup's real height is known:
+  // hover above the clicked card when there's visible room, otherwise
+  // clamp into the part of the page the visitor can actually see
+  // (which, inside the TI embed, we learn from the scroll stream).
+  useEffect(() => {
+    if (!course) { setPlaced(null); return; }
+    const el = boxRef.current;
+    if (!el) return;
+    const h = el.offsetHeight || 280;
+    const pageW = document.documentElement.clientWidth || 1200;
+    const half = Math.min(440, pageW - 40) / 2;
+    const cx = typeof cardCenterX === "number" ? cardCenterX : pageW / 2;
+    const x = Math.min(Math.max(cx, half + 20), pageW - half - 20);
+    const y = typeof cardTop === "number" ? cardTop : (typeof anchorY === "number" ? anchorY : 300);
+
+    const embedded = window.parent !== window;
+    const visTop = embedded
+      ? (window.__mb2EmbedScrollOff || 0)
+      : (window.scrollY || 0);
+    // Space taken by the pinned menu (header + filter bar) in the embed.
+    let menuH = 0;
+    if (embedded) {
+      const hd = document.querySelector(".unifiedStickyHeader");
+      const fb = document.querySelector(".unifiedBody .filterBar");
+      if (hd && hd.style.transform) menuH += hd.offsetHeight;
+      if (fb && fb.style.transform) menuH += fb.offsetHeight;
+    }
+    const minTop = visTop + menuH + 12;
+
+    let top = y - 14 - h; // preferred: bottom edge just above the card
+    if (top < minTop) top = minTop; // clamp into view (over the card)
+    setPlaced({ top, left: x });
+  }, [course, anchorY, cardTop, cardCenterX]);
 
   if (!course) return null;
 
@@ -307,24 +344,20 @@ function ExternalCourseModal({ course, anchorY, cardTop, cardCenterX, onClose })
     onClose();
   };
 
-  // Hover the popup right above the clicked card, centered on it.
-  // If the card is too close to the top of the page for the popup to
-  // fit above it, drop it just below the card's top edge instead.
-  const y = typeof cardTop === "number" ? cardTop : (typeof anchorY === "number" ? anchorY : 300);
-  const fitsAbove = y > 340;
-  const pageW = document.documentElement.clientWidth || 1200;
-  const half = Math.min(440, pageW - 40) / 2;
-  const x = Math.min(
-    Math.max(typeof cardCenterX === "number" ? cardCenterX : pageW / 2, half + 20),
-    pageW - half - 20
-  );
-  const modalStyle = fitsAbove
-    ? { position: "absolute", top: y - 14, left: x, transform: "translate(-50%, -100%)" }
-    : { position: "absolute", top: y + 14, left: x, transform: "translate(-50%, 0)" };
+  const modalStyle = placed
+    ? { position: "absolute", top: placed.top, left: placed.left, transform: "translateX(-50%)" }
+    : {
+        position: "absolute",
+        top: typeof cardTop === "number" ? cardTop : 300,
+        left: "50%",
+        transform: "translateX(-50%)",
+        visibility: "hidden", // measured on first paint, then placed
+      };
 
   return createPortal(
     <div className="odExtBackdrop" onClick={onClose} role="presentation">
       <div
+        ref={boxRef}
         className="odExtModal"
         style={modalStyle}
         role="alertdialog"

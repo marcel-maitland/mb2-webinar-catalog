@@ -987,6 +987,40 @@ function EmailReg({ email }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [anchor, setAnchor] = useState({ y: 300, x: null });
+  const [placed, setPlaced] = useState(null);
+  const boxRef = useRef(null);
+
+  // Position after first paint, once the popup's height is known:
+  // hover above the clicked button when there's visible room, else
+  // clamp into the visible part of the page (known via the embed
+  // scroll stream inside the TI iframe).
+  useEffect(() => {
+    if (!open) { setPlaced(null); return; }
+    const el = boxRef.current;
+    if (!el) return;
+    const h = el.offsetHeight || 240;
+    const pageW = document.documentElement.clientWidth || 1200;
+    const half = Math.min(400, pageW - 40) / 2;
+    const x = Math.min(Math.max(anchor.x ?? pageW / 2, half + 20), pageW - half - 20);
+
+    const embedded = window.parent !== window;
+    const visTop = embedded
+      ? (window.__mb2EmbedScrollOff || 0)
+      : (window.scrollY || 0);
+    let menuH = 0;
+    if (embedded) {
+      const hd = document.querySelector(".unifiedStickyHeader");
+      const fb = document.querySelector(".filterBar");
+      if (hd && hd.style.transform) menuH += hd.offsetHeight;
+      if (fb && fb.style.transform) menuH += fb.offsetHeight;
+    }
+    const minTop = visTop + menuH + 12;
+
+    let top = anchor.y - 12 - h; // bottom edge just above the button
+    if (top < minTop) top = minTop;
+    setPlaced({ top, left: x });
+  }, [open, anchor]);
+
   if (!isEmail(email)) return null;
 
   const copy = async () => {
@@ -1033,20 +1067,13 @@ function EmailReg({ email }) {
       {open && createPortal(
         <div className="emailRegBackdrop" onClick={() => setOpen(false)} role="presentation">
           <div
+            ref={boxRef}
             className="emailRegModal"
-            style={(() => {
-              // Hover just above the clicked button, centered on it; if
-              // too close to the top of the page, open below it instead.
-              const pageW = document.documentElement.clientWidth || 1200;
-              const half = Math.min(400, pageW - 40) / 2;
-              const x = Math.min(
-                Math.max(anchor.x ?? pageW / 2, half + 20),
-                pageW - half - 20
-              );
-              return anchor.y > 340
-                ? { top: anchor.y - 12, left: x, transform: "translate(-50%, -100%)" }
-                : { top: anchor.y + 44, left: x, transform: "translate(-50%, 0)" };
-            })()}
+            style={
+              placed
+                ? { top: placed.top, left: placed.left, transform: "translateX(-50%)" }
+                : { top: anchor.y, left: "50%", transform: "translateX(-50%)", visibility: "hidden" }
+            }
             role="dialog"
             aria-modal="true"
             aria-label="Register by email"
