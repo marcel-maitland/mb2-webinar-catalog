@@ -31,6 +31,7 @@ const BLANK = {
   is_locked: false,
   is_external: false,
   is_featured: false,
+  featured_until: "",
   is_published: false,
 };
 
@@ -212,6 +213,7 @@ export default function OnDemandForm({ mode = "edit" }) {
       is_locked: !!form.is_locked,
       is_external: !!form.is_external,
       is_featured: !!form.is_featured,
+      featured_until: form.is_featured ? (form.featured_until || null) : null,
       is_published: !!form.is_published,
       };
       if (mode === "new") {
@@ -547,20 +549,38 @@ export default function OnDemandForm({ mode = "edit" }) {
           </Section>
 
           <Section title="Ordering" subtitle="Controls how courses appear on the public catalog.">
-            <label className="odExternalCheck" style={{ marginTop: 0, marginBottom: 14 }}>
-              <input
-                type="checkbox"
-                checked={!!form.is_featured}
-                onChange={(e) => set("is_featured", e.target.checked)}
-              />
-              <span>
-                <strong>⭐ Featured</strong>
-                <span className="muted odExternalCheckHint">
-                  Featured courses automatically appear at the top of the public
-                  catalog, ahead of everything else.
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 18, flexWrap: "wrap", marginBottom: 14 }}>
+              <label className="odExternalCheck" style={{ marginTop: 0, marginBottom: 0, flex: "1 1 300px" }}>
+                <input
+                  type="checkbox"
+                  checked={!!form.is_featured}
+                  onChange={(e) => set("is_featured", e.target.checked)}
+                />
+                <span>
+                  <strong>⭐ Featured</strong>
+                  <span className="muted odExternalCheckHint">
+                    Featured courses automatically appear at the top of the public
+                    catalog, ahead of everything else.
+                  </span>
                 </span>
-              </span>
-            </label>
+              </label>
+              {!!form.is_featured && (
+                <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 600, color: "#334155" }}>
+                  <span>Featured until</span>
+                  <input
+                    type="date"
+                    value={form.featured_until || ""}
+                    onChange={(e) => set("featured_until", e.target.value)}
+                    style={{ maxWidth: 180 }}
+                  />
+                  <span className="muted" style={{ fontSize: 12, fontWeight: 500, maxWidth: 210 }}>
+                    {form.featured_until
+                      ? "Drops out of the featured spots after this date."
+                      : "Leave blank to feature indefinitely."}
+                  </span>
+                </label>
+              )}
+            </div>
             <Field label="Sort order" hint="Lower numbers appear first (among non-featured courses)">
               <input
                 type="number"

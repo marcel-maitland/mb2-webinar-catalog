@@ -363,8 +363,20 @@ export default function OnDemandList() {
                     <Link to={`/admin/on-demand/${r.id}`} className="elTitleLink">{r.title || "(untitled)"}</Link>
                     <div className="elTitleMeta">
                       {r.is_featured && (
-                        <span className="odFeaturedChip" title="Featured — always at the top of the public catalog">
+                        <span
+                          className="odFeaturedChip"
+                          title={
+                            r.featured_until
+                              ? `Featured through ${String(r.featured_until).slice(0, 10)} — then returns to normal ordering`
+                              : "Featured — always at the top of the public catalog"
+                          }
+                        >
                           ★ Featured
+                          {r.featured_until && (
+                            <span style={{ fontWeight: 500, opacity: 0.85 }}>
+                              {" "}· until {String(r.featured_until).slice(5, 7)}/{String(r.featured_until).slice(8, 10)}
+                            </span>
+                          )}
                         </span>
                       )}
                       {r.is_locked && (

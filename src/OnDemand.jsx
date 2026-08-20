@@ -195,8 +195,15 @@ export default function OnDemand({ embedded = false }) {
         break;
     }
     // Featured courses always float to the top, keeping the chosen
-    // sort order within the featured and non-featured groups.
-    sorted.sort((a, b) => (b.is_featured === true ? 1 : 0) - (a.is_featured === true ? 1 : 0));
+    // sort order within the featured and non-featured groups. A course
+    // with a "featured until" date stops counting as featured after
+    // that date (inclusive — it stays featured through that day).
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const isFeaturedNow = (c) =>
+      c.is_featured === true &&
+      (!c.featured_until || String(c.featured_until).slice(0, 10) >= todayStr);
+    sorted.sort((a, b) => (isFeaturedNow(b) ? 1 : 0) - (isFeaturedNow(a) ? 1 : 0));
     return sorted;
   }, [rows, query, typeSelected, ceSelected, rolesSelected, catSelected, vendorSelected, mb2ExclusiveOnly, sortBy]);
 
