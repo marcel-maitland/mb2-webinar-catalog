@@ -265,10 +265,9 @@ a.unifiedTabLink:visited {
 .unifiedStickyHeader,
 .unifiedBody .filterBar {
   will-change: transform;
-  /* Softens the cross-iframe scroll correction — without this the
-     pinned bars visibly jitter as position updates arrive a frame
-     behind the parent page's scroll. */
-  transition: transform 0.15s ease-out;
+  /* No CSS transition here — smoothing is done frame-by-frame in
+     embedAutoHeight.js. A CSS transition makes the bars trail far
+     behind during continuous scrolling. */
 }
 
 .unifiedPinned {

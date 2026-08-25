@@ -53,7 +53,42 @@ export function initEmbedAutoHeight() {
   setInterval(sendAlways, 1500);
   sendAlways();
 
-  /* ---------- 2. Menu pinning ---------- */
+  /* ---------- 2. Menu pinning ----------
+     The parent page streams the iframe's position on every scroll.
+     Applying each update directly causes a visible one-frame jitter,
+     and a CSS transition makes the bars trail far behind during
+     continuous scrolling. Instead we chase the target offset in a
+     requestAnimationFrame loop: each frame the bars close most of the
+     remaining distance, then snap exactly onto the target. Fast scrolls
+     look locked; the frame-boundary noise is absorbed. */
+  let targetOff = 0;
+  let currentOff = 0;
+  let rafActive = false;
+
+  const applyOff = (off) => {
+    const header = document.querySelector(".unifiedStickyHeader");
+    if (!header) return;
+    const bar = document.querySelector(".unifiedBody .filterBar");
+    const els = bar ? [header, bar] : [header];
+    for (const el of els) {
+      el.style.transform = off > 0.5 ? `translate3d(0, ${off}px, 0)` : "";
+    }
+    header.classList.toggle("unifiedPinned", off > 0.5);
+  };
+
+  const tick = () => {
+    const diff = targetOff - currentOff;
+    if (Math.abs(diff) < 0.75) {
+      currentOff = targetOff;
+      applyOff(currentOff);
+      rafActive = false;
+      return;
+    }
+    currentOff += diff * 0.55; // close over half the gap every frame
+    applyOff(currentOff);
+    requestAnimationFrame(tick);
+  };
+
   window.addEventListener("message", (e) => {
     const d = e.data || {};
     if (d.type !== "mb2-embed-scroll" || typeof d.top !== "number") return;
@@ -72,11 +107,11 @@ export function initEmbedAutoHeight() {
     // Cap so the menu never slides past the end of the content.
     const stackH = els.reduce((s, el) => s + el.offsetHeight, 0);
     const max = Math.max(0, measure() - stackH - 200);
-    const off = Math.min(Math.max(0, -d.top), max);
+    targetOff = Math.min(Math.max(0, -d.top), max);
 
-    for (const el of els) {
-      el.style.transform = off > 0 ? `translate3d(0, ${off}px, 0)` : "";
+    if (!rafActive) {
+      rafActive = true;
+      requestAnimationFrame(tick);
     }
-    header.classList.toggle("unifiedPinned", off > 0);
   });
 }
