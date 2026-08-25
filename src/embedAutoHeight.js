@@ -55,38 +55,32 @@ export function initEmbedAutoHeight() {
 
   /* ---------- 2. Menu pinning ----------
      The parent page streams the iframe's position on every scroll.
-     Applying each update directly causes a visible one-frame jitter,
-     and a CSS transition makes the bars trail far behind during
-     continuous scrolling. Instead we chase the target offset in a
-     requestAnimationFrame loop: each frame the bars close most of the
-     remaining distance, then snap exactly onto the target. Fast scrolls
-     look locked; the frame-boundary noise is absorbed. */
-  let targetOff = 0;
+     Position updates cross the iframe boundary one frame behind the
+     actual scroll, so during a fast fling a visible bounce is
+     physically unavoidable. Strategy: apply every update immediately
+     (bars track exactly, no trailing), and during FAST scrolling fade
+     the bars out — the bounce happens while they're invisible, and the
+     moment scrolling settles they fade back in already locked in
+     place. Slow, deliberate scrolling never triggers the fade. */
   let currentOff = 0;
-  let rafActive = false;
+  let lastScroll = 0;
+  let lastTime = 0;
+  let hidden = false;
+  let showTimer = null;
 
-  const applyOff = (off) => {
+  const getEls = () => {
     const header = document.querySelector(".unifiedStickyHeader");
-    if (!header) return;
+    if (!header) return null;
     const bar = document.querySelector(".unifiedBody .filterBar");
-    const els = bar ? [header, bar] : [header];
-    for (const el of els) {
-      el.style.transform = off > 0.5 ? `translate3d(0, ${off}px, 0)` : "";
-    }
-    header.classList.toggle("unifiedPinned", off > 0.5);
+    return { header, els: bar ? [header, bar] : [header] };
   };
 
-  const tick = () => {
-    const diff = targetOff - currentOff;
-    if (Math.abs(diff) < 0.75) {
-      currentOff = targetOff;
-      applyOff(currentOff);
-      rafActive = false;
-      return;
-    }
-    currentOff += diff * 0.55; // close over half the gap every frame
-    applyOff(currentOff);
-    requestAnimationFrame(tick);
+  const setHidden = (next) => {
+    if (hidden === next) return;
+    hidden = next;
+    const found = getEls();
+    if (!found) return;
+    for (const el of found.els) el.classList.toggle("unifiedPinFading", next);
   };
 
   window.addEventListener("message", (e) => {
@@ -98,10 +92,9 @@ export function initEmbedAutoHeight() {
     const scrollPast = Math.max(0, -d.top);
     window.__mb2EmbedScrollOff = scrollPast;
 
-    const header = document.querySelector(".unifiedStickyHeader");
-    if (!header) return;
-    const bar = document.querySelector(".unifiedBody .filterBar");
-    const els = bar ? [header, bar] : [header];
+    const found = getEls();
+    if (!found) return;
+    const { header, els } = found;
 
     // The tabs bar doesn't start at the top of the document (the title
     // sits above it), so subtract its natural starting position —
@@ -113,11 +106,33 @@ export function initEmbedAutoHeight() {
     // Cap so the menu never slides past the end of the content.
     const stackH = els.reduce((s, el) => s + el.offsetHeight, 0);
     const max = Math.max(0, measure() - naturalTop - stackH - 200);
-    targetOff = Math.min(Math.max(0, scrollPast - naturalTop), max);
+    const off = Math.min(Math.max(0, scrollPast - naturalTop), max);
 
-    if (!rafActive) {
-      rafActive = true;
-      requestAnimationFrame(tick);
+    // Scroll velocity (px per ~frame) — decides whether to fade.
+    const now = performance.now();
+    const dt = Math.max(1, now - lastTime);
+    const velocity = (Math.abs(scrollPast - lastScroll) / dt) * 16.7;
+    lastScroll = scrollPast;
+    lastTime = now;
+
+    // Apply instantly — no chasing, no trailing.
+    currentOff = off;
+    const pinned = off > 0.5;
+    for (const el of els) {
+      el.style.transform = pinned ? `translate3d(0, ${off}px, 0)` : "";
     }
+    header.classList.toggle("unifiedPinned", pinned);
+
+    // Fast fling while pinned → hide the bars so the unavoidable
+    // one-frame bounce happens out of sight. Reveal ~130ms after the
+    // scrolling calms down, already in exactly the right spot.
+    if (pinned && velocity > 45) {
+      setHidden(true);
+    }
+    if (hidden) {
+      clearTimeout(showTimer);
+      showTimer = setTimeout(() => setHidden(false), 130);
+    }
+    if (!pinned) setHidden(false);
   });
 }
