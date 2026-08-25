@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import App from "./App.jsx";
 import OnDemand from "./OnDemand.jsx";
@@ -34,6 +34,18 @@ export default function UnifiedCatalog() {
   const [tab, setTab] = useState(initialTab);
   const headerRef = useRef(null);
 
+  // Publish the tabs bar's real height as a CSS variable so the filter
+  // bar's sticky offset always sits flush below it (any screen size).
+  useEffect(() => {
+    const setVar = () => {
+      const h = headerRef.current ? headerRef.current.offsetHeight : 100;
+      document.documentElement.style.setProperty("--ucTabsH", `${h}px`);
+    };
+    setVar();
+    window.addEventListener("resize", setVar);
+    return () => window.removeEventListener("resize", setVar);
+  }, []);
+
   const backToFilters = () => {
     // scrollIntoView propagates to the parent page even from inside an
     // iframe, so this works in the TI embed as well as standalone.
@@ -50,16 +62,17 @@ export default function UnifiedCatalog() {
 
   return (
     <div className="unifiedPage">
-      {/* Sticky header block — title + tabs stick together at the top of
-          the widget. Below them, the filter bar (from inside the child
-          catalog) docks flush and stays pinned too. */}
-      <div className="unifiedStickyHeader" ref={headerRef}>
-        <header className="unifiedTitleBar">
-          <h1 className="unifiedTitle">
-            On-demand Courses, Live Events, Webinars and State Requirements
-          </h1>
-        </header>
+      {/* Section title — scrolls away normally so the pinned area stays
+          compact and leaves more room for the course cards. */}
+      <header className="unifiedTitleBar">
+        <h1 className="unifiedTitle">
+          On-demand Courses, Live Events, Webinars and State Requirements
+        </h1>
+      </header>
 
+      {/* Sticky block — TABS only (title excluded). The filter bar from
+          the child catalog docks flush below and stays pinned too. */}
+      <div className="unifiedStickyHeader" ref={headerRef}>
         {/* Big tabs — On Demand / Live Events / CE Requirements. */}
         <nav className="unifiedTabs" role="tablist" aria-label="Catalog type">
         <TabButton

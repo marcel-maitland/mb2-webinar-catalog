@@ -136,7 +136,9 @@
    single continuous edge-to-edge header. Its top offset matches the
    height of the tabs bar so both stay pinned as the user scrolls. */
 .unifiedBody .filterBar {
-  top: 148px !important;   /* sits below the sticky title + tabs */
+  /* Sits flush below the sticky tabs bar; --ucTabsH is measured and
+     published by UnifiedCatalog.jsx so it's always exact. */
+  top: var(--ucTabsH, 100px) !important;
   z-index: 30 !important;
   border: none !important;
   border-radius: 0 !important;
@@ -148,8 +150,6 @@
   padding: 12px 20px !important;
   border-bottom: 1px solid rgba(15, 23, 42, 0.06) !important;
 }
-@media (max-width: 900px) { .unifiedBody .filterBar { top: 138px !important; } }
-@media (max-width: 700px) { .unifiedBody .filterBar { top: 220px !important; } }
 
 /* Give the grid + cards their own inner padding, since the page
    container no longer has side padding (that space is now used by
@@ -265,6 +265,10 @@ a.unifiedTabLink:visited {
 .unifiedStickyHeader,
 .unifiedBody .filterBar {
   will-change: transform;
+  /* Softens the cross-iframe scroll correction — without this the
+     pinned bars visibly jitter as position updates arrive a frame
+     behind the parent page's scroll. */
+  transition: transform 0.15s ease-out;
 }
 
 .unifiedPinned {
