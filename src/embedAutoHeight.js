@@ -93,21 +93,27 @@ export function initEmbedAutoHeight() {
     const d = e.data || {};
     if (d.type !== "mb2-embed-scroll" || typeof d.top !== "number") return;
 
-    // Remember how far the visitor has scrolled past the top of the
-    // catalog — popups use this to position themselves within the
-    // currently-visible part of the page.
-    window.__mb2EmbedScrollOff = Math.max(0, -d.top);
+    // How far the visitor has scrolled past the top of the catalog.
+    // Popups also read this to position within the visible region.
+    const scrollPast = Math.max(0, -d.top);
+    window.__mb2EmbedScrollOff = scrollPast;
 
     const header = document.querySelector(".unifiedStickyHeader");
     if (!header) return;
     const bar = document.querySelector(".unifiedBody .filterBar");
     const els = bar ? [header, bar] : [header];
 
-    // How far the catalog's top is above the browser window's top.
+    // The tabs bar doesn't start at the top of the document (the title
+    // sits above it), so subtract its natural starting position —
+    // otherwise it pins one title-height below the top, leaving a gap.
+    // rect.top reflects any transform we've already applied; removing
+    // currentOff recovers the untransformed position.
+    const naturalTop = header.getBoundingClientRect().top - currentOff;
+
     // Cap so the menu never slides past the end of the content.
     const stackH = els.reduce((s, el) => s + el.offsetHeight, 0);
-    const max = Math.max(0, measure() - stackH - 200);
-    targetOff = Math.min(Math.max(0, -d.top), max);
+    const max = Math.max(0, measure() - naturalTop - stackH - 200);
+    targetOff = Math.min(Math.max(0, scrollPast - naturalTop), max);
 
     if (!rafActive) {
       rafActive = true;
