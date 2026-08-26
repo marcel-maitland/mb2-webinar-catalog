@@ -14,7 +14,7 @@ const isExclusiveMode =
 const isUrl = (u) => safe(u).startsWith("http");
 const uniq = (arr) => [...new Set(arr.filter((v) => v !== null && v !== undefined && v !== ""))];
 
-export default function OnDemand({ embedded = false }) {
+export default function OnDemand({ embedded = false, embedUi = null, syncChannel = null }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -27,6 +27,76 @@ export default function OnDemand({ embedded = false }) {
   const [mb2ExclusiveOnly, setMb2ExclusiveOnly] = useState(isExclusiveMode);
   const [sortBy, setSortBy] = useState("newest"); // newest | oldest | name | ce_desc | ce_asc
   const [externalCourse, setExternalCourse] = useState(null); // course pending external-link confirmation
+
+  /* ---- Two-frame embed sync (see embedSync.js) ----
+     bar frame: broadcasts every filter change.
+     grid frame: applies whatever the bar broadcasts. */
+  useEffect(() => {
+    if (!syncChannel || embedUi !== "bar") return;
+    try {
+      syncChannel.postMessage({
+        scope: "od",
+        kind: "state",
+        state: {
+          query,
+          type: [...typeSelected],
+          ce: [...ceSelected],
+          roles: [...rolesSelected],
+          cats: [...catSelected],
+          vendors: [...vendorSelected],
+          excl: mb2ExclusiveOnly,
+          sortBy,
+        },
+      });
+    } catch { /* channel closed */ }
+  }, [syncChannel, embedUi, query, typeSelected, ceSelected, rolesSelected, catSelected, vendorSelected, mb2ExclusiveOnly, sortBy]);
+
+  useEffect(() => {
+    if (!syncChannel || embedUi !== "grid") return;
+    const onMsg = (e) => {
+      const m = e.data || {};
+      if (m.scope !== "od" || m.kind !== "state" || !m.state) return;
+      const s = m.state;
+      setQuery(s.query ?? "");
+      setTypeSelected(new Set(s.type || []));
+      setCeSelected(new Set(s.ce || []));
+      setRolesSelected(new Set(s.roles || []));
+      setCatSelected(new Set(s.cats || []));
+      setVendorSelected(new Set(s.vendors || []));
+      setMb2ExclusiveOnly(!!s.excl);
+      setSortBy(s.sortBy || "newest");
+    };
+    syncChannel.addEventListener("message", onMsg);
+    // Ask the bar (which may have loaded first) for the current state.
+    try { syncChannel.postMessage({ kind: "hello" }); } catch { /* ignore */ }
+    return () => syncChannel.removeEventListener("message", onMsg);
+  }, [syncChannel, embedUi]);
+
+  // Bar frame answers hello with a fresh state broadcast.
+  useEffect(() => {
+    if (!syncChannel || embedUi !== "bar") return;
+    const onMsg = (e) => {
+      if ((e.data || {}).kind !== "hello") return;
+      try {
+        syncChannel.postMessage({
+          scope: "od",
+          kind: "state",
+          state: {
+            query,
+            type: [...typeSelected],
+            ce: [...ceSelected],
+            roles: [...rolesSelected],
+            cats: [...catSelected],
+            vendors: [...vendorSelected],
+            excl: mb2ExclusiveOnly,
+            sortBy,
+          },
+        });
+      } catch { /* ignore */ }
+    };
+    syncChannel.addEventListener("message", onMsg);
+    return () => syncChannel.removeEventListener("message", onMsg);
+  }, [syncChannel, embedUi, query, typeSelected, ceSelected, rolesSelected, catSelected, vendorSelected, mb2ExclusiveOnly, sortBy]);
 
   useEffect(() => {
     let cancelled = false;
@@ -234,24 +304,27 @@ export default function OnDemand({ embedded = false }) {
           In embedded mode the search input lives INSIDE the filter bar,
           on the same row as the filter chips, so we don't need a
           separate row above. */}
-      <OdFilterBar
-        types={types} typeSelected={typeSelected} setTypeSelected={setTypeSelected}
-        ceHours={ceHours} ceSelected={ceSelected} setCeSelected={setCeSelected}
-        roles={roles} rolesSelected={rolesSelected} setRolesSelected={setRolesSelected}
-        categories={categories} catSelected={catSelected} setCatSelected={setCatSelected}
-        vendorOptions={vendorOptions} vendorSelected={vendorSelected} setVendorSelected={setVendorSelected}
-        mb2ExclusiveOnly={mb2ExclusiveOnly} setMb2ExclusiveOnly={setMb2ExclusiveOnly}
-        toggle={toggle}
-        clearFilters={clearFilters}
-        filteredCount={filtered.length}
-        showSearch={embedded}
-        query={query}
-        setQuery={setQuery}
-        searchPlaceholder="Search on-demand courses…"
-        sortBy={sortBy}
-        setSortBy={setSortBy}
-      />
+      {embedUi !== "grid" && (
+        <OdFilterBar
+          types={types} typeSelected={typeSelected} setTypeSelected={setTypeSelected}
+          ceHours={ceHours} ceSelected={ceSelected} setCeSelected={setCeSelected}
+          roles={roles} rolesSelected={rolesSelected} setRolesSelected={setRolesSelected}
+          categories={categories} catSelected={catSelected} setCatSelected={setCatSelected}
+          vendorOptions={vendorOptions} vendorSelected={vendorSelected} setVendorSelected={setVendorSelected}
+          mb2ExclusiveOnly={mb2ExclusiveOnly} setMb2ExclusiveOnly={setMb2ExclusiveOnly}
+          toggle={toggle}
+          clearFilters={clearFilters}
+          filteredCount={filtered.length}
+          showSearch={embedded}
+          query={query}
+          setQuery={setQuery}
+          searchPlaceholder="Search on-demand courses…"
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+        />
+      )}
 
+      {embedUi === "bar" ? null : (
       <div className="layoutTop">
         <main className="mainFull">
           {loading && <div className="center">Loading…</div>}
@@ -282,6 +355,7 @@ export default function OnDemand({ embedded = false }) {
           )}
         </main>
       </div>
+      )}
 
       <ExternalCourseModal
         course={externalCourse?.course || null}

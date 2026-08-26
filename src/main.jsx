@@ -38,6 +38,16 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="/all" element={<UnifiedCatalog />} />
         <Route path="/all/:slug" element={<UnifiedCatalog />} />
 
+        {/* TWO-FRAME TI EMBED — the parent page stacks two iframes:
+            /all-bar (tabs + filters; the PARENT makes it sticky, so it
+            pins natively with zero jitter) above /all-grid (cards only).
+            The frames sync over a BroadcastChannel. /all remains intact
+            as the single-frame fallback. */}
+        <Route path="/all-bar" element={<UnifiedCatalog ui="bar" />} />
+        <Route path="/all-bar/:slug" element={<UnifiedCatalog ui="bar" />} />
+        <Route path="/all-grid" element={<UnifiedCatalog ui="grid" />} />
+        <Route path="/all-grid/:slug" element={<UnifiedCatalog ui="grid" />} />
+
         {/* Admin dashboard (auth-gated inside AdminApp). */}
         <Route path="/" element={<AdminApp />} />
         <Route path="/admin/*" element={<AdminApp />} />

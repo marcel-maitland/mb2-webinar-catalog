@@ -242,7 +242,7 @@ function ClockIcon() {
    APP
 ================================= */
 
-export default function App({ embedded = false, slugOverride = null }) {
+export default function App({ embedded = false, slugOverride = null, embedUi = null, syncChannel = null }) {
   const { slug: routeSlug } = useParams();
   const effectiveSlug = (slugOverride || routeSlug || DEFAULT_SLUG).toLowerCase();
 
@@ -261,6 +261,53 @@ export default function App({ embedded = false, slugOverride = null }) {
   const [formatSelected, setFormatSelected] = useState(new Set());
   const [rolesSelected, setRolesSelected] = useState(new Set());
   const [mb2ExclusiveOnly, setMb2ExclusiveOnly] = useState(isExclusiveMode);
+
+  /* ---- Two-frame embed sync (see embedSync.js) ----
+     bar frame: broadcasts every filter change (and re-broadcasts when
+     the grid frame says hello). grid frame: applies what it receives. */
+  useEffect(() => {
+    if (!syncChannel || embedUi !== "bar") return;
+    const broadcast = () => {
+      try {
+        syncChannel.postMessage({
+          scope: "ev",
+          kind: "state",
+          state: {
+            query,
+            cats: [...catSelected],
+            vendors: [...vendorSelected],
+            ce: [...ceSelected],
+            formats: [...formatSelected],
+            roles: [...rolesSelected],
+            excl: mb2ExclusiveOnly,
+          },
+        });
+      } catch { /* channel closed */ }
+    };
+    broadcast();
+    const onMsg = (e) => { if ((e.data || {}).kind === "hello") broadcast(); };
+    syncChannel.addEventListener("message", onMsg);
+    return () => syncChannel.removeEventListener("message", onMsg);
+  }, [syncChannel, embedUi, query, catSelected, vendorSelected, ceSelected, formatSelected, rolesSelected, mb2ExclusiveOnly]);
+
+  useEffect(() => {
+    if (!syncChannel || embedUi !== "grid") return;
+    const onMsg = (e) => {
+      const m = e.data || {};
+      if (m.scope !== "ev" || m.kind !== "state" || !m.state) return;
+      const s = m.state;
+      setQuery(s.query ?? "");
+      setCatSelected(new Set(s.cats || []));
+      setVendorSelected(new Set(s.vendors || []));
+      setCeSelected(new Set(s.ce || []));
+      setFormatSelected(new Set(s.formats || []));
+      setRolesSelected(new Set(s.roles || []));
+      setMb2ExclusiveOnly(!!s.excl);
+    };
+    syncChannel.addEventListener("message", onMsg);
+    try { syncChannel.postMessage({ kind: "hello" }); } catch { /* ignore */ }
+    return () => syncChannel.removeEventListener("message", onMsg);
+  }, [syncChannel, embedUi]);
 
   // 1. Resolve the client by slug
   useEffect(() => {
@@ -484,7 +531,9 @@ export default function App({ embedded = false, slugOverride = null }) {
       {/* Horizontal filter bar — sticks below the header. Popover dropdowns
           keep their scrolling internal so the page never gets pushed.
           In embedded mode, search input renders INSIDE the bar on the
-          same row as the filter chips. */}
+          same row as the filter chips. Hidden in the two-frame embed's
+          grid frame (the bar frame renders it instead). */}
+      {embedUi !== "grid" && (
       <FilterBar
         clientName={clientName}
         isExclusiveMode={isExclusiveMode}
@@ -503,7 +552,9 @@ export default function App({ embedded = false, slugOverride = null }) {
         setQuery={setQuery}
         searchPlaceholder="Search events, vendors, categories…"
       />
+      )}
 
+      {embedUi === "bar" ? null : (
       <div className="layoutTop">
         <main className="mainFull">
           {loading && <div className="center">Loading…</div>}
@@ -535,6 +586,7 @@ export default function App({ embedded = false, slugOverride = null }) {
           )}
         </main>
       </div>
+      )}
     </div>
   );
 }

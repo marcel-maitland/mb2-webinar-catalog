@@ -285,3 +285,35 @@ a.unifiedTabLink:visited {
   opacity: 0 !important;
   pointer-events: none;
 }
+
+/* ============================================================
+   TWO-FRAME TI EMBED
+   /all-bar — tabs + filter bar only, rendered inside a slim
+   iframe that the PARENT page makes position:sticky (native
+   pinning, zero jitter). /all-grid — cards only.
+   ============================================================ */
+.unifiedBarOnly {
+  padding: 0;
+  background: #ffffff;
+}
+.unifiedBarOnly .unifiedStickyHeader {
+  position: static;          /* the PARENT pins the whole iframe */
+  background: #ffffff;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.unifiedBarOnly .unifiedTabs {
+  padding-top: 10px;
+}
+.unifiedBarOnly .filterBar {
+  position: static !important;   /* no in-frame stickiness needed */
+  top: auto !important;
+}
+/* The bar frame renders the child catalog only for its filter bar —
+   make sure stray spacing collapses. */
+.unifiedBarOnly .unifiedBody { padding-top: 0; }
+.unifiedBarOnly .page { padding: 0 !important; min-height: 0 !important; }
+
+.unifiedGridOnly {
+  padding-top: 4px;
+}

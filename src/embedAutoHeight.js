@@ -92,6 +92,10 @@ export function initEmbedAutoHeight() {
     const scrollPast = Math.max(0, -d.top);
     window.__mb2EmbedScrollOff = scrollPast;
 
+    // Two-frame embed: the bar frame is pinned NATIVELY by the parent
+    // page and the grid frame has no bars — never translate anything.
+    if (document.querySelector("[data-mb2-embed-ui]")) return;
+
     const found = getEls();
     if (!found) return;
     const { header, els } = found;
