@@ -64,6 +64,16 @@ export default function UnifiedCatalog({ ui = null }) {
     return () => channel.removeEventListener("message", onMsg);
   }, [channel, ui]);
 
+  // Bar frame: make the page background transparent so that when the
+  // parent grows this iframe for a filter dropdown, the catalog cards
+  // stay visible behind it instead of a blank white area. The bar
+  // itself keeps its own solid background.
+  useEffect(() => {
+    if (ui !== "bar") return;
+    document.documentElement.style.background = "transparent";
+    document.body.style.background = "transparent";
+  }, [ui]);
+
   // Publish the tabs bar's real height as a CSS variable so the filter
   // bar's sticky offset always sits flush below it (any screen size).
   useEffect(() => {

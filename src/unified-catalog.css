@@ -294,7 +294,13 @@ a.unifiedTabLink:visited {
    ============================================================ */
 .unifiedBarOnly {
   padding: 0;
-  background: #ffffff;
+  /* Transparent so the catalog grid shows through when the parent
+     expands this iframe for an open filter dropdown. The bar itself
+     paints its own solid background below. */
+  background: transparent;
+}
+.unifiedBarOnly .filterBar {
+  background: #ffffff !important;
 }
 .unifiedBarOnly .unifiedStickyHeader {
   position: static;          /* the PARENT pins the whole iframe */

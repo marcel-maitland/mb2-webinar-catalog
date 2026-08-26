@@ -21,11 +21,25 @@ export function initEmbedAutoHeight() {
 
   /* ---------- 1. Height reporting ---------- */
   let last = 0;
-  const measure = () =>
-    Math.max(
+  const measure = () => {
+    // Two-frame embed, bar frame: html/body are height:100% of the
+    // iframe, so document scrollHeight can only ratchet UP once the
+    // parent grows the frame (e.g. for a filter dropdown) — it never
+    // shrinks back. Measure the real content instead: the bar itself
+    // plus any open filter dropdown.
+    const barRoot = document.querySelector('[data-mb2-embed-ui="bar"]');
+    if (barRoot) {
+      let bottom = barRoot.getBoundingClientRect().bottom;
+      document.querySelectorAll(".filterPopMenu").forEach((p) => {
+        bottom = Math.max(bottom, p.getBoundingClientRect().bottom);
+      });
+      return Math.max(0, Math.ceil(bottom) + 2);
+    }
+    return Math.max(
       document.documentElement ? document.documentElement.scrollHeight : 0,
       document.body ? document.body.scrollHeight : 0
     );
+  };
   const send = () => {
     const h = measure();
     if (h > 0 && Math.abs(h - last) > 2) {
@@ -45,6 +59,14 @@ export function initEmbedAutoHeight() {
     const ro = new ResizeObserver(send);
     if (document.documentElement) ro.observe(document.documentElement);
     if (document.body) ro.observe(document.body);
+  }
+  // Bar frame: filter dropdowns are absolutely positioned, so body
+  // ResizeObserver never fires when they open/close — watch DOM
+  // mutations instead so the frame resizes the instant they toggle.
+  if (typeof MutationObserver !== "undefined" && document.body) {
+    new MutationObserver(() => {
+      if (document.querySelector('[data-mb2-embed-ui="bar"]')) send();
+    }).observe(document.body, { childList: true, subtree: true });
   }
   window.addEventListener("load", sendAlways);
   window.addEventListener("resize", send);
