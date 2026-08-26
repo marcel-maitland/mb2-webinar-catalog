@@ -14,17 +14,33 @@ const isExclusiveMode =
 const isUrl = (u) => safe(u).startsWith("http");
 const uniq = (arr) => [...new Set(arr.filter((v) => v !== null && v !== undefined && v !== ""))];
 
-export default function OnDemand({ embedded = false, embedUi = null, syncChannel = null }) {
+export default function OnDemand({ embedded = false, embedUi = null, syncChannel = null, sharedFilters = null }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [query, setQuery] = useState("");
+  // Filters shared with the Live Events tab (role, category, vendor,
+  // search, CE, exclusive) carry over when the visitor switches tabs.
+  const carried = (embedUi !== "grid" && sharedFilters?.current) || null;
+  const [query, setQuery] = useState(carried?.query ?? "");
   const [typeSelected, setTypeSelected] = useState(new Set());
-  const [ceSelected, setCeSelected] = useState(new Set());
-  const [rolesSelected, setRolesSelected] = useState(new Set());
-  const [catSelected, setCatSelected] = useState(new Set());
-  const [vendorSelected, setVendorSelected] = useState(new Set());
-  const [mb2ExclusiveOnly, setMb2ExclusiveOnly] = useState(isExclusiveMode);
+  const [ceSelected, setCeSelected] = useState(new Set(carried?.ce || []));
+  const [rolesSelected, setRolesSelected] = useState(new Set(carried?.roles || []));
+  const [catSelected, setCatSelected] = useState(new Set(carried?.cats || []));
+  const [vendorSelected, setVendorSelected] = useState(new Set(carried?.vendors || []));
+  const [mb2ExclusiveOnly, setMb2ExclusiveOnly] = useState(carried?.excl ?? isExclusiveMode);
+
+  // Keep the cross-tab store up to date as filters change.
+  useEffect(() => {
+    if (embedUi === "grid" || !sharedFilters) return;
+    sharedFilters.current = {
+      query,
+      roles: [...rolesSelected],
+      cats: [...catSelected],
+      vendors: [...vendorSelected],
+      ce: [...ceSelected],
+      excl: mb2ExclusiveOnly,
+    };
+  }, [embedUi, sharedFilters, query, rolesSelected, catSelected, vendorSelected, ceSelected, mb2ExclusiveOnly]);
   const [sortBy, setSortBy] = useState("newest"); // newest | oldest | name | ce_desc | ce_asc
   const [externalCourse, setExternalCourse] = useState(null); // course pending external-link confirmation
 

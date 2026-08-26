@@ -47,6 +47,11 @@ export default function UnifiedCatalog({ ui = null }) {
   const tabRef = useRef(tab);
   tabRef.current = tab;
 
+  // Cross-tab filter store: the shared filters (role, category, vendor,
+  // search, CE, exclusive) survive switching between Live Events and
+  // On Demand. Each catalog writes its state here and reads it on mount.
+  const sharedFiltersRef = useRef(null);
+
   useEffect(() => {
     if (!channel) return;
     const onMsg = (e) => {
@@ -145,9 +150,9 @@ export default function UnifiedCatalog({ ui = null }) {
           </nav>
         </div>
         {tab === "on-demand" ? (
-          <OnDemand embedded embedUi="bar" syncChannel={channel} />
+          <OnDemand embedded embedUi="bar" syncChannel={channel} sharedFilters={sharedFiltersRef} />
         ) : (
-          <App embedded slugOverride={slug} embedUi="bar" syncChannel={channel} />
+          <App embedded slugOverride={slug} embedUi="bar" syncChannel={channel} sharedFilters={sharedFiltersRef} />
         )}
       </div>
     );
@@ -223,9 +228,9 @@ export default function UnifiedCatalog({ ui = null }) {
           unmounted so its filter/search state doesn't linger. */}
       <div className="unifiedBody">
         {tab === "on-demand" ? (
-          <OnDemand embedded />
+          <OnDemand embedded sharedFilters={sharedFiltersRef} />
         ) : (
-          <App embedded slugOverride={slug} />
+          <App embedded slugOverride={slug} sharedFilters={sharedFiltersRef} />
         )}
       </div>
 
