@@ -7,20 +7,37 @@
                         it pins natively with zero jitter.
      /all-grid/:slug  → the course/event grid only.
 
-   Both frames are same-origin (events.dentlogics.com), so they
-   talk directly over a BroadcastChannel: the bar broadcasts the
-   active tab + filter state, the grid applies it. The grid says
-   "hello" on load so a late-loading grid still gets the current
-   state.
+   Messages between the two frames RELAY THROUGH THE PARENT page
+   ({type:'mb2-sync'} → parent script forwards to the sibling
+   frame). This confines the sync to the one page instance the
+   visitor is looking at. (BroadcastChannel was used originally,
+   but it is shared across ALL open browser tabs of the site — two
+   open dashboards would answer each other's state requests with
+   conflicting tabs and flip the grids into an infinite remount
+   loop.)
    ============================================================ */
 
 export function createCatalogChannel(slug) {
-  if (typeof BroadcastChannel === "undefined") return null;
-  try {
-    return new BroadcastChannel(`mb2-catalog-${(slug || "mb2").toLowerCase()}`);
-  } catch {
-    return null;
-  }
+  const s = (slug || "mb2").toLowerCase();
+  const listeners = new Set();
+
+  window.addEventListener("message", (e) => {
+    const d = e.data || {};
+    if (d.type !== "mb2-sync" || d.slug !== s) return;
+    for (const fn of [...listeners]) {
+      try { fn({ data: d.payload }); } catch { /* listener error */ }
+    }
+  });
+
+  return {
+    postMessage(payload) {
+      try {
+        window.parent.postMessage({ type: "mb2-sync", slug: s, payload }, "*");
+      } catch { /* no parent */ }
+    },
+    addEventListener(_type, fn) { listeners.add(fn); },
+    removeEventListener(_type, fn) { listeners.delete(fn); },
+  };
 }
 
 /* Broadcast a message, ignoring channel failures. */
