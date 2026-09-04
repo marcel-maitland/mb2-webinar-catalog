@@ -254,30 +254,22 @@ export default function App({ embedded = false, slugOverride = null, embedUi = n
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
-  // Filters shared with the On Demand tab (role, category, vendor,
-  // search, CE, exclusive) carry over when the visitor switches tabs.
-  // Format is NOT shared — it means something different per catalog.
+  // Only the Role filter carries over when the visitor switches between
+  // the Live Events and On Demand tabs. Everything else resets per tab.
   const carried = (embedUi !== "grid" && sharedFilters?.current) || null;
-  const [query, setQuery] = useState(carried?.query ?? "");
-  const [catSelected, setCatSelected] = useState(new Set(carried?.cats || []));
-  const [vendorSelected, setVendorSelected] = useState(new Set(carried?.vendors || []));
-  const [ceSelected, setCeSelected] = useState(new Set(carried?.ce || []));
+  const [query, setQuery] = useState("");
+  const [catSelected, setCatSelected] = useState(new Set());
+  const [vendorSelected, setVendorSelected] = useState(new Set());
+  const [ceSelected, setCeSelected] = useState(new Set());
   const [formatSelected, setFormatSelected] = useState(new Set());
   const [rolesSelected, setRolesSelected] = useState(new Set(carried?.roles || []));
-  const [mb2ExclusiveOnly, setMb2ExclusiveOnly] = useState(carried?.excl ?? isExclusiveMode);
+  const [mb2ExclusiveOnly, setMb2ExclusiveOnly] = useState(isExclusiveMode);
 
-  // Keep the cross-tab store up to date as filters change.
+  // Keep the cross-tab store up to date as the role filter changes.
   useEffect(() => {
     if (embedUi === "grid" || !sharedFilters) return;
-    sharedFilters.current = {
-      query,
-      roles: [...rolesSelected],
-      cats: [...catSelected],
-      vendors: [...vendorSelected],
-      ce: [...ceSelected],
-      excl: mb2ExclusiveOnly,
-    };
-  }, [embedUi, sharedFilters, query, rolesSelected, catSelected, vendorSelected, ceSelected, mb2ExclusiveOnly]);
+    sharedFilters.current = { roles: [...rolesSelected] };
+  }, [embedUi, sharedFilters, rolesSelected]);
 
   /* ---- Two-frame embed sync (see embedSync.js) ----
      bar frame: broadcasts every filter change (and re-broadcasts when
