@@ -249,9 +249,12 @@ export default function OnDemand({ embedded = false, embedUi = null, syncChannel
 
     // Apply the current sort. Clone so we don't mutate the filter result.
     const sorted = [...matched];
+    // Newest/Oldest sort by when the course was published to the catalog
+    // (created_at), falling back to release_date for anything without one.
     const dateVal = (r) => {
-      if (!r.release_date) return -Infinity;
-      const t = new Date(r.release_date).getTime();
+      const d = r.created_at || r.release_date;
+      if (!d) return -Infinity;
+      const t = new Date(d).getTime();
       return Number.isNaN(t) ? -Infinity : t;
     };
     switch (sortBy) {
